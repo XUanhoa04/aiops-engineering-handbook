@@ -238,14 +238,4 @@ This is an evolving document. Each chapter follows the same quality bar:
 - **Trade-offs**: Every architectural decision is justified
 - **Production-Ready**: Includes failure modes, monitoring, scaling
 
----
 
-## License
-
-MIT License. See [LICENSE](LICENSE).
-
----
-
-## Authors
-
-Written by a Principal AIOps Architect with 15+ years of production experience across AWS, Kubernetes, and Cloud Native platforms.
