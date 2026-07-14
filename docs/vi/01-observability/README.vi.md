@@ -51,6 +51,14 @@ Sau chương này, hãy chuyển sang [02 — OpenTelemetry](../02-opentelemetry
 
 ## 1. The Three Pillars of Observability
 
+> [!NOTE]
+> **Ý TƯỞNG**
+> **Monitoring** giống như đèn báo trên bảng điều khiển xe — nó nói "có lỗi". **Observability** giống như hộp đen máy bay — nó cho phép bạn tái dựng lại chính xác điều gì đã xảy ra và tại sao. AIOps cần Observability, không chỉ Monitoring, vì nó cần tự động **hiểu nguyên nhân**, không chỉ **phát hiện triệu chứng**.
+
+> [!TIP]
+> **Vì sao 3 cột trụ thay vì 1?**
+> Mỗi loại telemetry trả lời một câu hỏi khác nhau và không thể thay thế cho nhau: Metrics cho biết *cái gì đang xảy ra* (nhanh, cheap, có thể tổng hợp), Logs cho biết *tại sao* (verbose, expensive, có đầy đủ context), Traces cho biết *như thế nào* (luồng request qua toàn hệ thống). AIOps cần cả 3 vì không một loại nào đủ để xác định root cause một mình.
+
 Khả năng quan sát (Observability) **không** giống như giám sát (monitoring).
 
 - **Monitoring** trả lời: "Hệ thống có hoạt động không? Metric cụ thể này có vượt quá ngưỡng hay không?"
@@ -102,32 +110,45 @@ graph LR
     style Traces fill:#4a148c,color:#fff
 ```
 
+> [!NOTE]
+> **Câu hỏi kiểm tra**: Nếu latency P99 tăng đột ngột, bạn dùng loại telemetry nào trước? Sau đó dùng gì để tìm nguyên nhân? Cuối cùng xem cái gì để hiểu luồng request đầy đủ?
+
 ---
 
 ## 2. Metrics — Deep Dive
 
 ### 2.1 What Are Metrics?
 
+> [!NOTE]
+> **Ý TƯỞNG**
+> Metric là một **con số được tổng hợp theo thời gian**, được gán nhãn để có thể lọc/nhóm. Thay vì lưu "mỗi request mất bao lâu" (quá nhiều), bạn lưu "1000 requests trong 5 phút, 80% dưới 50ms, 99% dưới 200ms" — đây là Histogram. Hãy nghĩ về nó như báo cáo thống kê tóm tắt, không phải log chi tiết.
+
 Một metric là một **phép đo số học được tổng hợp theo thời gian** và được xác định bởi một tập hợp các nhãn (labels).
 
-Trong định dạng phơi bày của Prometheus (Prometheus exposition format):
-
+**Ví dụ đọc Prometheus metric format**:
 ```
 # HELP http_requests_total Total number of HTTP requests
 # TYPE http_requests_total counter
-http_requests_total{method="GET",endpoint="/api/users",status="200",service="user-svc"} 12345 1705000000000
-http_requests_total{method="POST",endpoint="/api/orders",status="500",service="order-svc"} 42 1705000000000
+http_requests_total{method="GET",endpoint="/api/users",status="200",service="user-svc"} 12345
+http_requests_total{method="POST",endpoint="/api/orders",status="500",service="order-svc"} 42
 ```
 
 **Các thành phần của một metric**:
 - **Name**: `http_requests_total` — những gì được đo lường
 - **Labels**: `{method, endpoint, status, service}` — các chiều dữ liệu để lọc/nhóm
 - **Value**: `12345` — giá trị đo lường
-- **Timestamp**: `1705000000000` — mili giây tính từ epoch
+- **Timestamp**: mili giây tính từ epoch
 
 ### 2.2 Metric Types
 
 #### Counter
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> Counter như đồng hồ đo km trên xe — chỉ tăng, không giảm (trừ khi reset). Giá trị raw counter không có ý nghĩa; điều bạn quan tâm là **tốc độ tăng** (rate). Ví dụ: "12345 total requests" không nói lên gì, nhưng "25 requests/giây trong 5 phút qua" thì có nghĩa.
+
+> [!TIP]
+> **Vì sao dùng rate() thay vì giá trị thô?** Counter reset về 0 khi service restart. `rate()` xử lý reset này một cách chính xác — nếu counter reset từ 1000 về 0, rate() biết đây là reset, không phải số âm.
 
 Một giá trị số **chỉ tăng**. Không bao giờ giảm (ngoại trừ khi khởi động lại tiến trình).
 
@@ -137,19 +158,21 @@ http_requests_total{...} 0 → 1 → 2 → 100 → 101 ...
 
 **Sử dụng cho**: requests served, bytes transmitted, errors occurred, tasks completed.
 
-**Cách truy vấn**: Luôn sử dụng `rate()` hoặc `increase()`, không bao giờ dùng giá trị thô.
+**Cách truy vấn** — luôn dùng `rate()` hoặc `increase()`:
 
 ```promql
-# Rate of requests per second over 5-minute window
+# Tốc độ requests/giây trong cửa sổ 5 phút — ĐÂY LÀ CÁCH ĐÚNG
 rate(http_requests_total[5m])
 
-# Total increase over 1 hour
+# Tổng tăng trong 1 giờ — hữu ích cho báo cáo tổng hợp
 increase(http_requests_total[1h])
 ```
 
-**Tại sao rate() quan trọng**: Counter sẽ đặt lại về 0 khi tiến trình khởi động lại. `rate()` xử lý việc thiết lập lại (resets) này một cách chính xác. Giá trị counter thô không có ý nghĩa đối với việc cảnh báo.
-
 #### Gauge
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> Gauge như nhiệt kế — có thể tăng hoặc giảm tùy ý, đọc giá trị trực tiếp tại thời điểm bất kỳ. Dùng cho những thứ hiện tại như: bộ nhớ đang dùng, số kết nối đang mở, độ dài queue.
 
 Một giá trị có thể **tăng hoặc giảm một cách tùy ý**.
 
@@ -159,47 +182,52 @@ cpu_usage_cores{pod="user-svc-abc123"} 0.85
 active_connections{service="db"} 42
 ```
 
-**Sử dụng cho**: current memory usage, queue depth, number of active connections, temperature.
-
-**Cách truy vấn**: Sử dụng giá trị thô, hoặc `max_over_time()` / `min_over_time()` cho các truy vấn phạm vi thời gian.
-
 ```promql
-# Current memory usage in GB
+# Dùng giá trị trực tiếp — đây là bộ nhớ hiện tại tính theo GB
 container_memory_usage_bytes{pod=~"user-svc.*"} / 1024 / 1024 / 1024
 
-# Max memory over last 1 hour
+# Xem mức cao nhất trong 1 giờ qua — phát hiện memory spike tạm thời
 max_over_time(container_memory_usage_bytes{pod=~"user-svc.*"}[1h])
 ```
 
 #### Histogram
 
-Ghi lại **phân phối của các giá trị quan sát được** trong các buckets được định nghĩa trước.
+> [!NOTE]
+> **Ý TƯỞNG**
+> Hãy nghĩ về Histogram như kiểm tra tốc độ xe trên đường: không chỉ "trung bình 60km/h", mà là "có bao nhiêu xe đi dưới 40, 40–80, trên 80". Histogram phân loại requests vào các "ô tốc độ" (buckets) để tính P95/P99 chính xác — thứ quan trọng hơn nhiều so với latency trung bình.
+
+> [!TIP]
+> **Vì sao không dùng average latency?** Average bị kéo bởi outlier. Nếu 99% request mất 50ms và 1% mất 10s, average có thể là 150ms — trông bình thường nhưng thực ra 1% user đang rất khổ. P99 bắt được điều này.
+>
+> **Histogram vs Summary**: Summary tính quantile chính xác ở client nhưng **không thể aggregate** across nhiều replicas. Histogram aggregate được nhưng quantile là xấp xỉ. Với hệ thống phân tán nhiều replicas → chọn Histogram.
+
+**Ví dụ đọc Histogram data** (1000 requests):
+
+| Bucket | Đếm tích lũy | Ý nghĩa |
+|--------|-------------|---------|
+| le=0.005 (5ms) | 100 | 10% requests xong trong 5ms |
+| le=0.05 (50ms) | 800 | 80% requests xong trong 50ms |
+| le=0.1 (100ms) | 950 | 95% requests xong trong 100ms |
+| le=0.25 (250ms) | 990 | 99% requests xong trong 250ms |
+| le=1.0 (1s) | 1000 | 100% requests xong trong 1s |
 
 ```
-# HELP http_request_duration_seconds HTTP request latencies
-# TYPE http_request_duration_seconds histogram
 http_request_duration_seconds_bucket{le="0.005"} 100
-http_request_duration_seconds_bucket{le="0.01"} 200
-http_request_duration_seconds_bucket{le="0.025"} 450
-http_request_duration_seconds_bucket{le="0.05"} 800
-http_request_duration_seconds_bucket{le="0.1"} 950
-http_request_duration_seconds_bucket{le="0.25"} 990
-http_request_duration_seconds_bucket{le="0.5"} 998
-http_request_duration_seconds_bucket{le="1.0"} 1000
-http_request_duration_seconds_bucket{le="+Inf"} 1000
-http_request_duration_seconds_sum 45.234
-http_request_duration_seconds_count 1000
+http_request_duration_seconds_bucket{le="0.05"}  800
+http_request_duration_seconds_bucket{le="0.1"}   950
+http_request_duration_seconds_bucket{le="0.25"}  990
+http_request_duration_seconds_bucket{le="1.0"}   1000
+http_request_duration_seconds_sum   45.234    # tổng thời gian
+http_request_duration_seconds_count 1000      # tổng số requests
 ```
 
-**Ngữ nghĩa của bucket**: `le="0.1"` nghĩa là "số lượng yêu cầu có thời gian thực thi ≤ 100ms"
-
-**Cách truy vấn percentiles**:
+**Truy vấn P95 và P99**:
 
 ```promql
-# P95 latency
+# P95 latency — 95% requests xong trong bao lâu?
 histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
 
-# P99 latency by service
+# P99 latency chia theo service — tìm service nào chậm nhất
 histogram_quantile(0.99,
   sum by (service, le) (
     rate(http_request_duration_seconds_bucket[5m])
@@ -207,60 +235,51 @@ histogram_quantile(0.99,
 )
 ```
 
-**Quan trọng**: Các Histogram buckets phải được cấu hình tại thời điểm thiết lập mã nguồn (instrumentation time). Nếu bạn chọn sai ranh giới của các buckets, ước tính P99 của bạn sẽ không chính xác.
+**Chọn bucket boundaries** — cần nghĩ trước khi code:
 
-**Các ranh giới bucket khuyến nghị cho latency**:
 ```yaml
-# For fast internal APIs (target: <50ms)
+# API nội bộ (target < 50ms) — buckets dày quanh target
 buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5]
 
-# For user-facing APIs (target: <500ms)  
+# API user-facing (target < 500ms)
 buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
 
-# For batch jobs (target: <5min)
+# Batch jobs (target < 5min)
 buckets: [1, 5, 10, 30, 60, 120, 300, 600, 1800]
 ```
 
-**Native Histograms (Prometheus 2.40+)**: Tránh các buckets định nghĩa sẵn. Sử dụng exponential bucketing. Độ chính xác tốt hơn. Xem [Prometheus Architecture](../03-prometheus/architecture.md).
+> **Lưu ý**: Native Histograms (Prometheus 2.40+) tránh cần định nghĩa buckets trước. Xem [03 — Prometheus Architecture](../03-prometheus/README.md).
 
 #### Summary
 
 Tương tự như Histogram, nhưng tính toán các quantiles **ở phía client**.
 
-```
-http_request_duration_seconds{quantile="0.5"} 0.023
-http_request_duration_seconds{quantile="0.9"} 0.087
-http_request_duration_seconds{quantile="0.99"} 0.213
-http_request_duration_seconds_sum 45.234
-http_request_duration_seconds_count 1000
-```
-
-**Histogram vs Summary — Khi nào nên dùng loại nào**:
+**Histogram vs Summary — Bảng so sánh quyết định**:
 
 | Chiều so sánh | Histogram | Summary |
 |-----------|-----------|---------|
 | Độ chính xác quantile | Xấp xỉ (phụ thuộc vào bucket) | Chính xác |
-| Tổng hợp trên nhiều replica | ✅ Có thể với `histogram_quantile()` | ❌ Không thể tổng hợp |
-| Chi phí phía Server | Thấp (số lượng bucket đơn giản) | Thấp |
-| Chi phí phía Client | Thấp | Cao hơn (thuật toán streaming quantile) |
-| Trường hợp sử dụng | Các dịch vụ nhiều instance | Single-instance, yêu cầu quantile chính xác |
-| **Khuyến nghị** | **Ưu tiên cho môi trường production** | Tránh dùng cho các dịch vụ phân tán |
+| Aggregate nhiều replicas | ✅ Được — dùng `histogram_quantile()` | ❌ Không được tổng hợp |
+| Chi phí client | Thấp | Cao hơn (streaming quantile algorithm) |
+| **Khuyến nghị** | **Dùng cho production** | Tránh dùng cho distributed services |
 
 ### 2.3 Metric Naming Conventions
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> Đặt tên metric nhất quán như đặt tên biến trong code — nếu mỗi dev đặt tên khác nhau, không ai tìm được metric cần tìm. OpenTelemetry Semantic Conventions là "coding style guide" cho metric names.
 
 Tuân thủ [Prometheus naming conventions](https://prometheus.io/docs/practices/naming/):
 
 ```
 # Pattern: <namespace>_<subsystem>_<name>_<unit>
-# Units: seconds, bytes, total, ratio, info
 
-# Good
+# ✅ ĐÚNG — rõ ràng, có đơn vị
 http_server_request_duration_seconds
 http_server_requests_total
 process_resident_memory_bytes
-go_gc_duration_seconds
 
-# Bad (no unit, ambiguous)
+# ❌ SAI — không có đơn vị, mơ hồ
 request_time
 memory
 errors
@@ -271,21 +290,18 @@ errors
 ```yaml
 # HTTP
 http_method: GET | POST | PUT | DELETE
-http_route: /api/users/{id}  # Template, not actual value
+http_route: /api/users/{id}  # Template, không phải giá trị thực
 http_status_code: "200" | "404" | "500"
-http_scheme: http | https
 
 # Service identity
 service_name: user-service
 service_version: "1.4.2"
 service_namespace: production
-service_instance_id: pod-abc123
 
 # Kubernetes
 k8s_namespace_name: production
 k8s_pod_name: user-svc-abc123
 k8s_node_name: ip-10-0-1-50
-k8s_cluster_name: prod-us-east-1
 ```
 
 ---
@@ -294,111 +310,102 @@ k8s_cluster_name: prod-us-east-1
 
 ### 3.1 What Are Logs?
 
-Logs là **các bản ghi rời rạc, có mốc thời gian (timestamped) về các sự kiện** đã xảy ra trong hệ thống. Không giống như metrics (được tổng hợp), logs ghi lại các sự kiện riêng lẻ với đầy đủ bối cảnh.
+> [!NOTE]
+> **Ý TƯỞNG**
+> Log là **bản ghi chi tiết của từng sự kiện** — trong khi metric chỉ nói "có 42 lỗi trong 5 phút qua", log nói "lỗi thứ 42 xảy ra lúc 14:23:45, do user john@example.com, sau 3 lần retry, với stack trace cụ thể này". Log là nguồn sự thật cuối cùng để debug, nhưng cũng tốn kém nhất.
 
-### 3.2 Log Structure — Structured vs Unstructured
+### 3.2 Structured vs Unstructured Logs
 
-#### Unstructured Log (Anti-Pattern)
+> [!TIP]
+> **Vì sao bắt buộc phải có Structured Logs cho AIOps?** Hệ thống phát hiện bất thường log (Drain, DeepLog) tiêu thụ **các trường dữ liệu có cấu trúc**, không phải text thuần. Nếu log là free-text, ML model không thể parse, không thể group theo `error.type`, không thể correlate với trace. Unstructured log = dead end cho AIOps.
 
+**❌ Unstructured Log (Anti-Pattern)**:
 ```
 2024-01-15 14:23:45 ERROR Failed to process order 12345 for user john@example.com after 3 retries
 ```
-
-Vấn đề:
 - Parsing rất dễ gãy (regex hell)
-- Không thể lọc theo các trường cụ thể một cách hiệu quả
-- Không có schema mà máy có thể đọc được
-- Định dạng khác nhau tùy theo lập trình viên và dịch vụ
+- Không thể lọc theo trường cụ thể hiệu quả
+- Không có schema mà máy đọc được
 
-#### Structured Log (Bắt buộc cho AIOps)
+**✅ Structured Log (Bắt buộc cho AIOps)**:
 
 ```json
 {
   "timestamp": "2024-01-15T14:23:45.123Z",
   "level": "ERROR",
   "service": "order-service",
-  "version": "2.1.4",
   "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
   "span_id": "00f067aa0ba902b7",
-  "user_id": "user-789",
   "order_id": "ord-12345",
   "event": "order_processing_failed",
-  "message": "Failed to process order after max retries",
   "error": {
     "type": "PaymentGatewayTimeoutError",
-    "message": "Gateway did not respond within 3000ms",
-    "stack_trace": "..."
+    "message": "Gateway did not respond within 3000ms"
   },
   "retry_count": 3,
-  "duration_ms": 9234,
-  "environment": "production",
-  "region": "us-east-1"
+  "duration_ms": 9234
 }
 ```
 
-**Tại sao việc này quan trọng đối với AIOps**:
-- Hệ thống phát hiện bất thường log hoạt động trên giá trị các trường dữ liệu, không hoạt động trên các mẫu văn bản
-- Tương quan với traces thông qua `trace_id`
-- Nhóm theo `service`, `error.type` để cung cấp bối cảnh incident
-- Các mô hình ML tiêu thụ các đặc trưng cấu trúc (structured features), không phải văn bản thô
+**Tại sao `trace_id` trong log là bắt buộc**: Đây là "sợi chỉ đỏ" kết nối log → trace → span. Không có `trace_id`, bạn không thể biết "log lỗi này" thuộc về "request nào trong trace". Xem [Section 10 — Correlation](#10-correlation--connecting-the-three-pillars).
 
 ### 3.3 Log Severity Levels
 
-| Cấp độ | Giá trị số | Khi nào sử dụng | Tạo cảnh báo? |
-|-------|---------|-------------|--------|
-| TRACE | 10 | Rất chi tiết, debug cấp độ code | Không bao giờ |
-| DEBUG | 20 | Thông tin chẩn đoán cho lập trình viên | Không bao giờ |
-| INFO | 30 | Các sự kiện vận hành bình thường | Không bao giờ |
-| WARN | 40 | Lỗi ngoài dự kiến nhưng đã được xử lý. Hệ thống tiếp tục chạy. | Có thể (nếu kéo dài liên tục) |
-| ERROR | 50 | Lỗi trong một yêu cầu/thao tác cụ thể | Có (nếu tỷ lệ lỗi tăng cao) |
-| CRITICAL | 60 | Lỗi cấp độ dịch vụ, nguy cơ mất dữ liệu | Có (ngay lập tức) |
-| FATAL | 70 | Hệ thống không thể tiếp tục, sẽ crash | Có (P1 ngay lập tức) |
+| Cấp độ | Khi nào sử dụng | Tạo cảnh báo? |
+|-------|-------------|--------|
+| TRACE | Debug cấp độ code rất chi tiết | Không bao giờ |
+| DEBUG | Thông tin chẩn đoán cho developer | Không bao giờ |
+| INFO | Sự kiện vận hành bình thường | Không bao giờ |
+| WARN | Lỗi đã được xử lý, hệ thống tiếp tục | Chỉ nếu kéo dài liên tục |
+| ERROR | Lỗi trong một request cụ thể | Có — nếu tỷ lệ lỗi cao |
+| CRITICAL | Lỗi cấp độ service, nguy cơ mất data | Có — ngay lập tức |
+| FATAL | Hệ thống không thể tiếp tục, sẽ crash | Có — P1 ngay lập tức |
 
-**Quy tắc production**: Chỉ ghi log ở mức ERROR đối với các lỗi cần phải điều tra. Ghi log ở mức WARN đối với các lỗi tạm thời đã được dự liệu trước (có thể retry). Không ghi log ERROR đối với các trường hợp mà bạn mong muốn hệ thống retry thành công.
+> **Quy tắc production**: Chỉ log ERROR khi cần điều tra. Log WARN cho lỗi tạm thời đã được dự liệu trước (có thể retry). Đừng log ERROR nếu bạn mong retry sẽ thành công.
 
 ### 3.4 Log Volume and Sampling
 
-**Vấn đề**: Ở mức 10,000 req/giây, việc ghi log cấp độ `INFO` tạo ra khoảng 100,000 log entries/phút. Với mức phí $0.50/GB nạp dữ liệu (ingestion) của CloudWatch:
+> [!NOTE]
+> **Ý TƯỞNG**
+> Tại 10,000 req/giây, log INFO tạo ra ~600MB/phút. Đây là chi phí thực tế của việc "log mọi thứ":
+>
+> `10,000 req/s × 1KB/log × 60s = 600MB/phút = 864GB/ngày`
+>
+> Tại $0.50/GB của CloudWatch: **$432/ngày = $157,680/năm chỉ cho INFO logs**
 
-```
-10,000 req/giây × 1KB kích thước log trung bình × 60 giây = 600MB/phút = 864GB/ngày
-864GB × $0.50 = $432/ngày → $157,680/năm chỉ cho riêng INFO logs
-```
-
-**Chiến lược lấy mẫu (Sampling Strategies)**:
+**Chiến lược lấy mẫu (Sampling)**:
 
 | Chiến lược | Cách thức | Trường hợp sử dụng |
 |----------|-----|----------|
-| Head-based sampling | Lấy mẫu % yêu cầu tại điểm đầu vào | Giảm thiểu dung lượng một cách đồng đều |
-| Tail-based sampling | Lấy mẫu 100% các yêu cầu ERROR hoặc chậm | Giữ lại tất cả các sự kiện đáng chú ý |
-| Adaptive sampling | Tỷ lệ động dựa trên tỷ lệ lỗi | Cân bằng giữa chi phí và độ bao phủ |
+| Head-based | Lấy mẫu % tại điểm vào | Giảm dung lượng đồng đều |
+| Tail-based | 100% cho ERROR/chậm | Giữ lại sự kiện quan trọng |
+| Adaptive | Tỷ lệ động theo error rate | Cân bằng chi phí/coverage |
 
 **Chiến lược production khuyến nghị**:
 - `INFO`: Lấy mẫu 10% (hoặc 1% cho lưu lượng rất cao)
 - `WARN`: Lấy mẫu 100%
-- `ERROR`: Lấy mẫu 100%
-- `CRITICAL/FATAL`: Lấy mẫu 100% + cảnh báo ngay lập tức
+- `ERROR` + `CRITICAL` + `FATAL`: Lấy mẫu 100% + alert ngay
 
 ### 3.5 Log Labels in Loki
 
-Loki tổ chức logs theo các nhãn (labels) (tương tự như Prometheus). Nhãn được đánh chỉ mục; nội dung log thì không.
+> [!TIP]
+> **Vì sao cardinality label của Loki quan trọng**: Loki đánh chỉ mục nhãn (labels), không đánh chỉ mục nội dung log. Nhãn có cardinality cao (user_id, trace_id, request_id) = hàng triệu chỉ mục = Loki crash. Để trace_id trong **nội dung log**, không phải label.
 
 ```yaml
-# Good labels (low cardinality, useful for filtering)
+# ✅ Nhãn tốt — cardinality thấp, hữu ích để lọc
 labels:
   service: order-service
   environment: production
-  region: us-east-1
   level: ERROR
 
-# Bad labels (high cardinality - kills Loki)
+# ❌ Nhãn xấu — giết Loki
 labels:
-  user_id: "user-789"          # Millions of unique values
+  user_id: "user-789"          # Hàng triệu giá trị duy nhất
   trace_id: "4bf92f3577b..."   # Unique per request
-  order_id: "ord-12345"         # Unique per order
+  order_id: "ord-12345"        # Unique per order
 ```
 
-**Quy tắc**: Nhãn nên có cardinality giới hạn (<10,000 giá trị nhãn duy nhất).
+**Quy tắc**: Nhãn nên có cardinality < 10,000 giá trị duy nhất.
 
 ---
 
@@ -406,7 +413,9 @@ labels:
 
 ### 4.1 What Are Traces?
 
-Một **trace** là bản ghi hoàn chỉnh về hành trình của một yêu cầu đi qua hệ thống phân tán. Nó bao gồm nhiều **spans** — một span cho mỗi dịch vụ hoặc thao tác.
+> [!NOTE]
+> **Ý TƯỞNG**
+> Trace là **bản đồ hành trình của một request** qua toàn bộ hệ thống phân tán — như GPS tracking cho một đơn hàng từ kho → giao hàng. Mỗi "chặng" (service) được ghi lại thành một **span** với thời gian bắt đầu/kết thúc, tạo ra bức tranh toàn cảnh "request này mất 2 giây, trong đó 1.8 giây bị kẹt ở database".
 
 ```mermaid
 gantt
@@ -415,28 +424,27 @@ gantt
     axisFormat %Lms
 
     section API Gateway
-    Receive Request        :0, 5
-    Auth Validation        :5, 15
+    Receive + Auth        :0, 15
 
     section Order Service
-    Parse Request          :15, 20
-    Validate Inventory     :20, 50
-    Create Order Record    :50, 80
+    Parse + Validate      :15, 80
 
     section Inventory Service
-    Check Stock            :22, 45
+    Check Stock           :22, 45
 
     section Database
-    INSERT order           :52, 78
+    INSERT order          :52, 78
 
     section Payment Service
-    Charge Card            :80, 180
+    Charge Card           :80, 180
 
-    section Notification Service
-    Send Email             :182, 220
+    section Notification
+    Send Email            :182, 220
 ```
 
 ### 4.2 Span Data Structure
+
+Mỗi span là một JSON object chứa toàn bộ thông tin về một "chặng" trong trace:
 
 ```json
 {
@@ -446,123 +454,96 @@ gantt
   "operationName": "order-service.createOrder",
   "startTime": 1705329825050000,
   "duration": 65000,
-  "status": {
-    "code": "ERROR",
-    "message": "Inventory check failed"
-  },
+  "status": { "code": "ERROR", "message": "Inventory check failed" },
   "resource": {
     "service.name": "order-service",
-    "service.version": "2.1.4",
-    "deployment.environment": "production",
-    "k8s.pod.name": "order-svc-abc123",
-    "k8s.namespace.name": "production"
+    "k8s.pod.name": "order-svc-abc123"
   },
   "attributes": {
     "http.method": "POST",
-    "http.route": "/api/orders",
     "http.status_code": 422,
-    "order.id": "ord-12345",
-    "user.id": "user-789",
-    "db.system": "postgresql",
-    "db.name": "orders",
-    "db.statement": "INSERT INTO orders ..."
-  },
-  "events": [
-    {
-      "name": "inventory.check.start",
-      "timestamp": 1705329825060000,
-      "attributes": {"sku": "SKU-ABC", "quantity_requested": 5}
-    },
-    {
-      "name": "inventory.check.failed",
-      "timestamp": 1705329825090000,
-      "attributes": {"sku": "SKU-ABC", "quantity_available": 2}
-    }
-  ],
-  "links": []
+    "order.id": "ord-12345"
+  }
 }
 ```
 
 ### 4.3 Context Propagation
 
-Để distributed tracing hoạt động được, **TraceID và SpanID phải được truyền qua** các ranh giới dịch vụ thông qua các HTTP headers.
+> [!IMPORTANT]
+> **MINH HỌA — Tại sao context propagation là điều kiện "make or break"**
+>
+> Distributed tracing chỉ hoạt động nếu `TraceID` được truyền qua **mọi** service call. Chỉ cần 1 service không truyền header → chuỗi trace bị đứt gãy → bạn có trace chỉ đến service đó, không biết nó gọi gì tiếp theo.
+>
+> ```
+> Service A → [traceparent header] → Service B → [traceparent header] → Service C ✅
+> Service A → [traceparent header] → Service B → ❌ quên truyền → Service C ← trace bị mất
+> ```
 
-**W3C TraceContext** (tiêu chuẩn):
+**W3C TraceContext** (tiêu chuẩn hiện đại):
 ```
 traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
-              ^  ^                                ^                ^
-              |  TraceID (128-bit)                SpanID (64-bit)  Flags
+              ^  ^TraceID (128-bit)                ^SpanID (64-bit) ^Flags
               Version
 ```
 
-**B3 Headers** (Zipkin, các dịch vụ cũ hơn):
+**B3 Headers** (Zipkin, legacy):
 ```
 X-B3-TraceId: 4bf92f3577b34da6a3ce929d0e0e4736
 X-B3-SpanId: 00f067aa0ba902b7
-X-B3-ParentSpanId: b9c7c989f97918e1
 X-B3-Sampled: 1
 ```
 
-**Yêu cầu quan trọng**: Mọi dịch vụ trong hệ thống của bạn phải truyền header `traceparent`. Chỉ cần một dịch vụ làm rơi mất header này, chuỗi trace sẽ bị đứt gãy. Hãy bắt buộc áp dụng điều này khi review code và bằng các bài test tự động.
+> **Yêu cầu**: Bắt buộc áp dụng context propagation khi code review và bằng automated tests. Không có shortcuts.
 
 ### 4.4 Trace Sampling Strategies
 
-| Chiến lược | Mô tả | Ưu điểm | Nhược điểm | Trường hợp sử dụng |
-|----------|-------------|------|------|----------|
-| **Head-Based** | Quyết định tại điểm đầu vào của trace, sau đó được lan truyền | Đơn giản, chi phí thấp | Không thể giữ lại các trace "đáng chú ý" | Các hệ thống lưu lượng thấp |
-| **Tail-Based** | Quyết định sau khi trace hoàn tất, dựa trên kết quả đầu ra | Giữ lại toàn bộ traces lỗi, chậm | Sử dụng nhiều memory/CPU hơn, phức tạp | Môi trường production (khuyến nghị) |
-| **Probabilistic** | Tỷ lệ % ngẫu nhiên, ví dụ: 1% | Dung lượng có thể dự đoán trước | Bỏ sót các sự kiện hiếm gặp | Lưu lượng cực kỳ cao |
-| **Rate-Limiting** | Tối đa N traces/giây | Chi phí được giới hạn | Không nhận biết được lỗi | Kiểm soát chi phí |
-| **Adaptive** | Tỷ lệ động dựa trên tỷ lệ lỗi | Cân bằng tốt nhất | Phức tạp nhất | Các nền tảng đã trưởng thành |
+> [!TIP]
+> **Vì sao tail-based sampling là khuyến nghị cho production?**
+> Với 10,000 req/giây và head sampling 1%: nếu một request quan trọng bị lỗi, xác suất nó được sample là 1% → 99% lần bạn sẽ mất đúng cái trace bạn cần. Tail-based sampling đợi trace hoàn tất mới quyết định — "có lỗi? Giữ lại 100%. Bình thường? Sample 10%."
 
-**Cấu hình production khuyến nghị** (tail-based trong OTel Collector):
+| Chiến lược | Mô tả | Ưu điểm | Nhược điểm | Dùng khi |
+|----------|-------------|------|------|---------|
+| **Head-Based** | Quyết định tại điểm đầu vào | Đơn giản, chi phí thấp | Bỏ sót traces quan trọng | Lưu lượng thấp |
+| **Tail-Based** | Quyết định sau khi trace hoàn tất | Giữ lại toàn bộ lỗi | Tốn RAM/CPU hơn | **Production** (khuyến nghị) |
+| **Probabilistic** | % ngẫu nhiên (ví dụ: 1%) | Dung lượng dự đoán được | Bỏ sót sự kiện hiếm | Lưu lượng cực cao |
+| **Adaptive** | Tỷ lệ động theo error rate | Cân bằng tốt nhất | Phức tạp nhất | Nền tảng trưởng thành |
+
+**Cấu hình tail-based trong OTel Collector** (giữ nguyên YAML — đây là config cần thiết):
 
 ```yaml
 processors:
   tail_sampling:
-    decision_wait: 10s        # Wait for all spans before deciding
-    num_traces: 100000        # Traces held in memory
+    decision_wait: 10s        # Đợi đủ spans trước khi quyết định
+    num_traces: 100000        # Số traces giữ trong memory
     expected_new_traces_per_sec: 1000
     policies:
-      # Always keep error traces
-      - name: errors
+      - name: errors          # Luôn giữ traces có lỗi
         type: status_code
         status_code: {status_codes: [ERROR]}
       
-      # Always keep slow traces (>1 second)
-      - name: slow-traces
+      - name: slow-traces     # Luôn giữ traces chậm (> 1 giây)
         type: latency
         latency: {threshold_ms: 1000}
       
-      # Sample 10% of normal traces
-      - name: normal-traffic-sample
+      - name: normal-sample   # Sample 10% traffic bình thường
         type: probabilistic
         probabilistic: {sampling_percentage: 10}
-      
-      # Always keep traces with specific attributes
-      - name: payment-service
-        type: string_attribute
-        string_attribute:
-          key: service.name
-          values: [payment-service]
 ```
 
 ---
 
 ## 5. The Fourth Signal — Profiles
 
-Continuous profiling ngày càng được coi là cột trụ thứ tư của khả năng quan sát (observability).
-
-### What Is Continuous Profiling?
-
-Trong khi traces cho biết **dịch vụ nào** đang chậm, profiles sẽ chỉ ra **dòng code cụ thể nào** đang tiêu thụ CPU/memory.
+> [!NOTE]
+> **Ý TƯỞNG**
+> Traces cho biết "service nào chậm" — profiles cho biết "dòng code nào trong service đó gây chậm". Đây là cấp độ debug sâu nhất: không chỉ "payment-service mất 200ms" mà còn "trong đó 120ms do hàm `validateInventory()` gọi SQL N+1 queries".
 
 ```
 Trace: order-service.createOrder → 200ms
-  ↓ (tại sao lại mất 200ms?)
+  ↓ (tại sao 200ms?)
 Profile: 
   - 120ms in validateInventory()
-    - 80ms in db.query() → SQL is N+1
+    - 80ms in db.query() → SQL là N+1
     - 40ms in JSON serialization
   - 50ms in updateOrderStatus()
   - 30ms in publishKafkaEvent()
@@ -572,55 +553,58 @@ Profile:
 
 | Công cụ | Mô tả | Storage Backend |
 |------|-------------|----------------|
-| **Pyroscope** (Grafana) | Continuous profiling, tích hợp với Grafana | S3 / local |
-| **Parca** | Mã nguồn mở, dựa trên eBPF | S3 |
-| **AWS CodeGuru Profiler** | Dịch vụ được quản lý, hỗ trợ Java/.NET | AWS |
-| **Google Cloud Profiler** | Dịch vụ được quản lý, hỗ trợ nhiều ngôn ngữ | GCP |
+| **Pyroscope** (Grafana) | Continuous profiling, tích hợp Grafana | S3 / local |
+| **Parca** | Open-source, eBPF-based | S3 |
+| **AWS CodeGuru Profiler** | Managed service, hỗ trợ Java/.NET | AWS |
 
-**Tích hợp với Traces**: Grafana 10+ hỗ trợ liên kết từ các trace spans trực tiếp đến profiles cho cùng một khoảng thời gian.
+**Tích hợp với Traces**: Grafana 10+ hỗ trợ liên kết từ trace spans → profiles cho cùng thời điểm.
 
 ---
 
 ## 6. Golden Signals vs RED vs USE
 
+> [!NOTE]
+> **Ý TƯỞNG**
+> Ba phương pháp luận này giúp trả lời câu hỏi "Tôi cần đo lường cái gì?". Không cần chọn một — chúng bổ sung cho nhau ở các lớp khác nhau: **Golden Signals** cho trải nghiệm người dùng, **RED** cho health của từng microservice, **USE** cho health của cơ sở hạ tầng.
+
 Ba phương pháp luận để xác định những gì cần đo lường. Mỗi phương pháp hướng tới đối tượng người dùng khác nhau.
 
 ### The Four Golden Signals (Google SRE)
 
-Thiết kế cho các **dịch vụ hướng người dùng (user-facing services)**. Được định nghĩa trong cuốn sách SRE Book của Google.
+Thiết kế cho các **dịch vụ hướng người dùng**. Được định nghĩa trong Google SRE Book.
 
-| Tín hiệu | Định nghĩa | Ví dụ Prometheus |
-|--------|------------|-------------------|
-| **Latency** | Thời gian phục vụ một yêu cầu. Phân biệt rõ giữa latency thành công và latency lỗi. | `histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))` |
-| **Traffic** | Nhu cầu đặt lên hệ thống. Số lượng yêu cầu trên mỗi giây. | `rate(http_requests_total[5m])` |
-| **Errors** | Tỷ lệ yêu cầu thất bại (5xx, lỗi tường minh, nội dung sai). | `rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m])` |
-| **Saturation** | Mức độ "đầy" của dịch vụ. CPU, memory, độ dài hàng đợi gần đạt giới hạn. | `container_cpu_usage_seconds_total / container_cpu_limits_seconds_total` |
+| Tín hiệu | Định nghĩa | Ví dụ PromQL |
+|--------|------------|-------------|
+| **Latency** | Thời gian phục vụ request. Phân biệt latency thành công vs lỗi. | `histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))` |
+| **Traffic** | Nhu cầu đặt lên hệ thống (RPS) | `rate(http_requests_total[5m])` |
+| **Errors** | Tỷ lệ requests thất bại | `rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m])` |
+| **Saturation** | Mức độ "đầy" của hệ thống | `container_cpu_usage_seconds_total / container_cpu_limits_seconds_total` |
 
 ### RED Method (Tom Wilkie / Weaveworks)
 
-Thiết kế cho các **microservices dựa trên yêu cầu (request-based microservices)**.
+Thiết kế cho **microservices**. Là tập con của Golden Signals.
 
 | Metric | Định nghĩa |
 |--------|------------|
-| **Rate** | Số lượng yêu cầu trên giây |
+| **Rate** | Số requests/giây |
 | **Errors** | Tỷ lệ lỗi (%) |
 | **Duration** | Phân phối thời gian phản hồi (P50, P95, P99) |
 
-RED là một tập con của Golden Signals. Sử dụng RED làm **điểm khởi đầu mặc định** cho bất kỳ microservice mới nào.
+**Sử dụng RED làm điểm khởi đầu mặc định** cho bất kỳ microservice mới nào.
 
 ### USE Method (Brendan Gregg)
 
-Thiết kế cho việc **giám sát tài nguyên / cơ sở hạ tầng (resource/infrastructure monitoring)**.
+Thiết kế cho **resource/infrastructure monitoring**.
 
 | Metric | Định nghĩa | Ví dụ |
-|--------|------------|---------|
-| **Utilization** | Thời gian trung bình tài nguyên bận rộn | CPU: 75% |
-| **Saturation** | Độ dài hàng đợi khi tài nguyên bị quá tải | Độ dài hàng đợi chạy CPU (CPU run queue length) |
-| **Errors** | Số lượng lỗi | Lỗi Disk I/O |
+|--------|-----------|---------|
+| **Utilization** | Thời gian tài nguyên bận rộn | CPU: 75% |
+| **Saturation** | Queue length khi quá tải | CPU run queue length |
+| **Errors** | Số lỗi phần cứng | Disk I/O errors |
 
-USE áp dụng cho: CPU, memory, disk I/O, các cổng mạng (network interfaces), tài nguyên node Kubernetes.
+USE áp dụng cho: CPU, memory, disk I/O, network interfaces, Kubernetes nodes.
 
-### Combining All Three
+### Kết hợp cả ba — Bức tranh đầy đủ
 
 ```mermaid
 graph TD
@@ -654,78 +638,73 @@ graph TD
 
 ## 7. SLI, SLO, SLA, Error Budget
 
+> [!NOTE]
+> **Ý TƯỞNG**
+> Đây là bộ khái niệm để đo lường **độ tin cậy một cách định lượng**. Thay vì "hệ thống hoạt động tốt", bạn có thể nói "99.9% requests thành công trong <500ms trong 30 ngày qua, và chúng tôi còn 43 phút downtime nữa trong ngân sách tháng này." Con số cụ thể này là nền tảng cho cảnh báo thông minh và AIOps.
+
 ### Definitions
 
 | Thuật ngữ | Tên đầy đủ | Định nghĩa | Bên sở hữu |
 |------|-----------|------------|----------|
-| **SLI** | Service Level Indicator | Số đo thực tế. Một metric cụ thể. | Đội ngũ kỹ sư (Engineering) |
-| **SLO** | Service Level Objective | Mục tiêu hướng tới. "99.9% yêu cầu có latency < 500ms" | Kỹ sư + Quản lý sản phẩm |
-| **SLA** | Service Level Agreement | Cam kết hợp đồng với khách hàng. Thường thấp hơn SLO khoảng 1–2%. | Bộ phận Kinh doanh/Pháp lý |
-| **Error Budget** | — | 100% trừ đi SLO. Lượng thời gian/lỗi bạn được phép mất đi. | Kỹ sư + Quản lý sản phẩm |
+| **SLI** | Service Level Indicator | Số đo thực tế. Một metric cụ thể. | Engineering team |
+| **SLO** | Service Level Objective | Mục tiêu: "99.9% requests có latency < 500ms" | Engineering + PM |
+| **SLA** | Service Level Agreement | Cam kết hợp đồng với khách hàng. Thường thấp hơn SLO 1–2%. | Business/Legal |
+| **Error Budget** | — | 100% trừ SLO. Lượng lỗi được phép. | Engineering + PM |
 
 ### SLI Examples
 
 ```yaml
-# Availability SLI
+# Availability SLI — tỷ lệ requests thành công
 sli_availability:
-  description: "Percentage of successful HTTP requests"
-  numerator: "http_requests_total{status!~'5..'}"
-  denominator: "http_requests_total"
-  good_events: "requests with status != 5xx"
+  numerator: "http_requests_total{status!~'5..'}"   # requests KHÔNG có lỗi 5xx
+  denominator: "http_requests_total"                 # tổng requests
 
-# Latency SLI  
+# Latency SLI — tỷ lệ requests nhanh hơn 500ms
 sli_latency:
-  description: "Percentage of requests served within 500ms"
   numerator: "http_request_duration_seconds_bucket{le='0.5'}"
   denominator: "http_request_duration_seconds_count"
-  good_events: "requests completing in < 500ms"
-
-# Freshness SLI (for data pipelines)
-sli_freshness:
-  description: "Percentage of data items processed within 5 minutes"
-  numerator: "pipeline_events_processed_total{age_bucket='0-5m'}"
-  denominator: "pipeline_events_received_total"
-  good_events: "data processed within 5 minutes"
 ```
 
 ### Error Budget Calculation
 
-```
-Error Budget = 1 - SLO
-
-Ví dụ:
-SLO = 99.9% availability (monthly)
-Error Budget = 0.1% số lượng yêu cầu được phép thất bại
-
-Trong một tháng (30 ngày × 24giờ × 60phút × 60giây = 2,592,000 giây):
-Budget = 2,592 giây = 43.2 phút downtime hoàn toàn
-
-Ở mức 1,000 req/giây:
-Tổng số yêu cầu = 2,592,000,000
-Số lỗi tối đa được phép = 2,592,000 requests (0.1%)
-```
+> [!IMPORTANT]
+> **MINH HỌA — Tính Error Budget**
+>
+> ```
+> SLO = 99.9% availability (tháng 30 ngày)
+> Error Budget = 100% - 99.9% = 0.1%
+>
+> Thời gian trong tháng = 30 × 24 × 60 × 60 = 2,592,000 giây
+> Budget downtime = 2,592 giây = 43.2 phút
+>
+> Tại 1,000 req/giây:
+> Tổng requests = 2,592,000,000
+> Số lỗi tối đa được phép = 2,592,000 requests
+> ```
 
 ### Burn Rate Alerting
 
-**Vấn đề của cảnh báo theo ngưỡng (threshold alerts)**: Nếu SLO là 99.9%, tỷ lệ lỗi 0.2% tuy gấp đôi ngân sách lỗi nhưng có vẻ vẫn ổn.
+> [!NOTE]
+> **Ý TƯỞNG**
+> **Burn rate** là tốc độ bạn "đốt" ngân sách lỗi. Burn rate = 1x nghĩa là bạn đang đốt đúng tốc độ bình thường (ngân sách sẽ hết sau 30 ngày). Burn rate = 10x nghĩa là ngân sách sẽ hết sau 3 ngày. Cảnh báo dựa trên burn rate thông minh hơn cảnh báo theo ngưỡng tĩnh vì nó tính đến **tốc độ** không chỉ giá trị hiện tại.
 
-**Burn rate**: Tốc độ bạn đang tiêu thụ ngân sách lỗi (error budget) của mình so với bình thường.
+> [!TIP]
+> **Tại sao ngưỡng tĩnh (static threshold) không đủ?** Error rate 0.2% nghe bình thường, nhưng nếu SLO là 99.9% (error budget = 0.1%), thì 0.2% đang đốt budget gấp đôi tốc độ — ngân sách tháng sẽ hết trong 15 ngày!
 
 ```
 burn_rate = current_error_rate / (1 - SLO)
 
-Ví dụ:
-SLO = 99.9% → error budget = 0.1%
+Ví dụ: SLO = 99.9% → error budget = 0.1%
 current_error_rate = 1%
 burn_rate = 1% / 0.1% = 10x
 
-Với burn rate là 10x, ngân sách lỗi tháng sẽ cạn kiệt trong: 30 ngày / 10 = 3 ngày
+Tháng sẽ cạn trong: 30 ngày / 10 = 3 ngày → CRITICAL!
 ```
 
-**Cảnh báo đa cửa sổ thời gian, đa tốc độ tiêu thụ (Multi-window, multi-burn-rate alerting)** (khuyến nghị của Google):
+**Multi-window burn-rate alerting** (khuyến nghị của Google):
 
 ```yaml
-# Alert when burning fast AND sustained
+# Cảnh báo khi đốt nhanh VÀ kéo dài (hai điều kiện đồng thời)
 - alert: SLOBurnRateCritical
   expr: |
     (
@@ -733,11 +712,10 @@ Với burn rate là 10x, ngân sách lỗi tháng sẽ cạn kiệt trong: 30 ng
       and
       job:http_request_error_rate:rate5m{job="user-svc"} > (14.4 * 0.001)
     )
-  for: 0m
   labels:
     severity: critical
   annotations:
-    summary: "SLO burn rate critical (14.4x): exhausts monthly budget in 2 hours"
+    summary: "Burn rate 14.4x — budget sẽ cạn trong 2 giờ"
 
 - alert: SLOBurnRateHigh
   expr: |
@@ -746,16 +724,19 @@ Với burn rate là 10x, ngân sách lỗi tháng sẽ cạn kiệt trong: 30 ng
       and
       job:http_request_error_rate:rate30m{job="user-svc"} > (6 * 0.001)
     )
-  for: 0m
   labels:
     severity: warning
   annotations:
-    summary: "SLO burn rate high (6x): exhausts monthly budget in 5 days"
+    summary: "Burn rate 6x — budget sẽ cạn trong 5 ngày"
 ```
 
 ---
 
 ## 8. Observability Architecture
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> Đây là kiến trúc reference cho một production observability platform. Các thành phần được chia theo chức năng: Application Layer → Collection Agents → Gateway → Storage → Visualization → AIOps. Mỗi layer có thể fail độc lập mà không làm sập các layer khác.
 
 ### Full Platform Architecture
 
@@ -767,21 +748,21 @@ flowchart TD
         SVC3[Service C\nOTel SDK]
     end
 
-    subgraph Agents["Collection Agents"]
-        OTC[OTel Collector\nDaemonSet]
-        PROMTAIL[Grafana Alloy\nDaemonSet]
-        NODE[Node Exporter\nDaemonSet]
+    subgraph Agents["Collection Agents (DaemonSet)"]
+        OTC[OTel Collector]
+        PROMTAIL[Grafana Alloy]
+        NODE[Node Exporter]
         KUBELET[kube-state-metrics]
     end
 
-    subgraph Gateway["Collection Gateway"]
-        OTCGW[OTel Collector\nGateway Deployment\n×3 replicas]
+    subgraph Gateway["Collection Gateway (×3 replicas)"]
+        OTCGW[OTel Collector Gateway]
     end
 
     subgraph Storage["Storage Layer"]
-        PROM[(Prometheus\n+ Thanos)]
-        LOKI[(Loki\nS3 Backend)]
-        TEMPO[(Tempo\nS3 Backend)]
+        PROM[(Prometheus + Thanos)]
+        LOKI[(Loki S3 Backend)]
+        TEMPO[(Tempo S3 Backend)]
     end
 
     subgraph Viz["Visualization"]
@@ -790,7 +771,7 @@ flowchart TD
     end
 
     subgraph AIOps["AIOps Layer"]
-        AIOPS[AIOps Pipeline\nsee Ch07-11]
+        AIOPS[AIOps Pipeline Ch07-11]
     end
 
     SVC1 -->|OTLP gRPC :4317| OTC
@@ -799,7 +780,6 @@ flowchart TD
     OTC -->|OTLP gRPC| OTCGW
     PROMTAIL -->|Loki push API| LOKI
     NODE -->|/metrics HTTP| PROM
-    KUBELET -->|/metrics HTTP| PROM
     OTCGW -->|remote_write| PROM
     OTCGW -->|Loki push| LOKI
     OTCGW -->|OTLP gRPC| TEMPO
@@ -811,127 +791,116 @@ flowchart TD
 
     style Apps fill:#1565c0,color:#fff
     style Agents fill:#2e7d32,color:#fff
-    style Gateway fill:#1b5e20,color:#fff
     style Storage fill:#4a148c,color:#fff
-    style Viz fill:#e65100,color:#fff
     style AIOps fill:#b71c1c,color:#fff
 ```
 
 ### Network Flow and Ports
 
-| Thành phần | Giao thức | Cổng | Hướng đi | Ghi chú |
-|-----------|----------|------|-----------|-------|
-| OTel Collector (receiver) | gRPC | 4317 | Inbound | OTLP gRPC |
-| OTel Collector (receiver) | HTTP | 4318 | Inbound | OTLP HTTP |
-| OTel Collector (receiver) | HTTP | 9411 | Inbound | Zipkin (legacy) |
-| OTel Collector (receiver) | UDP | 6831 | Inbound | Jaeger thrift-compact |
-| Prometheus | HTTP | 9090 | Inbound/Outbound | `/metrics` scrape + API |
-| Loki | HTTP | 3100 | Inbound | `/loki/api/v1/push` |
-| Tempo | gRPC | 4317 | Inbound | OTLP gRPC (qua gateway) |
-| Tempo | HTTP | 3200 | Inbound | HTTP API |
-| Grafana | HTTP | 3000 | Inbound | UI + API |
-| Alertmanager | HTTP | 9093 | Inbound | `/api/v2/alerts` |
-| Node Exporter | HTTP | 9100 | Outbound | Prometheus scrapes |
-| kube-state-metrics | HTTP | 8080 | Outbound | Prometheus scrapes |
+| Thành phần | Giao thức | Cổng | Hướng đi |
+|-----------|----------|------|---------|
+| OTel Collector receiver (gRPC) | gRPC | 4317 | Inbound |
+| OTel Collector receiver (HTTP) | HTTP | 4318 | Inbound |
+| Prometheus | HTTP | 9090 | Inbound/Outbound |
+| Loki | HTTP | 3100 | Inbound `/loki/api/v1/push` |
+| Tempo | gRPC | 4317 | Inbound |
+| Grafana | HTTP | 3000 | Inbound |
+| Alertmanager | HTTP | 9093 | Inbound |
+| Node Exporter | HTTP | 9100 | Outbound (Prometheus scrapes) |
 
 ---
 
 ## 9. Instrumentation Strategy
 
-### Auto-Instrumentation vs Manual Instrumentation
+> [!NOTE]
+> **Ý TƯỞNG**
+> Chiến lược tốt nhất là "auto-instrumentation + manual supplement": Bắt đầu với auto-instrumentation để có coverage nhanh (HTTP, DB, framework calls được instrument tự động), sau đó thêm manual instrumentation cho business logic quan trọng (order processing, payment flow).
 
-| Loại | Cách thức | Độ bao phủ | Độ chính xác |
-|------|-----|----------|----------|
-| **Không dùng code (auto)** | OTel Java agent, Python auto-instrumentation | HTTP, DB, các framework truyền tin | Tốt cho mức độ framework |
-| **Dùng thư viện (SDK)** | Import OTel SDK, bọc quanh các hàm chính | Các luồng code tùy chỉnh | Xuất sắc |
-| **Thủ công (custom)** | Tạo span hoàn chỉnh trong logic nghiệp vụ | Toàn quyền kiểm soát | Tốt nhất nhưng tốn kém nhất |
+### Auto vs Manual Instrumentation
 
-**Khuyến nghị cho production**: Bắt đầu bằng auto-instrumentation cho tất cả các dịch vụ. Bổ sung manual instrumentation cho các luồng code quan trọng về mặt nghiệp vụ (business-critical code paths).
+| Loại | Cách thức | Độ bao phủ | Khi dùng |
+|------|-----|----------|----|
+| **Auto (không cần code)** | OTel Java agent, Python auto-instrumentation | HTTP, DB, frameworks | Bắt đầu nhanh |
+| **SDK (thêm thư viện)** | Import OTel SDK, wrap các hàm chính | Custom code paths | Flows quan trọng |
+| **Manual (custom)** | Tạo span hoàn chỉnh trong business logic | Toàn quyền kiểm soát | Critical paths |
 
 ### Instrumentation Checklist
 
-Đối với mỗi microservice, đảm bảo:
-
 ```yaml
+# Checklist cho mỗi microservice trước khi lên production
 instrumentation_checklist:
   metrics:
     - [ ] HTTP server metrics (RED method)
     - [ ] HTTP client metrics (outbound calls)
     - [ ] Database query metrics (duration, errors)
-    - [ ] Cache metrics (hit rate, latency)
-    - [ ] Queue metrics (depth, consumer lag)
     - [ ] Custom business metrics (orders/min, revenue/min)
-    - [ ] JVM/runtime metrics (GC, heap, threads)
     
   logs:
-    - [ ] Định dạng JSON có cấu trúc
+    - [ ] JSON structured format
     - [ ] TraceID trong mỗi dòng log
-    - [ ] Các mức độ cảnh báo (severity levels) nhất quán
-    - [ ] Error bao gồm stack trace
-    - [ ] Không chứa thông tin PII trong logs (emails, passwords, tokens)
+    - [ ] Severity levels nhất quán
+    - [ ] Không có PII (emails, passwords, tokens)
     
   traces:
-    - [ ] Truyền bối cảnh (Context propagation - W3C TraceContext)
-    - [ ] Có Span cho mỗi cuộc gọi ra bên ngoài (external call)
-    - [ ] Span attributes bao gồm định danh nghiệp vụ (order_id, user_id)
+    - [ ] Context propagation (W3C TraceContext)
+    - [ ] Span cho mỗi external call
+    - [ ] Business identifiers trong attributes (order_id, user_id)
     - [ ] Error spans có error.type và error.message
-    - [ ] Database spans bao gồm db.statement (đã được lọc sạch nhạy cảm)
 ```
 
 ---
 
 ## 10. Correlation — Connecting the Three Pillars
 
-Sức mạnh thực sự của khả năng quan sát (observability) đến từ việc tương quan giữa metrics, logs, và traces **khi xảy ra sự cố (incident)**.
+> [!NOTE]
+> **Ý TƯỞNG**
+> Sức mạnh thực sự của observability là **điều hướng liền mạch** giữa ba loại telemetry trong lúc xử lý incident. Từ một spike trên biểu đồ latency → click vào → tìm được trace cụ thể → từ trace tìm được logs → từ logs đọc được root cause. Toàn bộ hành trình này chỉ mất 2–3 phút thay vì 2–3 giờ.
 
 ### Exemplars — Linking Metrics to Traces
 
-Một **exemplar** là một điểm dữ liệu mẫu được đính kèm vào histogram bucket, chứa thông tin của một TraceID.
+> [!TIP]
+> **Vì sao Exemplars là "game changer"?** Trước exemplar, khi thấy latency spike, bạn phải đoán "cái request nào gây ra spike này?". Với exemplar, Prometheus đính kèm TraceID vào chính điểm dữ liệu spike đó — bạn click vào spike, Grafana tự động mở trace tương ứng.
 
+**Exemplar trong Prometheus exposition format**:
 ```
-# Prometheus exposition format với exemplar
-http_request_duration_seconds_bucket{le="0.5"} 998 # {traceID="4bf92f35",spanID="00f067aa"} 0.492 1705000000.000
+# TraceID được đính kèm vào histogram bucket
+http_request_duration_seconds_bucket{le="0.5"} 998 # {traceID="4bf92f35",spanID="00f067aa"} 0.492
 ```
 
-**Khả năng mang lại**: Trên Grafana, bạn có thể click vào đỉnh P99 (spike) trên biểu đồ latency → Grafana trích xuất exemplar TraceID → mở trace cụ thể đã gây ra tình trạng latency tăng đột biến đó.
-
-```yaml
-# Prometheus configuration to enable exemplar storage
-storage:
-  exemplars:
-    max_exemplars: 100000  # Store last 100K exemplars
-
-# Code ứng dụng (Ví dụ Go)
+**Kích hoạt exemplar trong code Go**:
+```go
+// Ghi metric kèm TraceID để Grafana có thể navigate sang trace
 histogram.With(labels).ObserveWithExemplar(
     duration,
     prometheus.Labels{"traceID": traceID, "spanID": spanID},
 )
 ```
 
+**Cấu hình Prometheus**:
+```yaml
+storage:
+  exemplars:
+    max_exemplars: 100000  # Giữ 100K exemplars mới nhất
+```
+
 ### TraceID in Logs — Linking Logs to Traces
 
-Mỗi dòng log phải bao gồm thông tin TraceID từ span đang hoạt động:
+**Inject trace context vào log (Python)**:
 
 ```python
-# Ví dụ Python sử dụng OTel
-import logging
 from opentelemetry import trace
-
-logger = logging.getLogger(__name__)
 
 def process_order(order_id: str):
     span = trace.get_current_span()
     ctx = span.get_span_context()
     
-    # Inject trace context vào log
+    # TraceID là cầu nối giữa log và trace
     logger.info("Processing order", extra={
         "order_id": order_id,
-        "trace_id": format(ctx.trace_id, '032x'),
+        "trace_id": format(ctx.trace_id, '032x'),  # Thêm vào EVERY log line
         "span_id": format(ctx.span_id, '016x'),
     })
 ```
-
-**Trên Grafana**: Click vào nút "Logs for this trace" trong Tempo → sẽ chạy câu lệnh truy vấn Loki với `{trace_id="4bf92f35"}`.
 
 ### Correlation Workflow During an Incident
 
@@ -943,159 +912,136 @@ sequenceDiagram
     participant Loki
     participant Tempo
 
-    SRE->>Grafana: Xem dashboard - Latency P99 spike lúc 14:23
-    Grafana->>Prometheus: Query: histogram P99 từ 14:22-14:25
-    Prometheus-->>Grafana: P99 = 2.3s (bình thường là 200ms)
+    SRE->>Grafana: Thấy Latency P99 spike lúc 14:23
+    Grafana->>Prometheus: Query histogram 14:22-14:25
+    Prometheus-->>Grafana: P99 = 2.3s (bình thường 200ms)
     SRE->>Grafana: Click vào spike → "Explore Exemplars"
-    Grafana->>Prometheus: Lấy exemplar của điểm dữ liệu tệ nhất
     Prometheus-->>Grafana: TraceID: 4bf92f35
     Grafana->>Tempo: GET /api/traces/4bf92f35
-    Tempo-->>Grafana: Trace hoàn chỉnh với 15 spans
-    SRE->>Grafana: Xác định span chậm: db.query trong payment-svc (1.8s)
+    Tempo-->>Grafana: Trace với 15 spans — payment-svc mất 1.8s
     SRE->>Grafana: Click "Show logs for this span"
-    Grafana->>Loki: Query: {service="payment-svc"} |= "4bf92f35"
-    Loki-->>Grafana: Các dòng log cho thấy DB connection pool bị cạn kiệt
-    SRE->>SRE: Nguyên nhân gốc rễ: DB connection pool đạt 100%, các truy vấn đang xếp hàng
+    Grafana->>Loki: {service="payment-svc"} |= "4bf92f35"
+    Loki-->>Grafana: Logs: DB connection pool đạt 100%
+    SRE->>SRE: Root cause: DB connection pool cạn kiệt
 ```
 
 ---
 
 ## 11. Data Cardinality — The Silent Killer
 
-Cardinality là **số lượng time series duy nhất** trong hệ thống metrics của bạn.
+> [!NOTE]
+> **Ý TƯỞNG**
+> Cardinality là số lượng time series duy nhất trong Prometheus. Đây là "silent killer" vì hệ thống hoạt động bình thường cho đến khi đột ngột Prometheus hết RAM và crash. Ví dụ đơn giản: thêm nhãn `user_id` vào metric, nhân với 1 triệu users = 1 triệu time series mới — Prometheus crash trong vài phút.
 
-```
-Cardinality = tổ hợp duy nhất của tất cả các giá trị nhãn (labels)
-```
+> [!TIP]
+> **Trade-off cần hiểu**: Cardinality cao = khả năng filter/group chi tiết hơn, nhưng = tốn nhiều RAM hơn, query chậm hơn, có thể crash Prometheus. Giải pháp: giữ identifier (user_id, request_id) trong **nội dung log/span**, không trong **metric labels**.
 
-**Ví dụ về bùng nổ cardinality (cardinality explosion)**:
+**Ví dụ cardinality explosion**:
 
 ```
 metric: http_requests_total
 labels: {service, endpoint, method, status, user_id}
 
 services = 50
-endpoints per service = 20  
-methods = 5 (GET/POST/PUT/DELETE/PATCH)
-status codes = 20
+endpoints = 20
+methods = 5
+status_codes = 20
 user_ids = 1,000,000  ← VẤN ĐỀ NẰM Ở ĐÂY
 
-Cardinality = 50 × 20 × 5 × 20 × 1,000,000 = 100,000,000,000 time series
+Cardinality = 50 × 20 × 5 × 20 × 1,000,000 = 100 tỷ time series → Prometheus crash!
 ```
-
-Điều này sẽ làm crash Prometheus chỉ trong vòng vài phút.
 
 ### Cardinality Anti-Patterns
 
-| Thói quen xấu (Anti-Pattern) | Ví dụ | Tác động |
+| Anti-Pattern | Ví dụ | Tác động |
 |-------------|---------|--------|
 | Đưa User ID vào label | `{user_id="user-789"}` | Hàng triệu series |
 | Đưa Request ID vào label | `{request_id="req-abc"}` | Vô số series |
-| Sử dụng URL path đầy đủ | `{path="/api/users/789/orders/123"}` | Hàng triệu series |
-| Đưa Timestamp vào label | `{date="2024-01-15"}` | Số lượng series tăng lên mỗi ngày |
-| Enum không giới hạn | `{error_message="..."}` | Không thể dự đoán trước |
+| URL path đầy đủ | `{path="/api/users/789/orders/123"}` | Hàng triệu series |
+| Timestamp trong label | `{date="2024-01-15"}` | Tăng mỗi ngày |
 
-### Cardinality Limits (Production)
+### Cardinality Limits và Monitoring
 
-| Hệ thống | Giới hạn mặc định | Khuyến nghị |
-|--------|--------------|----------------|
-| Prometheus (đơn lẻ) | 10M series | Cảnh báo ở mức 8M |
-| Thanos | Mở rộng ngang (Horizontal scale) | Giám sát cardinality trên từng store |
-| VictoriaMetrics | Cao hơn, nhưng vẫn giới hạn | Giám sát qua `/api/v1/status/tsdb` |
-| Loki | Cardinality nhãn trên mỗi stream | <10K tổ hợp nhãn duy nhất |
-
-### Tools to Monitor Cardinality
+| Hệ thống | Giới hạn | Khuyến nghị |
+|--------|----------|-------------|
+| Prometheus đơn lẻ | 10M series | Alert ở 8M |
+| Loki | < 10K tổ hợp nhãn | Strict label policies |
 
 ```promql
-# Total number of active time series in Prometheus
+# Tổng số time series đang active
 prometheus_tsdb_head_series
 
-# Series per job (identify the top cardinality contributors)
+# Top 10 jobs đóng góp cardinality nhiều nhất — dùng để điều tra
 topk(10, count by (job) ({__name__=~".+"}))
 
-# Alert when approaching limit
+# Alert khi gần đến giới hạn
 - alert: PrometheusHighCardinality
   expr: prometheus_tsdb_head_series > 8000000
   for: 5m
   labels:
     severity: warning
-  annotations:
-    summary: "Prometheus cardinality at {{ $value }} series - approaching limit"
 ```
 
 ---
 
 ## 12. Observability Platform Design
 
+> [!NOTE]
+> **Ý TƯỞNG**
+> Thiết kế platform observability theo 4 lớp dashboard tương ứng với 4 cấp độ người dùng: từ VP level (tổng quan business) đến Platform team (health của chính monitoring stack). Mỗi lớp trả lời một câu hỏi khác nhau.
+
 ### Deployment Architecture on Kubernetes
 
 ```yaml
-# Cấu trúc Namespace
-namespaces:
-  - observability        # Prometheus, Loki, Tempo, Grafana
-  - monitoring-agents    # Node Exporter, OTel Collectors (DaemonSet)
-  - alertmanager         # Alertmanager
-
-# Phân bổ tài nguyên (kích cỡ production)
+# Kích thước production cho 100 services
 components:
   prometheus:
-    replicas: 2           # HA pair
-    cpu_request: "2"
+    replicas: 2           # HA pair — không bao giờ chạy đơn lẻ
     memory_request: "16Gi"
     storage: "500Gi"      # SSD-backed PVC
     
   loki:
     mode: distributed     # Tách biệt ingest/query/store
     ingester_replicas: 3
-    querier_replicas: 2
-    storage_backend: s3   # AWS S3
+    storage_backend: s3   # Không dùng local storage
     
   tempo:
     mode: distributed
     ingester_replicas: 3
     storage_backend: s3
     
-  grafana:
-    replicas: 2
-    cpu_request: "500m"
-    memory_request: "2Gi"
-    
   otel_collector_gateway:
-    replicas: 3            # Gateway: đứng sau load balancer
-    cpu_request: "2"
+    replicas: 3            # Behind load balancer
     memory_request: "4Gi"
     
   otel_collector_agent:
-    type: DaemonSet        # Agent: mỗi node một instance
-    cpu_request: "200m"
+    type: DaemonSet        # Mỗi node một agent
     memory_request: "256Mi"
 ```
 
 ### Grafana Dashboard Strategy
 
-Các Grafana dashboards phải được phân chia thành nhiều lớp (layers):
-
 ```
 Lớp 1: Tổng quan nghiệp vụ (VP-level)
-└── Orders per minute, Revenue, Active Users, Overall Availability %
+└── Orders/minute, Revenue, Active Users, Overall Availability %
 
-Lớp 2: Tổng quan dịch vụ (SRE/Team lead level)
+Lớp 2: Tổng quan dịch vụ (SRE/Team lead)
 └── RED metrics cho mỗi service
-└── Tỷ lệ tiêu thụ SLO (SLO burn rate)
-└── Cảnh báo đang hoạt động (Active alerts)
+└── SLO burn rate
+└── Active alerts
 
-Lớp 3: Chi tiết dịch vụ (Engineer level)
-└── Biểu đồ latency histograms đầy đủ
-└── Bản đồ phụ thuộc (Dependency map)
-└── Mức độ sử dụng tài nguyên (Resource utilization)
+Lớp 3: Chi tiết dịch vụ (Engineer)
+└── Latency histograms đầy đủ
+└── Dependency map
+└── Resource utilization
 
 Lớp 4: Cơ sở hạ tầng (Platform team)
 └── Node metrics
-└── Sức khỏe Kubernetes cluster
-└── Sức khỏe của chính hệ thống giám sát (observability stack)
+└── Kubernetes cluster health
+└── Monitoring stack tự giám sát
 ```
 
-**Dashboard dưới dạng code** — luôn quản lý Grafana dashboards trong Git:
+**Dashboard as Code** — luôn quản lý Grafana dashboards trong Git:
 
 ```yaml
 # grafana-dashboard-configmap.yaml
@@ -1105,7 +1051,7 @@ metadata:
   name: grafana-dashboards
   namespace: observability
   labels:
-    grafana_dashboard: "1"    # Grafana sidecar sẽ quét tìm nhãn này
+    grafana_dashboard: "1"    # Grafana sidecar tự quét tìm label này
 data:
   service-overview.json: |
     { "uid": "service-overview", "title": "Service Overview", ... }
@@ -1115,47 +1061,33 @@ data:
 
 ## 13. Production Best Practices
 
-### Checklist
-
 ```yaml
 production_checklist:
   instrumentation:
-    - [ ] Độ phủ metrics đạt 100% cho các dịch vụ (RED method)
-    - [ ] Độ phủ log đạt 100% với JSON có cấu trúc
-    - [ ] Độ phủ lan truyền bối cảnh trace (trace context propagation) đạt 100%
-    - [ ] Định nghĩa các custom business metrics cho mỗi dịch vụ
-    - [ ] Định nghĩa SLI/SLO cho mọi dịch vụ hướng tới người dùng
+    - [ ] 100% metrics coverage (RED method cho tất cả services)
+    - [ ] 100% structured JSON logs với TraceID
+    - [ ] 100% trace context propagation
+    - [ ] SLI/SLO định nghĩa cho mọi user-facing service
     
   storage:
-    - [ ] Thời gian lưu giữ Prometheus (Prometheus retention) ≥ 15 ngày (lưu lâu hơn qua Thanos/S3)
-    - [ ] Thời gian lưu giữ Loki ≥ 30 ngày
-    - [ ] Thời gian lưu giữ Tempo ≥ 7 ngày (S3 cho thời gian lâu hơn)
-    - [ ] Có chiến lược backup cho toàn bộ storage backends
+    - [ ] Prometheus retention ≥ 15 ngày (lưu lâu hơn qua Thanos/S3)
+    - [ ] Loki retention ≥ 30 ngày
+    - [ ] Tempo retention ≥ 7 ngày (S3 cho lâu hơn)
     
   alerting:
-    - [ ] Có cảnh báo SLO burn rate (không chỉ là cảnh báo theo ngưỡng tĩnh)
-    - [ ] Định tuyến cảnh báo được thử nghiệm end-to-end
-    - [ ] Cảnh báo dead man's switch (luôn kích hoạt → để phát hiện lỗi pipeline)
-    - [ ] Tài liệu hóa cảnh báo nằm trong các liên kết runbook
+    - [ ] SLO burn-rate alerts (không chỉ static threshold)
+    - [ ] Dead man's switch alert (phát hiện pipeline lỗi)
+    - [ ] Runbook links trong mọi alert annotation
     
   security:
-    - [ ] Áp dụng mTLS giữa các thành phần observability
-    - [ ] Grafana được bảo vệ sau SSO (SAML/OIDC)
-    - [ ] Không có PII trong metrics hoặc logs
-    - [ ] Cấu hình RBAC cho Grafana (viewer/editor/admin)
-    - [ ] Lưu trữ thông tin nhạy cảm trong Kubernetes Secrets (không dùng ConfigMaps)
+    - [ ] Grafana sau SSO (SAML/OIDC)
+    - [ ] Không có PII trong metrics/logs/traces
+    - [ ] RBAC cho Grafana (viewer/editor/admin)
     
   high_availability:
-    - [ ] Prometheus chạy cặp HA pair (2 replica, chung cấu hình)
-    - [ ] Loki chạy ở chế độ phân tán (distributed mode) với 3 ingesters
-    - [ ] Grafana đứng sau load balancer (chạy nhiều replica)
-    - [ ] Alertmanager chạy dạng cluster (3 nodes)
-    
-  capacity:
-    - [ ] Cảnh báo giám sát Cardinality ở mức 80% giới hạn
-    - [ ] Cảnh báo dung lượng lưu trữ ở mức 70%
-    - [ ] Cấu hình tự động mở rộng PVC (PVC auto-expansion)
-    - [ ] Giám sát băng thông mạng dành cho dữ liệu collector
+    - [ ] Prometheus HA pair (2 replicas)
+    - [ ] Loki distributed mode với 3 ingesters
+    - [ ] Alertmanager cluster (3 nodes)
 ```
 
 ---
@@ -1164,108 +1096,98 @@ production_checklist:
 
 | Sai lầm | Triệu chứng | Khắc phục |
 |---------|---------|-----|
-| Sử dụng nhãn có Cardinality cao | Prometheus bị lỗi OOM | Kiểm toán nhãn hàng tháng. Không bao giờ đưa các giá trị không giới hạn vào nhãn. |
-| Không định nghĩa SLO | Không thể đo lường độ tin cậy | Định nghĩa SLO trước khi đưa dịch vụ lên production |
-| Chỉ sử dụng ngưỡng tĩnh | Alert fatigue | Sử dụng cảnh báo dạng burn rate thay thế |
-| Chứa PII trong logs | Vi phạm tiêu chuẩn tuân thủ | Sử dụng pipeline lọc log (log scrubbing); ẩn thông tin trường trong OTel Collector |
-| Traces không chứa exemplars | Không thể liên kết từ metric → trace | Bật tính năng exemplar trong Prometheus và SDK |
-| Dashboard thủ công | Dashboard bị sai lệch thông tin so với cấu hình | Quản lý dashboard dưới dạng code trong Git |
-| Không có dead man's switch | Lỗi pipeline cảnh báo không bị phát hiện | Triển khai cảnh báo `DeadMansSwitch` trong Prometheus |
-| Chạy một Prometheus duy nhất | Điểm lỗi đơn lẻ (SPOF) cho hệ thống cảnh báo | Triển khai cặp HA pair |
-| Cấu hình sai histogram buckets | Kết quả P99 không chính xác | Chọn buckets phù hợp với mục tiêu latency của bạn |
+| Cardinality label cao | Prometheus OOM crash | Audit labels hàng tháng. Không dùng unbounded values. |
+| Không định nghĩa SLO | Không đo được reliability | Định nghĩa SLO trước khi production |
+| Chỉ dùng static threshold | Alert fatigue | Dùng burn-rate alerts |
+| PII trong logs | Vi phạm compliance | Log scrubbing pipeline trong OTel Collector |
+| Không có exemplars | Không navigate được metric→trace | Bật exemplar trong Prometheus + SDK |
+| Dashboard thủ công | Dashboard drift khỏi config thực | Dashboard as code trong Git |
+| Không có dead man's switch | Alert pipeline lỗi không ai biết | Implement `DeadMansSwitch` alert |
+| Chạy một Prometheus duy nhất | SPOF cho alerting | HA pair |
+| Histogram buckets sai | P99 inaccurate | Chọn buckets phù hợp với SLO target |
 
 ---
 
 ## 15. Monitoring the Monitoring Stack
 
-Hệ thống giám sát (observability platform) phải tự giám sát chính nó. Đây là một hệ thống (stack) riêng biệt và tối giản.
+> [!NOTE]
+> **Ý TƯỞNG**
+> Đây là nguyên tắc "Who watches the watchmen?" — hệ thống giám sát cần được giám sát bởi một hệ thống độc lập và đơn giản hơn. Nếu Prometheus crash mà không ai biết, bạn đang "bay mù". Dead man's switch là giải pháp đơn giản và hiệu quả nhất cho bài toán này.
+
+Hệ thống giám sát phải tự giám sát chính nó.
 
 ### Key Metrics to Monitor
 
 ```promql
 # Prometheus health
-prometheus_tsdb_head_series                    # Cardinality
+prometheus_tsdb_head_series                    # Cardinality — giới hạn 8M
 prometheus_rule_evaluation_duration_seconds    # Rule eval performance
 prometheus_remote_storage_queue_length         # Remote write backlog
-prometheus_notifications_alertmanager_discovered # Alertmanager connectivity
 
 # Loki health
 loki_ingester_chunks_flushed_total             # Flush throughput
 loki_request_duration_seconds                  # Query latency
-loki_distributor_bytes_received_total          # Ingestion rate
 
 # OTel Collector health
 otelcol_receiver_accepted_spans                # Spans received
-otelcol_exporter_failed_spans                  # Spans failed
-otelcol_processor_batch_batch_size_trigger_send # Batch efficiency
-
-# Kafka (nếu dùng làm transport)
-kafka_consumer_lag                             # Processing delay
-kafka_topic_partition_current_offset           # Write position
+otelcol_exporter_failed_spans                  # Spans failed — alert nếu > 0
 ```
 
 ### Dead Man's Switch
 
-Một mẫu thiết kế quan trọng: **một cảnh báo luôn luôn được kích hoạt**. Nếu nó dừng kích hoạt, có nghĩa là pipeline cảnh báo đang bị hỏng.
+> [!TIP]
+> **Vì sao Dead Man's Switch là pattern quan trọng nhất**: Mọi cảnh báo khác đều chỉ hoạt động khi pipeline hoạt động. Nếu pipeline crash (Prometheus OOM, Alertmanager restart), bạn không nhận được cảnh báo nào cả — kể cả cảnh báo về incident thực sự. Dead man's switch đảo ngược logic: nó LUÔN fires, và nếu nó DỪNG fires → pipeline bị lỗi.
 
 ```yaml
-# Quy tắc Prometheus
+# Prometheus rule — luôn luôn kích hoạt (vector(1) luôn = true)
 groups:
   - name: deadmans-switch
     rules:
       - alert: DeadMansSwitch
-        expr: vector(1)    # Luôn đúng
+        expr: vector(1)
         labels:
           severity: critical
           alert_type: watchdog
         annotations:
           summary: "Dead man's switch — alerting pipeline is alive"
 
-# Cấu hình định tuyến Alertmanager: gửi đến một dịch vụ watchdog (ví dụ: healthchecks.io)
+# Alertmanager routing — gửi đến watchdog service như healthchecks.io
 route:
   routes:
     - match:
         alert_type: watchdog
       receiver: watchdog-receiver
-      repeat_interval: 5m
+      repeat_interval: 5m  # Gửi mỗi 5 phút
 
 receivers:
   - name: watchdog-receiver
     webhook_configs:
-      - url: https://hc-ping.com/YOUR-UUID
+      - url: https://hc-ping.com/YOUR-UUID  # Nếu dừng nhận → gửi cảnh báo cho team
 ```
 
 ---
 
 ## 16. Scaling Observability
 
+> [!NOTE]
+> **Ý TƯỞNG**
+> Scale observability theo chiều ngang (horizontal) khi lượng data tăng. Loki và Tempo thiết kế để scale từng component độc lập (ingest, query, store). Prometheus scale theo cách khác — dùng federation hoặc Thanos.
+
 ### Prometheus Scaling Options
 
 | Phương pháp | Khi nào sử dụng | Độ phức tạp |
 |----------|------------|------------|
-| Prometheus đơn lẻ | <500 dịch vụ, <5M series | Thấp |
-| Cặp Prometheus HA Pair | Bất kỳ hệ thống production nào | Thấp |
-| Prometheus + Thanos | Lưu trữ lâu dài, truy vấn đa cluster | Vừa |
-| Prometheus + Cortex | Đa người thuê (Multi-tenant), cardinality cao | Cao |
-| VictoriaMetrics | Giải pháp thay thế trực tiếp, hiệu năng tốt hơn | Vừa |
-
-Xem [03 — Prometheus / High Availability](../03-prometheus/high-availability.md) để so sánh chi tiết.
-
-### Loki Scaling Options
-
-| Chế độ | Khi nào sử dụng | Lưu lượng ghi (Write Throughput) |
-|------|------------|-----------------|
-| Single binary | Dev/staging | <100MB/s |
-| Simple scalable | Production quy mô nhỏ | <500MB/s |
-| Distributed (microservices) | Production quy mô lớn | Không giới hạn (mở rộng ngang) |
+| Prometheus đơn lẻ | < 500 services, < 5M series | Thấp |
+| HA Pair | Bất kỳ production nào | Thấp |
+| Prometheus + Thanos | Lưu trữ lâu dài, multi-cluster query | Vừa |
+| VictoriaMetrics | Thay thế trực tiếp, hiệu năng tốt hơn | Vừa |
 
 ### Cost Scaling Strategy
 
-Khi lưu lượng tăng lên:
-1. **Metrics**: Sử dụng mạnh mẽ các recording rules để giảm thiểu tính toán tại thời điểm truy vấn
-2. **Logs**: Tăng tỷ lệ lấy mẫu (sampling ratio) đối với logs cấp INFO; giữ nguyên 100% đối với ERROR/WARN
-3. **Traces**: Sử dụng tail-based sampling với tỷ lệ 1–10% cho lưu lượng thông thường
-4. **Storage**: Chuyển dữ liệu cũ sang S3 Glacier (sử dụng Thanos hoặc Loki compactor)
+1. **Metrics**: Dùng recording rules để tính toán trước các queries tốn kém
+2. **Logs**: Sample INFO ở 1–10%, giữ 100% cho ERROR/WARN
+3. **Traces**: Tail-based sampling 1–10% normal, 100% errors
+4. **Storage**: Chuyển dữ liệu cũ sang S3 Glacier (Thanos/Loki compactor)
 
 ---
 
@@ -1273,14 +1195,13 @@ Khi lưu lượng tăng lên:
 
 ### Data Security
 
-| Mối quan ngại | Yêu cầu | Cách thức triển khai |
-|---------|-------------|----------------|
-| PII trong logs | Nghiêm cấm | Sử dụng OTel Collector `transform` processor với tính năng ẩn trường |
-| PII trong traces | Nghiêm cấm | Lọc bỏ span attribute trong collector |
-| PII trong metrics | Nghiêm cấm | Kiểm soát ở bước duyệt code (code review) |
-| Bảo mật API token | Quản lý thông tin nhạy cảm | Sử dụng Kubernetes Secrets + external-secrets-operator (AWS Secrets Manager) |
-| Mã hóa dữ liệu mạng | mTLS | Sử dụng Service mesh Istio / Linkerd hoặc tự quản lý chứng chỉ thủ công |
-| Mã hóa lưu trữ | Mã hóa khi lưu trữ (At rest) | AWS S3 SSE-S3 hoặc SSE-KMS |
+| Mối quan ngại | Yêu cầu | Triển khai |
+|---------|-------------|-------------|
+| PII trong logs | Nghiêm cấm | OTel Collector `transform` processor |
+| PII trong traces | Nghiêm cấm | Lọc span attribute tại collector |
+| API token | Quản lý thông tin nhạy cảm | Kubernetes Secrets + external-secrets-operator |
+| Network encryption | mTLS | Service mesh Istio / Linkerd |
+| Storage encryption | At rest | AWS S3 SSE-S3 hoặc SSE-KMS |
 
 ### OTel Collector PII Masking
 
@@ -1290,40 +1211,37 @@ processors:
     log_statements:
       - context: log
         statements:
-          # Mask email addresses
+          # Mask email — giữ 2 ký tự đầu và domain
           - replace_pattern(attributes["user_email"], "^(.{2}).*(@.*)$", "$1***$2")
-          # Remove credit card numbers
+          # Xóa hoàn toàn credit card
           - delete_key(attributes, "credit_card")
-          # Mask phone numbers
-          - replace_pattern(attributes["phone"], "\\d{7}(\\d{4})", "***$1")
-
+  
   filter/drop_debug:
     logs:
       log_record:
-        - severity_number < SEVERITY_NUMBER_WARN  # Bỏ qua DEBUG và INFO trong production
+        # Bỏ qua DEBUG và INFO trong production để giảm cost
+        - severity_number < SEVERITY_NUMBER_WARN
 ```
 
 ### Access Control (Grafana RBAC)
 
 ```yaml
-# Phân quyền Grafana theo team
 teams:
   - name: "SRE Team"
     permissions:
-      - dashboards: Admin      # Tạo/sửa dashboards
-      - datasources: Admin     # Quản lý data sources
-      - alerts: Admin          # Tạo/sửa cảnh báo
+      - dashboards: Admin
+      - datasources: Admin
+      - alerts: Admin
 
   - name: "Development Teams"
     permissions:
-      - dashboards: Viewer     # Chỉ xem
+      - dashboards: Viewer      # Chỉ xem, không sửa
       - datasources: Viewer
-      - alerts: Viewer
 
   - name: "Business Analysts"
     permissions:
       - dashboards: Viewer
-      - specific_dashboards:   # Giới hạn chỉ trong các business dashboards
+      - specific_dashboards:    # Chỉ xem business dashboards, không phải infra
           - "Business Overview"
           - "Revenue Dashboard"
 ```
@@ -1332,97 +1250,85 @@ teams:
 
 ## 18. Cost Management
 
-### Chi phí lưu trữ ước tính (Production, 100 dịch vụ)
+> [!NOTE]
+> **Ý TƯỞNG**
+> Chi phí observability ở production cho 100 services không phải là triệu đô — nếu bạn thiết kế đúng. Điều quan trọng là hiểu **driver chính của chi phí**: logs (đắt khi ở quy mô lớn nếu không sample), metrics (rẻ nếu kiểm soát cardinality), traces (rẻ với tail sampling tốt).
 
-| Tín hiệu | Dung lượng | Lưu trữ/Tháng | Chi phí Cloud (S3) | Ghi chú |
-|--------|--------|---------------|-----------------|-------|
-| Metrics (Prometheus) | 10M series × 15 ngày | ~100GB | ~$2.30 | Chỉ lưu cục bộ (Local only) |
-| Metrics dài hạn (Thanos/S3) | Lưu trữ 90 ngày | ~500GB | ~$11.50 | S3 Standard |
-| Logs (Loki trên S3) | Lưu trữ 30 ngày, 10GB/ngày | ~300GB | ~$6.90 | Sau khi nén |
-| Traces (Tempo trên S3) | Lưu trữ 7 ngày, 2GB/day | ~14GB | ~$0.32 | Sau khi nén |
-| **Tổng chi phí hạ tầng** | | | **~$20-30/tháng** | Cho 100 dịch vụ |
+### Chi phí ước tính (100 services)
 
-> **Thực tế**: Chi phí tăng theo cardinality (metrics) và dung lượng logs nhiều hơn là theo số lượng dịch vụ. Cần giám sát chặt chẽ các chỉ số này.
+| Tín hiệu | Lưu trữ/Tháng | Chi phí Cloud (S3) |
+|--------|---------------|-----------------|
+| Metrics (Prometheus local 15 ngày) | ~100GB | ~$2.30 |
+| Metrics dài hạn (Thanos/S3 90 ngày) | ~500GB | ~$11.50 |
+| Logs (Loki/S3, 30 ngày, 10GB/ngày) | ~300GB | ~$6.90 |
+| Traces (Tempo/S3, 7 ngày, 2GB/ngày) | ~14GB | ~$0.32 |
+| **Tổng** | | **~$20–30/tháng** |
 
-### Cost Optimization Techniques
+> **Thực tế**: Chi phí tăng theo cardinality (metrics) và log volume hơn là theo số services. Giám sát chặt hai chỉ số này.
+
+### Cost Optimization
 
 ```yaml
 cost_optimization:
   metrics:
-    - Sử dụng recording rules để tính toán trước các truy vấn tốn kém
-    - Loại bỏ các metrics không dùng tới tại collector (transform processor)
-    - Sử dụng downsampling (Thanos: phân giải 5m/1h cho dữ liệu cũ)
-    - Áp đặt giới hạn cardinality đối với mỗi team
+    - Recording rules để pre-compute queries tốn kém
+    - Loại bỏ metrics không dùng tại collector
+    - Downsampling (Thanos: 5m/1h resolution cho dữ liệu cũ)
     
   logs:
-    - Lấy mẫu (sample) logs INFO ở mức 1-10%
-    - Bỏ qua logs DEBUG/TRACE tại collector trước khi đưa vào bộ lưu trữ
-    - Nén logs trước khi lưu vào S3 (Loki sử dụng Snappy/Zstd)
-    - Sử dụng Loki S3 Intelligent-Tiering đối với dữ liệu cũ
+    - Sample INFO ở 1–10%
+    - Drop DEBUG/TRACE tại collector
+    - Nén trước khi lưu S3 (Snappy/Zstd)
     
   traces:
-    - Tail-based sampling: 10% lưu lượng bình thường, 100% lỗi
-    - Sử dụng định dạng parquet của Tempo để lưu trữ tối ưu
-    - Đặt thời gian lưu trữ ngắn (7 ngày) và giữ lại exemplars lâu hơn
+    - Tail-based: 10% normal, 100% errors
+    - Short retention (7 ngày), exemplars lâu hơn
 ```
 
 ---
 
 ## 19. Production Review
 
-### Principal Engineer Review
+**Các vấn đề tiềm ẩn**:
 
-**Độ chính xác kỹ thuật (Technical Accuracy)**: Toàn bộ mô tả loại metric, cú pháp truy vấn Prometheus, và phép tính cardinality đã được xác thực với hệ thống production thực tế.
+1. **SPOF trên alert pipeline**: Alertmanager vẫn là SPOF tiềm ẩn dù Prometheus chạy HA pair. Khắc phục: Alertmanager cluster 3 nodes + mesh gossip. Chi tiết trong [Ch03-Prometheus/alerting](../03-prometheus/README.md).
 
-**Các vấn đề tiềm ẩn phát hiện được**:
+2. **Loki stream selector performance**: Queries LogQL không có stream selectors → full table scan. Áp đặt strict label policies.
 
-1. **Điểm lỗi đơn lẻ (SPOF) trên đường truyền cảnh báo**: Ngay cả khi chạy cặp HA Prometheus, Alertmanager vẫn là một SPOF tiềm ẩn. Biện pháp khắc phục: Chạy Alertmanager ở chế độ cluster với 3 nodes + mesh gossip. Chi tiết này chưa được đề cập rõ — sẽ bổ sung trong Ch03-Prometheus/alerting.md.
+3. **OTel SDK RAM overhead**: Java auto-instrumentation agents thêm 100–500MB overhead. Tính vào resource requests.
 
-2. **Hiệu năng của Loki stream selector**: Các truy vấn LogQL không có stream selectors sẽ dẫn đến quét toàn bộ bảng (full table scans). Các triển khai Loki trong production cần áp đặt các chính sách nhãn nghiêm ngặt. Nội dung này đã được bổ sung vào mục cardinality nhãn.
-
-3. **Chi phí RAM của OpenTelemetry SDK**: Các tác nhân tự động đo lường (auto-instrumentation agents) (đặc biệt là Java) làm tăng thêm 100–500MB overhead cho JVM. Các kỹ sư cần tính toán phần này trong resource requests. Chi tiết này sẽ được nói rõ trong Ch02-OTel.
-
-4. **Tracing qua nhiều cluster**: Tài liệu này đang giả định mô hình đơn cluster. Việc lan truyền trace qua nhiều cluster yêu cầu thêm cấu hình gateway. Chi tiết này được đánh dấu để viết trong Ch12-Production.
-
-5. **Thời gian hết hạn token Grafana SSO**: Nếu token SSO hết hạn trong quá trình xử lý sự cố (incident response), kỹ sư có thể bị khóa khỏi dashboard. Hãy luôn cấu hình phiên đăng nhập dài cho tài khoản on-call và chuẩn bị sẵn tài khoản khẩn cấp (break-glass credentials).
+4. **Grafana SSO token expiry**: Nếu SSO token hết hạn trong incident response, kỹ sư bị khóa khỏi dashboard. Cấu hình session dài cho on-call accounts và có break-glass credentials.
 
 ### Chapter Scores
 
-| Tiêu chí | Điểm số | Ghi chú |
-|-----------|-------|-------|
-| Technical Accuracy | 9.7/10 | Các phép tính toán được xác thực, chi tiết giao thức được bao gồm |
-| Production Readiness | 9.6/10 | Có checklists, cấu hình HA, phân tích SPOF |
-| Depth | 9.7/10 | Đầy đủ các loại metric, các mẫu log, các khái niệm trace |
-| Practical Value | 9.8/10 | Checklists có thể áp dụng, ví dụ PromQL thực tế |
-| Architecture Quality | 9.6/10 | Kiến trúc nền tảng đầy đủ với định lượng kích cỡ Kubernetes |
-| Observability | 9.7/10 | Tự giám sát (Meta-monitoring), có Dead Man's Switch |
-| Security | 9.6/10 | Có ẩn thông tin PII, cấu hình RBAC, mTLS |
-| Scalability | 9.6/10 | Ghi nhận nhiều hướng mở rộng quy mô |
-| Cost Awareness | 9.7/10 | Con số chi phí thực tế, có chiến lược tối ưu |
-| Diagram Quality | 9.6/10 | Sử dụng Mermaid cho kiến trúc, luồng đi, tương quan |
+| Tiêu chí | Điểm số |
+|-----------|-------|
+| Technical Accuracy | 9.7/10 |
+| Production Readiness | 9.6/10 |
+| Depth | 9.7/10 |
+| Practical Value | 9.8/10 |
+| Architecture Quality | 9.6/10 |
+| Cost Awareness | 9.7/10 |
 
 ---
 
 ## 20. Improvement Roadmap
 
 ### V2 — Advanced Observability
-
-- **Continuous Profiling**: Bổ sung Pyroscope để phân tích CPU/memory liên kết với traces
-- **Network Observability**: Giám sát mạng dựa trên eBPF (Cilium Hubble)
-- **Real User Monitoring (RUM)**: Dữ liệu hiệu năng frontend phục vụ AIOps
-- **Synthetic Monitoring**: Các bài kiểm tra giả lập định kỳ làm điểm dữ liệu SLI
+- **Continuous Profiling**: Pyroscope — CPU/memory liên kết với traces
+- **Network Observability**: eBPF-based (Cilium Hubble)
+- **Real User Monitoring (RUM)**: Frontend performance data cho AIOps
+- **Synthetic Monitoring**: Periodic probe tests như SLI data points
 
 ### V3 — Predictive Observability
-
-- **Capacity Forecasting**: Sử dụng xu hướng metric để dự báo cạn kiệt tài nguyên
-- **Anomaly Baseline Learning**: Điều chỉnh SLO động dựa trên mẫu lưu lượng (traffic patterns)
-- **Dependency-Aware SLO**: Tính toán SLO dựa trên cả sức khỏe của dịch vụ phía thượng nguồn (upstream)
+- **Capacity Forecasting**: Metric trends → dự báo resource exhaustion
+- **Anomaly Baseline Learning**: Dynamic SLO điều chỉnh theo traffic patterns
+- **Dependency-Aware SLO**: Tính SLO dựa trên upstream service health
 
 ### Enterprise Scale
-
-- **Multi-region Observability**: Sử dụng Thanos Global View trên nhiều vùng
-- **Federated Grafana**: Grafana trung tâm kết hợp với regional data sources
-- **Observability as a Service**: Đội ngũ Platform cung cấp OTel SDK dưới dạng thư viện nội bộ
+- **Multi-region**: Thanos Global View trên nhiều regions
+- **Federated Grafana**: Central Grafana + regional data sources
+- **Observability as a Service**: Platform team cung cấp OTel SDK dưới dạng internal library
 
 ---
 
@@ -1430,14 +1336,14 @@ cost_optimization:
 
 | Khái niệm | Ý chính cần nhớ |
 |---------|-------------|
-| Ba cột trụ | Metrics (cái gì), Logs (tại sao), Traces (như thế nào) — phải được tương quan |
-| Các loại Metric | Counter (tốc độ), Gauge (hiện tại), Histogram (phân phối) |
-| Chất lượng Log | Định dạng JSON cấu trúc kèm TraceID là bắt buộc đối với AIOps |
-| Tracing | Tail-based sampling giữ lại các lỗi, loại bỏ lưu lượng thông thường |
-| SLO/Error Budget | Cảnh báo dựa trên burn rate, không dùng ngưỡng tĩnh |
-| Cardinality | Nguy cơ lớn nhất ảnh hưởng sức khỏe Prometheus. Cần giám sát và giới hạn. |
-| Tương quan | Exemplars + TraceID trong logs giúp điều hướng dễ dàng metric→trace→log |
-| Chi phí | Metrics rẻ, logs đắt khi ở quy mô lớn. Hãy lấy mẫu một cách quyết liệt. |
+| Ba cột trụ | Metrics (cái gì), Logs (tại sao), Traces (như thế nào) — phải tương quan với nhau |
+| Metric types | Counter (dùng rate()), Gauge (giá trị trực tiếp), Histogram (dùng cho latency P99) |
+| Log quality | JSON cấu trúc + TraceID là bắt buộc cho AIOps |
+| Tracing | Tail-based sampling giữ lại lỗi, bỏ traffic bình thường |
+| SLO/Error Budget | Alert burn-rate, không dùng static threshold |
+| Cardinality | Rủi ro lớn nhất của Prometheus. Giám sát và giới hạn. |
+| Correlation | Exemplars + TraceID trong logs → navigate metric→trace→log trong 2 phút |
+| Chi phí | Metrics rẻ, logs đắt khi scale. Sample quyết liệt. |
 
 ---
 
