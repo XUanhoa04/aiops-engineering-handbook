@@ -4,14 +4,14 @@ Hero architecture diagrams for the AIOps Engineering Handbook.
 
 | File | Topic | Used in |
 |------|--------|---------|
-| `01-aiops-pipeline.png` | End-to-end AIOps platform | Ch.00, README |
+| `01-aiops-pipeline.png` | End-to-end AIOps platform | Ch.00, Ch.06, README |
 | `02-observability-pillars.png` | Metrics / Logs / Traces correlation | Ch.01 |
-| `03-kafka-aiops-topics.png` | Kafka / MSK transport topics | Ch.06 |
-| `04-intelligence-layer.png` | Detect → correlate → RCA → LLM | Ch.07–10 |
-| `05-remediation-safety.png` | Safety gates + allow-listed actions | Ch.11 |
-| `06-k8s-production.png` | K8s production sketch | Ch.12 |
-| `07-control-vs-data-plane.png` | Resilience / break-glass | Ch.12, Ch.15 |
-| `08-payment-critical-path.png` | Checkout / payment path | Ch.14 |
+| `03-kafka-aiops-topics.png` | Kafka / MSK transport topics | Ch.07 |
+| `04-intelligence-layer.png` | Detect → correlate → RCA → LLM | Ch.08–11 |
+| `05-remediation-safety.png` | Safety gates + allow-listed actions | Ch.12 |
+| `06-k8s-production.png` | K8s production sketch | Ch.13 |
+| `07-control-vs-data-plane.png` | Resilience / break-glass | Ch.13, Ch.16 |
+| `08-payment-critical-path.png` | Checkout / payment path | Ch.15 |
 
 **Notes**
 

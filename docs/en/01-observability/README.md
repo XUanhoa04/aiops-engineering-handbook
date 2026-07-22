@@ -16,7 +16,7 @@
 - [03 — Prometheus](../03-prometheus/README.md) — metrics storage
 - [04 — Loki](../04-loki/README.md) — log storage
 - [05 — Tempo](../05-tempo/README.md) — trace storage
-- [07 — Anomaly Detection](../07-anomaly-detection/README.md) — consumes observability data
+- [07 — Anomaly Detection](../08-anomaly-detection/README.md) — consumes observability data
 
 ## Next Reading
 
@@ -1571,7 +1571,7 @@ flowchart LR
 
 > [!TIP]
 > **Why**
-> Public postmortems teach **how to think**, not how to copy a tool stack. Map mental models to [Ch13 Big Tech AIOps](../13-bigtech-aiops/README.md) and [Ch15 Famous Incidents](../15-famous-incidents/README.md).
+> Public postmortems teach **how to think**, not how to copy a tool stack. Map mental models to [Ch13 Big Tech AIOps](../14-bigtech-aiops/README.md) and [Ch15 Famous Incidents](../16-famous-incidents/README.md).
 
 ### 22.1 "Everything is fine" dashboards — Google SRE mindset
 

@@ -19,11 +19,11 @@
 ## Related Documents
 
 - [01 — Observability](01-observability/README.md)
-- [07 — Anomaly Detection](07-anomaly-detection/README.md)
-- [12 — Production](12-production/README.md)
-- [13 — Big Tech AIOps Case Studies](13-bigtech-aiops/README.md) *(summary case studies; details in dedicated chapters)*
-- [14 — E-commerce & Banking Patterns](14-ecommerce-banking/README.md)
-- [15 — Famous Incidents](15-famous-incidents/README.md)
+- [07 — Anomaly Detection](08-anomaly-detection/README.md)
+- [12 — Production](13-production/README.md)
+- [13 — Big Tech AIOps Case Studies](14-bigtech-aiops/README.md) *(summary case studies; details in dedicated chapters)*
+- [14 — E-commerce & Banking Patterns](15-ecommerce-banking/README.md)
+- [15 — Famous Incidents](16-famous-incidents/README.md)
 
 ## Next Reading
 
@@ -206,7 +206,7 @@ Based on real production deployments:
 AIOps is not “smarter than a senior SRE.” It **scales those three axes** when (and only when) data + topology + feedback loops are good enough.
 
 > [!TIP]
-> Big tech case studies (summary): many hyperscale organizations publish 80–95% noise reduction via correlation + topology before talking about auto-remediation. Industry details and patterns: [13 — Big Tech AIOps](13-bigtech-aiops/README.md) and [14 — E-commerce & Banking](14-ecommerce-banking/README.md).
+> Big tech case studies (summary): many hyperscale organizations publish 80–95% noise reduction via correlation + topology before talking about auto-remediation. Industry details and patterns: [13 — Big Tech AIOps](14-bigtech-aiops/README.md) and [14 — E-commerce & Banking](15-ecommerce-banking/README.md).
 
 ---
 
@@ -310,7 +310,7 @@ Tools (Prometheus, Kafka, Isolation Forest, LLM) change every 2–3 years. **OOD
 
 - Vendor demos of “agent fixes prod in 30s” usually assume perfect topology/runbooks — rare in real environments.
 - Evaluate agentic AI SRE by: *tool allowlist*, *blast radius*, *human approval gates*, *cost per investigation*, *false action rate* — not only demo latency.
-- Historical incidents (retry storm, partial brownout): agents with weak topology can **amplify** rather than heal. See [15 — Famous Incidents](15-famous-incidents/README.md).
+- Historical incidents (retry storm, partial brownout): agents with weak topology can **amplify** rather than heal. See [15 — Famous Incidents](16-famous-incidents/README.md).
 
 > [!TIP]
 > **2026 selection rule**
@@ -606,7 +606,7 @@ Industry benchmarks (Gartner, IDC):
 | Healthcare | $5,000 – $9,000 |
 | SaaS B2B | $1,500 – $5,000 |
 
-Verticals (different ROI patterns) are analyzed in more depth in [14 — E-commerce & Banking](14-ecommerce-banking/README.md).
+Verticals (different ROI patterns) are analyzed in more depth in [14 — E-commerce & Banking](15-ecommerce-banking/README.md).
 
 ### AIOps Investment vs Return
 
@@ -850,63 +850,74 @@ flowchart TD
         PROMTAIL[Promtail / Alloy]
     end
 
-    subgraph Transport["3. Transport Layer"]
+    subgraph DataPlane["3. Data Plane (Ch.06)"]
+        NORM[Normalize]
+        ENR[Enrich]
+        VAL[Validate / DQ]
+        STORE[Hot / Warm / Cold store]
+        FS[Feature store]
+    end
+
+    subgraph Transport["4. Transport Layer (Ch.07)"]
         KAFKA[Kafka Topics\nmetrics / logs / traces / alerts]
     end
 
-    subgraph Feature["4. Feature Engineering"]
-        FE[Feature Extraction\ntime-series windowing\nlog parsing\ntrace aggregation]
+    subgraph Feature["5. Feature serve"]
+        FE[Windowing / vectors\nonline + offline]
     end
 
-    subgraph Detection["5. Detection Layer"]
+    subgraph Detection["6. Detection Layer"]
         STAT[Statistical Detector\nEWMA / Z-score / STL]
         ML[ML Detector\nIsolation Forest / LSTM]
         LOG[Log Anomaly\nDrain / DeepLog]
     end
 
-    subgraph Correlation["6. Correlation Engine"]
+    subgraph Correlation["7. Correlation Engine"]
         DEDUP[Deduplication]
         GROUP[Grouping\ntopology-aware]
         CAUSE[Causal Ordering]
     end
 
-    subgraph RCA["7. Root Cause Analysis"]
+    subgraph RCA["8. Root Cause Analysis"]
         CG[Causal Graph]
         GNN[Graph Neural Network]
         RANK[Root Cause Ranker]
     end
 
-    subgraph LLM["8. LLM Investigation Agent"]
+    subgraph LLM["9. LLM Investigation Agent"]
         RAG[RAG\nRunbook Retrieval]
         CTX[Context Assembly]
         INV[Investigation Chain]
     end
 
-    subgraph Decision["9. Decision Engine"]
+    subgraph Decision["10. Decision Engine"]
         RISK[Risk Scorer]
         CONF[Confidence Gate]
         PLAN[Remediation Planner]
     end
 
-    subgraph Remediation["10. Remediation"]
+    subgraph Remediation["11. Remediation"]
         SSM[AWS SSM Automation]
         K8S[Kubernetes Operator]
         LAMB[Lambda Functions]
     end
 
-    subgraph Verification["11. Verification"]
+    subgraph Verification["12. Verification"]
         VER[Post-action Verification\nDid it work?]
     end
 
-    subgraph KB["12. Knowledge Base"]
+    subgraph KB["13. Knowledge Base"]
         INC[Incident Store]
         RB[Runbook Index]
         FB[Feedback Loop]
     end
 
     Telemetry --> Collection
-    Collection --> Transport
+    Collection --> DataPlane
+    DataPlane --> Transport
     Transport --> Feature
+    STORE --> Feature
+    FS --> Feature
     Feature --> Detection
     Detection --> Correlation
     Correlation --> RCA
@@ -917,7 +928,10 @@ flowchart TD
     Verification --> KB
     KB --> LLM
     KB --> Detection
+    Detection --> FS
 ```
+
+> Details on **when** you need normalize/enrich/store/feature: [06 — Telemetry Data Plane](06-data-plane/README.md).
 
 ### Pipeline Latency Budget
 
@@ -927,9 +941,10 @@ flowchart TD
 
 | Stage | P50 Latency | P99 Latency | SLO |
 |-------|-------------|-------------|-----|
-| Telemetry → Kafka | 100ms | 500ms | <1s |
-| Kafka → Feature Engineering | 200ms | 1s | <2s |
-| Feature Engineering → Detection | 500ms | 2s | <5s |
+| Telemetry → Data plane | 100ms | 500ms | <1s |
+| Data plane → Kafka | 100ms | 500ms | <1s |
+| Kafka → Feature serve | 200ms | 1s | <2s |
+| Feature → Detection | 500ms | 2s | <5s |
 | Detection → Correlation | 100ms | 500ms | <2s |
 | Correlation → RCA | 2s | 10s | <15s |
 | RCA → LLM Investigation | 5s | 30s | <60s |
@@ -993,7 +1008,7 @@ flowchart LR
 
 ### Summary Case Study (Big Tech Pattern)
 
-Many large organizations report: after **mandatory incident tagging** + offline evaluation, detector precision improves quarter over quarter — not from more complex models, but from **feedback data**. Pattern details: [13 — Big Tech AIOps](13-bigtech-aiops/README.md).
+Many large organizations report: after **mandatory incident tagging** + offline evaluation, detector precision improves quarter over quarter — not from more complex models, but from **feedback data**. Pattern details: [13 — Big Tech AIOps](14-bigtech-aiops/README.md).
 
 > [!TIP]
 > Flywheel KPIs: `% incidents labeled`, `time-to-label`, `precision@k trend`, `% auto-actions verified`. If you only measure “models deployed” — you are chasing vanity metrics.
@@ -1086,7 +1101,7 @@ Understanding failure scenarios is as important as understanding success cases.
 >
 > Hint: month 3 usually has no auto-remediation yet — **GIGO + trust collapse** are more dangerous than remediation hallucination. By month 12, blast radius and metastable amplification are more frightening.
 
-Classic public postmortems (cascade, config, retry) are summarized in [15 — Famous Incidents](15-famous-incidents/README.md).
+Classic public postmortems (cascade, config, retry) are summarized in [15 — Famous Incidents](16-famous-incidents/README.md).
 
 ---
 
@@ -1512,7 +1527,7 @@ flowchart TB
 
 - [Practical AIOps — O'Reilly](https://www.oreilly.com/library/view/practical-aiops/9781492085652/)
 - [Building Microservices — Sam Newman (Observability chapters)](https://samnewman.io/books/building_microservices_2nd_edition/)
-- Handbook chapters: [13 Big Tech](13-bigtech-aiops/README.md) · [14 E-commerce & Banking](14-ecommerce-banking/README.md) · [15 Famous Incidents](15-famous-incidents/README.md)
+- Handbook chapters: [13 Big Tech](14-bigtech-aiops/README.md) · [14 E-commerce & Banking](15-ecommerce-banking/README.md) · [15 Famous Incidents](16-famous-incidents/README.md)
 
 ### Further Reading (short)
 

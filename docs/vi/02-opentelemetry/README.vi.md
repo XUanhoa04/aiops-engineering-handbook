@@ -14,7 +14,7 @@
 - [03 — Prometheus](../03-prometheus/README.vi.md) — nhận metrics từ OTel Collector
 - [04 — Loki](../04-loki/README.vi.md) — nhận logs từ OTel Collector
 - [05 — Tempo](../05-tempo/README.vi.md) — nhận traces từ OTel Collector
-- [06 — Kafka](../06-kafka/README.vi.md) — OTel Collector có thể export sang Kafka
+- [06 — Kafka](../07-kafka/README.vi.md) — OTel Collector có thể export sang Kafka
 
 ## Next Reading
 
@@ -35,7 +35,7 @@ Sau chương này, hãy chuyển sang [03 — Prometheus](../03-prometheus/READM
 9. [Deployment Patterns](#9-deployment-patterns)
 10. [Kubernetes Operator](#10-kubernetes-operator)
 11. [Fluent Bit vs OTel Collector](#11-fluent-bit-vs-otel-collector)
-12. [Production Best Practices](#12-production-best-practices)
+12. [Production Best Practices](#13-production-best-practices)
 13. [Common Mistakes](#13-common-mistakes)
 14. [Monitoring the Collector](#14-monitoring-the-collector)
 15. [Scaling](#15-scaling)
@@ -1308,7 +1308,7 @@ Luôn hỏi:
 
 > [!TIP]
 > **Vì sao**
-> Vendor-neutral không miễn nhiễm operational failure. Map sang [Ch13 Big Tech](../13-bigtech-aiops/README.vi.md) / [Ch15 Famous Incidents](../15-famous-incidents/README.vi.md).
+> Vendor-neutral không miễn nhiễm operational failure. Map sang [Ch13 Big Tech](../14-bigtech-aiops/README.vi.md) / [Ch15 Famous Incidents](../16-famous-incidents/README.vi.md).
 
 ### 21.1 Agent/sidecar blast radius
 

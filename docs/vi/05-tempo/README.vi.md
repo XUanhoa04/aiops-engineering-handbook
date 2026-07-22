@@ -14,11 +14,11 @@
 
 - [02 — OpenTelemetry](../02-opentelemetry/README.vi.md) — tail sampling trước khi đẩy dữ liệu vào Tempo
 - [03 — Prometheus](../03-prometheus/README.vi.md) — exemplars liên kết metrics với Tempo traces
-- [09 — Root Cause Analysis](../09-root-cause-analysis/README.vi.md) — traces làm đầu vào cho RCA
+- [09 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — traces làm đầu vào cho RCA
 
 ## Next Reading
 
-Sau chương này, hãy chuyển sang [06 — Kafka](../06-kafka/README.vi.md).
+Sau chương này, hãy chuyển sang [06 — Telemetry Data Plane](../06-data-plane/README.vi.md) (normalize / enrich / store / feature), rồi [07 — Kafka](../07-kafka/README.vi.md).
 
 ---
 
@@ -1175,9 +1175,9 @@ def critical_path(spans):
 
 ### Liên kết chương khác
 
-- [08 — Alert Correlation](../08-alert-correlation/README.vi.md) — nhóm alert bằng `related_trace_ids`
-- [09 — Root Cause Analysis](../09-root-cause-analysis/README.vi.md) — span analysis, evidence scoring
-- [10 — LLM Agent](../10-llm-agent/README.vi.md) — agent đọc critical path + log cùng `trace_id`
+- [08 — Alert Correlation](../09-alert-correlation/README.vi.md) — nhóm alert bằng `related_trace_ids`
+- [09 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — span analysis, evidence scoring
+- [10 — LLM Agent](../11-llm-agent/README.vi.md) — agent đọc critical path + log cùng `trace_id`
 
 ---
 

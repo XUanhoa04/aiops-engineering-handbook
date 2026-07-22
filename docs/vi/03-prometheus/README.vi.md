@@ -11,8 +11,8 @@
 
 ## Related Documents
 
-- [07 — Anomaly Detection](../07-anomaly-detection/README.vi.md) — metrics của Prometheus làm input
-- [08 — Alert Correlation](../08-alert-correlation/README.vi.md) — tiêu thụ alerts từ Prometheus
+- [07 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — metrics của Prometheus làm input
+- [08 — Alert Correlation](../09-alert-correlation/README.vi.md) — tiêu thụ alerts từ Prometheus
 
 ## Next Reading
 

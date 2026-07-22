@@ -14,11 +14,11 @@
 
 - [02 — OpenTelemetry](../02-opentelemetry/README.md) — tail sampling before data reaches Tempo
 - [03 — Prometheus](../03-prometheus/README.md) — exemplars linking metrics to Tempo traces
-- [09 — Root Cause Analysis](../09-root-cause-analysis/README.md) — traces as input to RCA
+- [09 — Root Cause Analysis](../10-root-cause-analysis/README.md) — traces as input to RCA
 
 ## Next Reading
 
-After this chapter, continue to [06 — Kafka](../06-kafka/README.md).
+After this chapter, continue to [06 — Telemetry Data Plane](../06-data-plane/README.md) (normalize / enrich / store / feature), then [07 — Kafka](../07-kafka/README.md).
 
 ---
 
@@ -1175,9 +1175,9 @@ def critical_path(spans):
 
 ### Links to other chapters
 
-- [08 — Alert Correlation](../08-alert-correlation/README.md) — group alerts by `related_trace_ids`
-- [09 — Root Cause Analysis](../09-root-cause-analysis/README.md) — span analysis, evidence scoring
-- [10 — LLM Agent](../10-llm-agent/README.md) — agent reads critical path + logs with the same `trace_id`
+- [08 — Alert Correlation](../09-alert-correlation/README.md) — group alerts by `related_trace_ids`
+- [09 — Root Cause Analysis](../10-root-cause-analysis/README.md) — span analysis, evidence scoring
+- [10 — LLM Agent](../11-llm-agent/README.md) — agent reads critical path + logs with the same `trace_id`
 
 ---
 

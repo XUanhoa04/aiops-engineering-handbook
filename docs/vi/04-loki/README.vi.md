@@ -13,8 +13,8 @@
 ## Related Documents
 
 - [02 — OpenTelemetry](../02-opentelemetry/README.vi.md) — Loki exporter trong OTel Collector
-- [07 — Anomaly Detection](../07-anomaly-detection/README.vi.md) — phát hiện bất thường trên log
-- [09 — Root Cause Analysis](../09-root-cause-analysis/README.vi.md) — dữ liệu log làm đầu vào cho RCA
+- [07 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — phát hiện bất thường trên log
+- [09 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — dữ liệu log làm đầu vào cho RCA
 
 ## Next Reading
 
@@ -35,7 +35,7 @@ Sau chương này, hãy chuyển sang [05 — Tempo](../05-tempo/README.vi.md).
 9. [Storage Backend](#9-storage-backend)
 10. [Deployment Modes](#10-deployment-modes)
 11. [Kubernetes Deployment](#11-kubernetes-deployment)
-12. [Production Configuration](#12-production-configuration)
+12. [Production Configuration](#13-production-configuration)
 13. [Common Mistakes](#13-common-mistakes)
 14. [Monitoring Loki](#14-monitoring-loki)
 15. [Scaling](#15-scaling)
