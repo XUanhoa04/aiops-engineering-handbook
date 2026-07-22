@@ -6,6 +6,10 @@
 
 ![AIOps Platform Pipeline](../../assets/diagrams/01-aiops-pipeline.png)
 
+![Telemetry Data Plane](../../assets/diagrams/09-data-plane.png)
+
+*Ch.06 poster: Collect → normalize → enrich → validate → hot/buffer/cold/feature → intelligence.*
+
 *Poster: Collection → **Data plane (this chapter)** → Transport (Kafka) → Intelligence → Action. Mermaid below details normalize / enrich / store / feature paths.*
 
 ---

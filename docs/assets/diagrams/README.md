@@ -12,6 +12,7 @@ Hero architecture diagrams for the AIOps Engineering Handbook.
 | `06-k8s-production.png` | K8s production sketch | Ch.13 |
 | `07-control-vs-data-plane.png` | Resilience / break-glass | Ch.13, Ch.16 |
 | `08-payment-critical-path.png` | Checkout / payment path | Ch.15 |
+| `09-data-plane.png` | Normalize → enrich → store → feature | Ch.06, README |
 
 **Notes**
 

@@ -43,7 +43,9 @@ Trọng tâm bản này: **tư duy vận hành** — mental models, decision tre
 
 ![AIOps Platform Pipeline](docs/assets/diagrams/01-aiops-pipeline.png)
 
-**Layers:** Collection (OTel / Prometheus / logs) → Transport (Kafka / MSK) → Storage (S3 backends) → Intelligence (anomaly → correlation → RCA → LLM) → Action (decision, remediation, notify) → Grafana.
+![Telemetry Data Plane](docs/assets/diagrams/09-data-plane.png)
+
+**Layers:** Collect (OTel / Prometheus / Loki / Tempo) → **Data plane** (normalize · enrich · validate · hot/warm/cold · feature store) → Transport (Kafka / MSK) → Intelligence (anomaly → correlation → RCA → LLM) → Action (decision · remediation · notify) → Grafana / audit.
 
 ---
 
@@ -51,25 +53,27 @@ Trọng tâm bản này: **tư duy vận hành** — mental models, decision tre
 
 ```mermaid
 graph LR
-    A[00 Introduction] --> B[01 Observability]
-    B --> C[02 OpenTelemetry]
+    A[00 Intro] --> B[01 Observability]
+    B --> C[02 OTel]
     C --> D[03 Prometheus]
     C --> E[04 Loki]
     C --> F[05 Tempo]
-    D --> G[06 Kafka]
-    E --> G
-    F --> G
-    G --> H[07 Anomaly Detection]
-    H --> I[08 Alert Correlation]
-    I --> J[09 Root Cause Analysis]
-    J --> K[10 LLM Agent]
-    K --> L[11 Remediation]
-    L --> M[12 Production]
-    M --> N[13 Big Tech AIOps]
-    N --> O[14 Ecommerce Banking]
-    O --> P[15 Famous Incidents]
+    D --> DP[06 Data Plane]
+    E --> DP
+    F --> DP
+    DP --> G[07 Kafka]
+    G --> H[08 Anomaly]
+    H --> I[09 Correlation]
+    I --> J[10 RCA]
+    J --> K[11 LLM]
+    K --> L[12 Remediation]
+    L --> M[13 Production]
+    M --> N[14 Big Tech]
+    N --> O[15 Ecom Bank]
+    O --> P[16 Incidents]
 
     style A fill:#2d3561,color:#fff
+    style DP fill:#7c3aed,color:#fff
     style M fill:#e94560,color:#fff
     style N fill:#0f766e,color:#fff
     style O fill:#0f766e,color:#fff
@@ -217,12 +221,28 @@ EN: [Famous Incidents](docs/en/16-famous-incidents/README.md) → [Alert Correla
 
 ---
 
+## Start here
+
+| Path | Audience |
+|------|----------|
+| [docs/CURRICULUM.md](docs/CURRICULUM.md) | Full chapter map & pipeline order |
+| [docs/vi/00-introduction.vi.md](docs/vi/00-introduction.vi.md) | Bắt đầu tiếng Việt |
+| [docs/en/00-introduction.md](docs/en/00-introduction.md) | Start in English |
+| [docs/vi/06-data-plane/README.vi.md](docs/vi/06-data-plane/README.vi.md) | Normalize / enrich / store / feature (**when to use**) |
+| [docs/assets/diagrams/](docs/assets/diagrams/) | Architecture posters (PNG) |
+| [CHANGELOG.md](CHANGELOG.md) | Version history |
+
+---
+
 ## Contributing
+
+Xem [CONTRIBUTING.md](CONTRIBUTING.md) · [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) · [SECURITY.md](SECURITY.md).
 
 Mỗi chương nên đạt:
 
 - **Độ chính xác kỹ thuật** — bám thực tiễn production / tài liệu public
 - **Độ sâu** — cấp Staff/Principal, có trade-off rõ
+- **When to use** — không chỉ “là gì”, mà **khi nào cần / không cần**
 - **Edge cases** — khi thiết kế vỡ và cách phòng
 - **Production-ready** — monitoring, scaling, security, cost
 
@@ -239,3 +259,9 @@ MIT License — xem [LICENSE](LICENSE).
 ## Maintainers
 
 - **[@XUanhoa04](https://github.com/XUanhoa04)** — AIOps / SRE / Cloud Native handbook
+
+---
+
+## Release
+
+Current: **v1.0.0** — dual-language complete curriculum (17 chapters) + data plane + architecture posters.

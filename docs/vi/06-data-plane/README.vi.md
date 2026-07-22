@@ -6,6 +6,10 @@
 
 ![AIOps Platform Pipeline](../../assets/diagrams/01-aiops-pipeline.png)
 
+![Telemetry Data Plane](../../assets/diagrams/09-data-plane.png)
+
+*Poster Ch.06: Collect → normalize → enrich → validate → hot/buffer/cold/feature → intelligence.*
+
 *Poster kiến trúc (PNG): Collection → (Data Plane) → Transport/Kafka → Intelligence → Action. Chương này lấp khoảng trống giữa “đã scrape/export” và “có thể detect/train/audit”.*
 
 ---
@@ -1688,6 +1692,10 @@ Collect → Normalize → Enrich → Validate → Buffer/Store → Feature → D
 ### 22.3 Poster
 
 ![AIOps Platform Pipeline](../../assets/diagrams/01-aiops-pipeline.png)
+
+![Telemetry Data Plane](../../assets/diagrams/09-data-plane.png)
+
+*Poster Ch.06: Collect → normalize → enrich → validate → hot/buffer/cold/feature → intelligence.*
 
 *Đặt data plane vào đúng khúc giữa collection và intelligence — đó là chỗ handbook này vừa lấp.*
 

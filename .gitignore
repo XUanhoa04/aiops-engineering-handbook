@@ -1,0 +1,20 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+*.code-workspace
+
+# Python local (diagram generation — never commit generators by policy)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+_tmp_*.py
+*.dot
+
+# Local env
+.env
+.env.*
