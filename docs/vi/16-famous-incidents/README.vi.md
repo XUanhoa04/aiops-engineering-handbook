@@ -22,6 +22,8 @@
 
 ## Related Documents
 
+- [17 — Topology & Change](../17-topology-change/README.vi.md) — service graph + change/deploy bus
+
 - [01 — Observability](../01-observability/README.vi.md) — blind spot và “dashboard cũng phụ thuộc hệ thống bị hỏng”
 - [06 — Kafka](../07-kafka/README.vi.md) — control plane / data plane tách biệt trong vận chuyển tín hiệu
 - [10 — LLM Agent](../11-llm-agent/README.vi.md) — khi LLM giúp điều tra và khi nó chỉ thêm nhiễu

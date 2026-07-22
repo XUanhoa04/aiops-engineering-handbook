@@ -1,0 +1,16 @@
+/* Handbook site tweaks */
+.md-typeset img {
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  max-width: 100%;
+}
+
+.md-typeset blockquote {
+  border-left-width: 0.2rem;
+}
+
+/* Make long tables scroll on mobile */
+.md-typeset__table {
+  display: block;
+  overflow-x: auto;
+}

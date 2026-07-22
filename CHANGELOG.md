@@ -2,6 +2,20 @@
 
 All notable changes to this handbook are documented here.
 
+## [1.1.0] — 2026-07-22
+
+### Added
+
+- **Ch.17 Topology & Change Data Plane** (VI + EN) — service graph, sync freshness, change/deploy events, freezes, integration with enrich/correlation/RCA/remediation
+- **MkDocs Material** site (`mkdocs.yml`, `requirements-docs.txt`, `docs/index.md`)
+- **GitHub Actions** workflow [`.github/workflows/docs.yml`](.github/workflows/docs.yml) → GitHub Pages
+- Poster `docs/assets/diagrams/10-topology-change.png`
+
+### Changed
+
+- Curriculum / README / site home: **18 chapters** (00–17)
+- Pipeline diagrams include topology & change side plane
+
 ## [1.0.0] — 2026-07-22
 
 ### Added

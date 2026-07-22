@@ -1,0 +1,3 @@
+# Docs site (MkDocs Material) — for local build and GitHub Pages CI
+mkdocs-material>=9.5.0,<10
+# pymdown-extensions ships with material; mermaid via superfences

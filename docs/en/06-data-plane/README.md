@@ -25,6 +25,8 @@
 
 ## Related Documents
 
+- [17 — Topology & Change](../17-topology-change/README.md) — service graph + change/deploy bus
+
 - [07 — Kafka](../07-kafka/README.md) — transport after the data plane; schema, lag, replay
 - [08 — Anomaly Detection](../08-anomaly-detection/README.md) — consumes features and normalized series
 - [09 — Alert Correlation](../09-alert-correlation/README.md) — needs topology-enriched context

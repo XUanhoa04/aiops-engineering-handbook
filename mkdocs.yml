@@ -1,0 +1,125 @@
+# AIOps Engineering Handbook — MkDocs site (GitHub Pages)
+site_name: AIOps Engineering Handbook
+site_description: Production-grade AIOps handbook — observability to remediation (Vietnamese + English)
+site_author: XUanhoa04
+site_url: https://xuanhoa04.github.io/aiops-engineering-handbook/
+
+repo_name: XUanhoa04/aiops-engineering-handbook
+repo_url: https://github.com/XUanhoa04/aiops-engineering-handbook
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+site_dir: site
+use_directory_urls: true
+
+theme:
+  name: material
+  language: en
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search:
+      lang:
+        - en
+        - vi
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/XUanhoa04/aiops-engineering-handbook
+  generator: false
+
+extra_css:
+  - stylesheets/extra.css
+
+# Explicit nav — keeps dual-language tabs clear
+nav:
+  - Home: index.md
+  - Curriculum: CURRICULUM.md
+  - Tiếng Việt:
+      - 00 Introduction: vi/00-introduction.vi.md
+      - 01 Observability: vi/01-observability/README.vi.md
+      - 02 OpenTelemetry: vi/02-opentelemetry/README.vi.md
+      - 03 Prometheus: vi/03-prometheus/README.vi.md
+      - 04 Loki: vi/04-loki/README.vi.md
+      - 05 Tempo: vi/05-tempo/README.vi.md
+      - 06 Data Plane: vi/06-data-plane/README.vi.md
+      - 07 Kafka: vi/07-kafka/README.vi.md
+      - 08 Anomaly Detection: vi/08-anomaly-detection/README.vi.md
+      - 09 Alert Correlation: vi/09-alert-correlation/README.vi.md
+      - 10 Root Cause Analysis: vi/10-root-cause-analysis/README.vi.md
+      - 11 LLM Agent: vi/11-llm-agent/README.vi.md
+      - 12 Remediation: vi/12-remediation/README.vi.md
+      - 13 Production: vi/13-production/README.vi.md
+      - 14 Big Tech AIOps: vi/14-bigtech-aiops/README.vi.md
+      - 15 E-commerce & Banking: vi/15-ecommerce-banking/README.vi.md
+      - 16 Famous Incidents: vi/16-famous-incidents/README.vi.md
+      - 17 Topology & Change: vi/17-topology-change/README.vi.md
+  - English:
+      - 00 Introduction: en/00-introduction.md
+      - 01 Observability: en/01-observability/README.md
+      - 02 OpenTelemetry: en/02-opentelemetry/README.md
+      - 03 Prometheus: en/03-prometheus/README.md
+      - 04 Loki: en/04-loki/README.md
+      - 05 Tempo: en/05-tempo/README.md
+      - 06 Data Plane: en/06-data-plane/README.md
+      - 07 Kafka: en/07-kafka/README.md
+      - 08 Anomaly Detection: en/08-anomaly-detection/README.md
+      - 09 Alert Correlation: en/09-alert-correlation/README.md
+      - 10 Root Cause Analysis: en/10-root-cause-analysis/README.md
+      - 11 LLM Agent: en/11-llm-agent/README.md
+      - 12 Remediation: en/12-remediation/README.md
+      - 13 Production: en/13-production/README.md
+      - 14 Big Tech AIOps: en/14-bigtech-aiops/README.md
+      - 15 E-commerce & Banking: en/15-ecommerce-banking/README.md
+      - 16 Famous Incidents: en/16-famous-incidents/README.md
+      - 17 Topology & Change: en/17-topology-change/README.md
+  - Diagrams: assets/diagrams/README.md

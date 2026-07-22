@@ -5,14 +5,16 @@
 [![Status](https://img.shields.io/badge/status-active-brightgreen)](.)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Languages](https://img.shields.io/badge/languages-VI%20%7C%20EN-red)](.)
-[![Chapters](https://img.shields.io/badge/chapters-17%20%C3%97%202-blue)](docs/)
+[![Chapters](https://img.shields.io/badge/chapters-18%20%C3%97%202-blue)](docs/)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://xuanhoa04.github.io/aiops-engineering-handbook/)
 [![Audience](https://img.shields.io/badge/audience-SRE%20%7C%20DevOps%20%7C%20Platform%20%7C%20ML-orange)](.)
 [![GitHub](https://img.shields.io/badge/github-XUanhoa04%2Faiops--engineering--handbook-black)](https://github.com/XUanhoa04/aiops-engineering-handbook)
 
 | | |
 |---|---|
 | **Languages** | Tiếng Việt (`docs/vi/`) · English (`docs/en/`) |
-| **Chapters** | 17 per language (Foundation → Case Studies) |
+| **Chapters** | 18 per language (00–17) |
+| **Docs site** | [xuanhoa04.github.io/aiops-engineering-handbook](https://xuanhoa04.github.io/aiops-engineering-handbook/) |
 | **Level** | Staff / Principal SRE |
 | **Repo** | [github.com/XUanhoa04/aiops-engineering-handbook](https://github.com/XUanhoa04/aiops-engineering-handbook) |
 | **VI content** | [docs/vi/](docs/vi/) |
@@ -45,7 +47,10 @@ Trọng tâm bản này: **tư duy vận hành** — mental models, decision tre
 
 ![Telemetry Data Plane](docs/assets/diagrams/09-data-plane.png)
 
-**Layers:** Collect (OTel / Prometheus / Loki / Tempo) → **Data plane** (normalize · enrich · validate · hot/warm/cold · feature store) → Transport (Kafka / MSK) → Intelligence (anomaly → correlation → RCA → LLM) → Action (decision · remediation · notify) → Grafana / audit.
+![Topology and Change Data Plane](docs/assets/diagrams/10-topology-change.png)
+
+**Layers:** Collect → **Data plane** (normalize · enrich · store · feature) → Transport → Intelligence → Action.  
+**Side plane:** **Topology & change** (Ch.17) feeds enrich / correlation / RCA / remediation freezes.
 
 ---
 
@@ -71,9 +76,14 @@ graph LR
     M --> N[14 Big Tech]
     N --> O[15 Ecom Bank]
     O --> P[16 Incidents]
+    DP --> Q[17 Topology Change]
+    Q --> I
+    Q --> J
+    Q --> L
 
     style A fill:#2d3561,color:#fff
     style DP fill:#7c3aed,color:#fff
+    style Q fill:#7c3aed,color:#fff
     style M fill:#e94560,color:#fff
     style N fill:#0f766e,color:#fff
     style O fill:#0f766e,color:#fff
@@ -89,12 +99,15 @@ graph LR
 5. **Intelligence** (08–11): detect → correlate → RCA → LLM  
 6. **Action + Production** (12–13): remediation an toàn, dogfood, DR  
 7. **Case study** (14–16): Big Tech, e-com/bank, famous incidents  
+8. **Topology & change** (17): service graph + deploy/change bus (feed 06/09/10/12)  
+
+**Đọc online:** [GitHub Pages](https://xuanhoa04.github.io/aiops-engineering-handbook/) · local `mkdocs serve`
 
 ---
 
 ## Table of contents (dual language)
 
-**17 chapters** per language (VI + EN).
+**18 chapters** per language (VI + EN).
 
 ### 📖 Foundation
 
@@ -148,6 +161,12 @@ graph LR
 | 15 | [E-commerce & Banking](docs/vi/15-ecommerce-banking/README.vi.md) | [E-commerce & Banking](docs/en/15-ecommerce-banking/README.md) | BFCM, PCI, money path |
 | 16 | [Famous Incidents](docs/vi/16-famous-incidents/README.vi.md) | [Famous Incidents](docs/en/16-famous-incidents/README.md) | S3, DynamoDB DNS, Meta, Cloudflare |
 
+### 🗺️ Topology & change plane
+
+| # | Tiếng Việt | English | Topic |
+|---|------------|---------|--------|
+| 17 | [Topology & Change](docs/vi/17-topology-change/README.vi.md) | [Topology & Change](docs/en/17-topology-change/README.md) | Service graph, CMDB sync, deploy/change events, freezes |
+
 ---
 
 ## Document Dependency Graph
@@ -172,6 +191,10 @@ graph TD
     PROD --> BIG[14-bigtech-aiops]
     BIG --> DOM[15-ecommerce-banking]
     DOM --> INC[16-famous-incidents]
+    TOPO[17-topology-change] --> DP
+    TOPO --> AC
+    TOPO --> RCA
+    TOPO --> REM
 
     DP -.->|features| AD
     INC -.->|game days| PROD
@@ -229,6 +252,8 @@ EN: [Famous Incidents](docs/en/16-famous-incidents/README.md) → [Alert Correla
 | [docs/vi/00-introduction.vi.md](docs/vi/00-introduction.vi.md) | Bắt đầu tiếng Việt |
 | [docs/en/00-introduction.md](docs/en/00-introduction.md) | Start in English |
 | [docs/vi/06-data-plane/README.vi.md](docs/vi/06-data-plane/README.vi.md) | Normalize / enrich / store / feature (**when to use**) |
+| [docs/vi/17-topology-change/README.vi.md](docs/vi/17-topology-change/README.vi.md) | Topology graph + change/deploy bus |
+| [GitHub Pages](https://xuanhoa04.github.io/aiops-engineering-handbook/) | Đọc online (MkDocs Material) |
 | [docs/assets/diagrams/](docs/assets/diagrams/) | Architecture posters (PNG) |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 
@@ -264,4 +289,4 @@ MIT License — xem [LICENSE](LICENSE).
 
 ## Release
 
-Current: **v1.0.0** — dual-language complete curriculum (17 chapters) + data plane + architecture posters.
+Current: **v1.1.0** — 18 chapters (incl. Topology & Change) + **MkDocs GitHub Pages**.

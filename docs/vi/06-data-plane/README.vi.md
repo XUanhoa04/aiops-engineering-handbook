@@ -25,6 +25,8 @@
 
 ## Related Documents
 
+- [17 — Topology & Change](../17-topology-change/README.vi.md) — service graph + change/deploy bus
+
 - [07 — Kafka / Kinesis](../07-kafka/README.vi.md) — buffer & fan-out sau data plane
 - [08 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — consumer feature / train-serve
 - [09 — Alert Correlation](../09-alert-correlation/README.vi.md) — cần topology & canonical incident events

@@ -22,6 +22,8 @@
 
 ## Related Documents
 
+- [17 — Topology & Change](../17-topology-change/README.md) — service graph + change/deploy bus
+
 - [01 — Observability](../01-observability/README.md) — blind spots and “the dashboard also depends on the broken system”
 - [06 — Kafka](../07-kafka/README.md) — control plane / data plane separation in signal transport
 - [10 — LLM Agent](../11-llm-agent/README.md) — when LLMs help investigation and when they only add noise

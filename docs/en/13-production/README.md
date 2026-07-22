@@ -10,6 +10,8 @@ All previous chapters. This chapter synthesizes practical operations concerns.
 
 ## Related Documents
 
+- [17 — Topology & Change](../17-topology-change/README.md) — service graph + change/deploy bus
+
 - [07 — Anomaly Detection](../08-anomaly-detection/README.md) — precision-at-page, drift ops
 - [08 — Alert Correlation](../09-alert-correlation/README.md) — storm drills, topology health
 - [09 — Root Cause Analysis](../10-root-cause-analysis/README.md) — accuracy feedback, time budget

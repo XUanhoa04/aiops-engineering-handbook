@@ -18,3 +18,7 @@ _tmp_*.py
 # Local env
 .env
 .env.*
+
+# MkDocs build output
+site/
+.cache/
