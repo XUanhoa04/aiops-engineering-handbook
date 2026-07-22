@@ -1390,20 +1390,20 @@ LSTM (Long Short-Term Memory) là mạng neural hồi quy (recurrent neural netw
 
 ```mermaid
 graph LR
-    subgraph Input["Input Sequence (last 60 values)"]
-        T1[X_{t-60}] --> T2[X_{t-59}] --> T3[...] --> T4[X_{t-1}]
+    subgraph Input["Input Sequence last 60 values"]
+        T1["X(t-60)"] --> T2["X(t-59)"] --> T3["..."] --> T4["X(t-1)"]
     end
 
     subgraph LSTM["LSTM Model"]
-        H1[Hidden State h_1]
-        H2[Hidden State h_2]
-        H3[...]
-        PRED[Prediction Layer\nŷ_t]
+        H1["Hidden State h1"]
+        H2["Hidden State h2"]
+        H3["..."]
+        PRED["Prediction Layer y_hat(t)"]
     end
 
     subgraph Compare["Anomaly Score"]
-        ERR[MAE or RMSE\n|X_t - ŷ_t|]
-        THRESH[Threshold\n> 3σ of training errors?]
+        ERR["MAE or RMSE |X(t) - y_hat(t)|"]
+        THRESH["Threshold over 3 sigma of training errors?"]
     end
 
     T4 --> H1 --> H2 --> H3 --> PRED
