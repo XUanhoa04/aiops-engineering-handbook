@@ -8,19 +8,19 @@
 
 - Quen thuộc với kiến trúc microservices
 - Hiểu biết cơ bản về Prometheus, Grafana, hoặc các công cụ tương tự
-- Khuyến nghị: [00 — Introduction to AIOps](../00-introduction.md)
+- Khuyến nghị: [00 — Introduction to AIOps](../00-introduction.vi.md)
 
 ## Related Documents
 
-- [02 — OpenTelemetry](../02-opentelemetry/README.md) — pipeline thu thập
-- [03 — Prometheus](../03-prometheus/README.md) — lưu trữ metrics
-- [04 — Loki](../04-loki/README.md) — lưu trữ logs
-- [05 — Tempo](../05-tempo/README.md) — lưu trữ traces
-- [07 — Anomaly Detection](../07-anomaly-detection/README.md) — tiêu thụ dữ liệu khả năng quan sát
+- [02 — OpenTelemetry](../02-opentelemetry/README.vi.md) — pipeline thu thập
+- [03 — Prometheus](../03-prometheus/README.vi.md) — lưu trữ metrics
+- [04 — Loki](../04-loki/README.vi.md) — lưu trữ logs
+- [05 — Tempo](../05-tempo/README.vi.md) — lưu trữ traces
+- [07 — Anomaly Detection](../07-anomaly-detection/README.vi.md) — tiêu thụ dữ liệu khả năng quan sát
 
 ## Next Reading
 
-Sau chương này, hãy chuyển sang [02 — OpenTelemetry](../02-opentelemetry/README.md).
+Sau chương này, hãy chuyển sang [02 — OpenTelemetry](../02-opentelemetry/README.vi.md).
 
 ---
 
@@ -44,8 +44,14 @@ Sau chương này, hãy chuyển sang [02 — OpenTelemetry](../02-opentelemetry
 16. [Scaling Observability](#16-scaling-observability)
 17. [Security](#17-security)
 18. [Cost Management](#18-cost-management)
-19. [Production Review](#19-production-review)
-20. [Improvement Roadmap](#20-improvement-roadmap)
+19. [Tư duy problem-solving trong production](#19-tư-duy-problem-solving-trong-production)
+20. [Edge cases thực tế](#20-edge-cases-thực-tế)
+21. [Decision trees](#21-decision-trees)
+22. [Bài học từ Big Tech / public incidents](#22-bài-học-từ-big-tech--public-incidents)
+23. [Câu hỏi Socratic cho on-call](#23-câu-hỏi-socratic-cho-on-call)
+24. [Improvement experiments (30/60/90 ngày)](#24-improvement-experiments-306090-ngày)
+25. [Production Review](#25-production-review)
+26. [Improvement Roadmap](#26-improvement-roadmap)
 
 ---
 
@@ -248,7 +254,7 @@ buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
 buckets: [1, 5, 10, 30, 60, 120, 300, 600, 1800]
 ```
 
-> **Lưu ý**: Native Histograms (Prometheus 2.40+) tránh cần định nghĩa buckets trước. Xem [03 — Prometheus Architecture](../03-prometheus/README.md).
+> **Lưu ý**: Native Histograms (Prometheus 2.40+) tránh cần định nghĩa buckets trước. Xem [03 — Prometheus Architecture](../03-prometheus/README.vi.md).
 
 #### Summary
 
@@ -1287,11 +1293,451 @@ cost_optimization:
 
 ---
 
-## 19. Production Review
+## 19. Tư duy problem-solving trong production
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> Observability production không phải là "càng nhiều data càng tốt". Đó là khả năng **trả lời câu hỏi mới** về hệ thống mà bạn chưa biết trước sẽ hỏi. Monitoring chỉ trả lời câu hỏi đã được định nghĩa sẵn (threshold, alert rule). Khi incident xảy ra ở chỗ "chưa từng thấy", chỉ observability mới giúp đi tiếp.
+
+### 19.1 Monitoring vs Observability — khung quyết định on-call
+
+Trong 5 phút đầu của incident, on-call thường bị kéo vào **đèn báo** (alert đã fire). Tư duy đúng là chuyển nhanh từ *triệu chứng* sang *câu hỏi điều tra*:
+
+| Giai đoạn | Monitoring trả lời | Observability trả lời | Hành động kỹ sư |
+|---------|---------------------|--------------------------|----------------|
+| 0–2 phút | Có gì đang đỏ? | — | Xác nhận scope (service/region/tenant) |
+| 2–10 phút | Metric nào vượt ngưỡng? | **Tại sao** metric đó đổi? | Mở trace/log theo correlation |
+| 10–30 phút | Alert còn fire không? | Path nào / dependency nào? | Hypothesize + falsify |
+| Sau mitigate | Đã xong chưa? | Còn blast radius ẩn? | Verify SLO + residual risk |
+
+> [!TIP]
+> **Vì sao**
+> Nếu bạn chỉ "clear alert" mà không điều tra được *tại sao*, bạn đang làm **monitoring operations**, chưa làm **observability-driven response**. AIOps cũng sẽ fail ở cùng chỗ: nó cần context để propose remediation, không chỉ để page người.
+
+### 19.2 Ba cột trụ là *hệ tương quan*, không phải ba silo
+
+Lỗi tư duy phổ biến: "chúng ta đã có Prometheus + Loki + Tempo nên đã có observability". Đúng là có **ba loại dữ liệu**. Sai là thiếu **cầu nối**:
+
+1. **Metrics → Traces**: Exemplars (hoặc sample of high-latency requests) để từ spike P99 nhảy vào 1–vài trace thực.
+2. **Traces → Logs**: TraceID (và spanID) trong mọi structured log của request path.
+3. **Logs → Metrics**: Derived metrics từ LogQL / recording để biến log pattern thành time series cảnh báo được.
+
+Nếu thiếu một cầu, MTTR thường tăng 3–10× vì kỹ sư phải *đoán thời gian* và *grep thủ công*.
+
+### 19.3 Cardinality là bài toán *kinh tế + độ tin cậy*
+
+Cardinality cao không chỉ là "Prometheus chậm". Nó là:
+
+- **Chi phí**: RAM/TSDB tăng gần tuyến với active series.
+- **Độ tin cậy**: scrape slow → gaps → alert flapping / sai.
+- **Chất lượng tín hiệu**: quá nhiều series mảnh → dashboard vô dụng, AIOps nhiều noise.
+
+Khung câu hỏi khi thêm label mới:
+
+1. Label này **bounded** hay unbounded (user_id, request_id, email)?
+2. Nó cần cho **alert** / **SLO** hay chỉ cho debug hiếm?
+3. Có thể để ở **log/trace attribute** thay vì metric label không?
+4. Đã có **budget** series/service chưa?
+
+### 19.4 Brownout — "vẫn sống nhưng chết dần"
+
+Brownout là trạng thái nguy hiểm hơn outage rõ ràng:
+
+- Health check vẫn 200.
+- Error rate tăng nhẹ / latency P99 tăng / partial dependency fail.
+- User cảm nhận chậm; SLO burn chạy; on-call chưa page vì threshold "cứng" chưa chạm.
+
+> [!WARNING]
+> **Edge**
+> Static threshold `error_rate > 5%` **mù** với brownout 1–2% kéo dài 6 giờ — đủ đốt error budget tháng nếu SLO 99.9%. Dùng burn-rate multi-window + latency SLI, đừng chỉ availability binary.
+
+Tư duy phát hiện brownout:
+
+1. **SLO-first**: error budget remaining, không chỉ "up/down".
+2. **Saturation signals**: queue depth, thread pool, DB connections, GC pause.
+3. **Dependency health**: partial success (200 + empty body, fallback cache, degraded mode flags).
+4. **User journey metrics**: checkout complete rate, login success, search zero-result rate — business SLI.
+
+### 19.5 USE / RED misuse — framework đúng, áp dụng sai
+
+| Framework | Dùng đúng | Misuse thường gặp |
+|-----------|----------|---------------------|
+| **RED** (Rate, Errors, Duration) | Service/request-driven | Áp cho disk/CPU → metric vô nghĩa |
+| **USE** (Utilization, Saturation, Errors) | Resource (CPU, disk, net, pool) | Áp cho HTTP API mà bỏ duration → mù latency |
+| **Golden Signals** | User-facing service | Copy 4 signals mà không map SLI thực |
+
+> [!TIP]
+> **Vì sao**
+> RED mô tả **work**, USE mô tả **resource**. On-call giỏi dùng RED để biết *user có đau không*, rồi USE để biết *resource nào đang nghẽn*. Đảo thứ tự thường dẫn đến "CPU cao nhưng user không ảnh hưởng" hoặc ngược lại.
+
+### 19.6 Quy trình problem-solving 7 bước (production)
+
+```text
+1. Scope     : service / region / tenant / version nào?
+2. Signal    : RED trước, USE sau; business SLI nếu có
+3. Correlate : exemplar / TraceID / deploy marker
+4. Hypothesize: 2–3 nguyên nhân có thể (không 20)
+5. Falsify   : query/trace để loại trừ nhanh
+6. Mitigate  : rollback / scale / shed load / feature flag
+7. Learn     : metric gap? alert gap? runbook gap? cardinality debt?
+```
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> Bước 7 là nơi observability **cải thiện bản thân**. Mỗi incident nên để lại ít nhất một trong ba: (a) signal mới, (b) correlation mới, (c) cardinality/cost control mới.
+
+---
+
+## 20. Edge cases thực tế
+
+> [!WARNING]
+> **Edge**
+> Các case dưới đây là những "bẫy" hay gặp khi stack metrics/logs/traces đã "chạy" nhưng vẫn fail trong crisis. Mỗi case: triệu chứng → nguyên nhân → phát hiện → phòng.
+
+### EC-01 — Dashboard xanh, user đau (monitoring ≠ observability)
+
+| | |
+|--|--|
+| **Triệu chứng** | CPU/memory OK, error rate thấp, nhưng ticket "chậm checkout" tăng. |
+| **Nguyên nhân** | Alert/dashboard chỉ infrastructure; thiếu business SLI / journey metrics. |
+| **Phát hiện** | So sánh synthetic + RUM + server RED theo endpoint critical path. |
+| **Phòng** | Mỗi user journey có SLI; alert burn-rate; dashboard "customer" tách khỏi "infra". |
+
+### EC-02 — Cardinality explosion sau deploy feature flag label
+
+| | |
+|--|--|
+| **Triệu chứng** | Prometheus OOM / scrape duration tăng vọt; Grafana timeout. |
+| **Nguyên nhân** | Label `flag_variant`, `experiment_id`, hoặc `user_tier_detail` unbounded. |
+| **Phát hiện** | `prometheus_tsdb_head_series` jump; top-N series by metric name. |
+| **Phòng** | Label allowlist; CI check metric names; limit per-metric series; drop relabel. |
+
+### EC-03 — Correlation gãy: có TraceID nhưng log không có
+
+| | |
+|--|--|
+| **Triệu chứng** | Mở trace được, "Logs for this trace" trống. |
+| **Nguyên nhân** | Logger không inject context; async worker mất MDC; lib log cũ. |
+| **Phát hiện** | Sampling random logs: % có `trace_id`; canary service. |
+| **Phòng** | Standard logging middleware; contract test; collector transform enforce field. |
+
+### EC-04 — Exemplars tắt / không store
+
+| | |
+|--|--|
+| **Triệu chứng** | Histogram latency spike nhưng không click sang trace. |
+| **Nguyên nhân** | SDK chưa bật exemplars; Prometheus thiếu exemplar-storage; Grafana datasource. |
+| **Phát hiện** | API `/api/v1/query` không có exemplar; check feature flags. |
+| **Phòng** | Checklist instrumentation; smoke test "metric→trace" trong staging. |
+
+### EC-05 — Brownout do dependency partial failure
+
+| | |
+|--|--|
+| **Triệu chứng** | P99 tăng, error rate ~1%, circuit breaker half-open lung tung. |
+| **Nguyên nhân** | Downstream timeout + retry storm; fallback che error. |
+| **Phát hiện** | Trace waterfall: wait time; metric retry count; queue lag. |
+| **Phòng** | Budget timeout; retry jitter; separate SLI for degraded mode; alert on retry rate. |
+
+### EC-06 — USE dashboard gây false calm
+
+| | |
+|--|--|
+| **Triệu chứng** | CPU 40%, on-call kết luận "khỏe", nhưng P99 5s. |
+| **Nguyên nhân** | Nghẽn ở lock/thread pool/DB — utilization thấp, saturation cao. |
+| **Phát hiện** | Saturation metrics (queue, wait, pool in-use); profiles. |
+| **Phòng** | USE đầy đủ 3 trục; luôn pair với RED; continuous profiling cho critical services. |
+
+### EC-07 — RED misuse trên batch job
+
+| | |
+|--|--|
+| **Triệu chứng** | Rate=0 hầu hết thời gian → alert spam hoặc im lặng. |
+| **Nguyên nhân** | Batch không phải request stream; RED không map. |
+| **Phát hiện** | Job success/fail, lag, duration vs SLA window. |
+| **Phòng** | Metrics theo job semantics; dead-man's switch cho schedule; freshness SLI. |
+
+### EC-08 — High-cardinality logs giết Loki query (nhầm là "obs tốt")
+
+| | |
+|--|--|
+| **Triệu chứng** | Log volume OK nhưng query 15phút timeout; stream explosion. |
+| **Nguyên nhân** | Label `user_id` / `request_id` trên Loki stream. |
+| **Phát hiện** | `loki_ingester_memory_streams`; active streams by tenant. |
+| **Phòng** | Label policy: low-cardinality only; ID nằm trong JSON line. |
+
+### EC-09 — Sampling làm mất error traces
+
+| | |
+|--|--|
+| **Triệu chứng** | Error rate metrics tăng, Tempo không có error traces. |
+| **Nguyên nhân** | Head sampling 1% trước khi biết status; không tail sample errors. |
+| **Phát hiện** | So sánh error count metrics vs error traces count. |
+| **Phòng** | Tail-based sampling: 100% errors + slow; baseline sample ok traffic. |
+
+### EC-10 — Time skew làm correlation sai
+
+| | |
+|--|--|
+| **Triệu chứng** | Log và metric không "khớp" cùng sự kiện; trace duration lạ. |
+| **Nguyên nhân** | NTP drift container/VM; client clock; multi-region without TZ discipline. |
+| **Phát hiện** | So sánh `node_timex`; compare pod clock vs scrape time. |
+| **Phòng** | chrony/NTP; prefer server timestamps; document clock SLOs for agents. |
+
+### EC-11 — Alert fatigue → ignore brownout
+
+| | |
+|--|--|
+| **Triệu chứng** | 200 alerts/night; team mute; SLO burn thật bị bỏ qua. |
+| **Nguyên nhân** | Threshold static, missing inhibit/group, no severity model. |
+| **Phát hiện** | MTTA tăng; % alerts auto-resolved; page load survey. |
+| **Phòng** | SLO burn multi-window; severity taxonomy; weekly alert hygiene; error budget policy. |
+
+### EC-12 — "Observability tax" làm app chậm
+
+| | |
+|--|--|
+| **Triệu chứng** | Sau bật auto-instrument + verbose logs, P99 tăng 20–40%. |
+| **Nguyên nhân** | Agent overhead; sync export; log I/O; too many spans/request. |
+| **Phát hiện** | A/B canary có/không instrumentation; profile CPU in agent. |
+| **Phòng** | Batch export; sample; span limits; resource requests cho agent; budget overhead %. |
+
+---
+
+## 21. Decision trees
+
+### 21.1 Incident: bắt đầu từ đâu?
+
+```mermaid
+flowchart TD
+    A[Alert / User report] --> B{User impact rõ?}
+    B -->|Có| C[Xem RED + business SLI]
+    B -->|Không rõ| D[Xem synthetic / RUM / support volume]
+    C --> E{Error hay Latency?}
+    E -->|Error| F[Trace error samples + logs theo TraceID]
+    E -->|Latency| G[Histogram + exemplars + saturation USE]
+    F --> H{Correlation có khớp?}
+    G --> H
+    H -->|Không| I[Sửa gap instrumentation / time / sampling]
+    H -->|Có| J[Hypothesize 2-3 causes]
+    J --> K[Mitigate + verify SLO]
+```
+
+### 21.2 Thêm metric label mới?
+
+```mermaid
+flowchart TD
+    A[Yêu cầu label mới] --> B{Bounded cardinality?}
+    B -->|Không| C[Nhét vào log/trace attribute]
+    B -->|Có| D{Cần cho alert/SLO?}
+    D -->|Không| E[Tránh metric label; dùng ad-hoc query]
+    D -->|Có| F{Nằm trong series budget?}
+    F -->|Không| G[Aggregate / hash bucket / drop low-value dims]
+    F -->|Có| H[Add + monitor head_series + unit test relabel]
+```
+
+### 21.3 Monitoring hay cần đầu tư observability sâu hơn?
+
+```mermaid
+flowchart LR
+    A[Team chỉ có uptime check + CPU] --> B{MTTR > 30phút thường xuyên?}
+    B -->|Có| C[Cần correlation 3 pillars]
+    B -->|Không| D{Có brownout / partial fail?}
+    D -->|Có| C
+    D -->|Không| E[Giữ monitoring tối thiểu + SLO cơ bản]
+    C --> F[OTel + exemplars + structured logs + burn alerts]
+```
+
+### 21.4 Chọn RED vs USE cho dashboard mới
+
+| Câu hỏi | Nếu CÓ | Framework |
+|---------|--------|-----------|
+| Đây là service nhận request? | ✓ | RED (+ Golden Signals) |
+| Đây là CPU/disk/pool/queue? | ✓ | USE |
+| Cần biết user có đau? | ✓ | RED/SLI trước |
+| Cần biết vì sao nghẽn? | ✓ | USE + profiles sau |
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> Decision tree không thay runbook chi tiết, nhưng **giảm thrash** trong 10 phút đầu — đúng lúc não on-call dễ bị kéo vào rabbit hole sai.
+
+---
+
+## 22. Bài học từ Big Tech / public incidents
+
+> [!TIP]
+> **Vì sao**
+> Public postmortems dạy cách **tư duy**, không phải copy tool stack. Map mental model về [Ch13 Big Tech AIOps](../13-bigtech-aiops/README.vi.md) và [Ch15 Famous Incidents](../15-famous-incidents/README.vi.md).
+
+### 22.1 "Everything is fine" dashboards — Google SRE mindset
+
+Google SRE nhấn mạnh **SLI theo user experience**, không phải "máy còn ping". Nhiều outage lớn vẫn có infra green vì:
+
+- Health check quá nông (shallow).
+- Error được nuốt bằng fallback.
+- Multi-layer cache che origin fail.
+
+**Bài học cho chapter này**: định nghĩa SLI gần user; deep health; phân biệt *serving success* và *correct success*.
+
+### 22.2 Cardinality / cost incidents trong metric platforms
+
+Các platform metrics tự host (và vendor) thường gặp "sudden series explosion" sau:
+
+- Deploy thêm label pod/hash.
+- Client SDK default high-cardinality.
+- Multi-tenant không có quota.
+
+**Bài học**: cardinality là **SEV-level risk** ngang outage app; cần budget, quota, break-glass drop rules.
+
+### 22.3 Partial brownouts (AWS / multi-AZ patterns)
+
+Nhiều public incident là **degraded**, không full down: một AZ chậm, control plane sticky, retry amplify.
+
+**Bài học**:
+
+- Alert on **tail latency + saturation**, không chỉ availability.
+- Load shedding và retry budget là signal cần observe.
+- Correlation multi-region timestamps.
+
+### 22.4 Observability during the outage of observability
+
+Khi Prometheus/Grafana/IdP die, team mù. Postmortems hay khuyến nghị:
+
+- Dead man's switch ngoài band.
+- Break-glass local dashboards / cached.
+- Multi-region meta-monitoring.
+
+**Map**: xem lại section *Monitoring the Monitoring Stack* của chapter này + production HA ở Ch03/Ch12.
+
+### 22.5 Mental links sang Ch13 / Ch15
+
+| Bài học | Áp vào observability | Sang chapter |
+|---------|------------------------|--------------|
+| SLI/SLO-first | Giảm alert noise | Ch13 patterns, Ch07 anomaly |
+| Correlation-first IR | MTTR | Ch09 RCA, Ch10 LLM agent |
+| Cost as reliability | Cardinality budget | Ch12 production, Ch15 cost cases |
+| Degraded mode visibility | Brownout detection | Ch11 remediation safety |
+
+---
+
+## 23. Câu hỏi Socratic cho on-call
+
+Dùng khi mentor on-call mới hoặc tự review sau incident. **Không** để checklist máy móc — mỗi câu buộc nêu *bằng chứng*.
+
+### 23.1 5 phút đầu
+
+1. User impact là gì *cụ thể* (endpoint, tenant, region)? Bằng chứng nào?
+2. Đây là outage hard hay brownout? Làm sao phân biệt bằng SLI?
+3. Signal nào **đổi trước** (leading) và signal nào chỉ là hậu quả?
+4. Deploy / config / traffic shift nào trong 24h? Có marker trên dashboard không?
+5. Nếu chỉ được một loại telemetry, bạn chọn gì *bây giờ* và tại sao?
+
+### 23.2 Correlation & data quality
+
+6. Từ metric spike, bạn nhảy sang trace được trong <2 phút không? Nếu không, gãy ở đâu?
+7. Trace có đủ span business quan trọng không, hay chỉ infra noise?
+8. Log có TraceID và đủ field để falsify hypothesis không?
+9. Sampling có đang che mất class lỗi này không?
+10. Clock/time range bạn đang xem có khớp multi-source không?
+
+### 23.3 Framework & cardinality
+
+11. Bạn đang dùng RED hay USE? Có đúng loại hệ thống không?
+12. Saturation nào có thể cao trong khi utilization thấp?
+13. Metric label nào đang đắt nhất về cardinality liên quan service này?
+14. Nếu tăng traffic 10×, observability stack chết trước hay app chết trước?
+15. Alert này có map error budget không, hay chỉ "CPU high"?
+
+### 23.4 Sau mitigate
+
+16. Làm sao biết *hết* impact chứ không chỉ hết alert?
+17. Còn residual risk ở dependency nào?
+18. Gap observability nào làm chậm bạn hôm nay?
+19. Cần thêm signal, hay bớt noise?
+20. Experiment 30 ngày nào sẽ ngăn class này lặp lại?
+
+> [!WARNING]
+> **Edge**
+> Câu hỏi Socratic kém hiệu quả nếu blamful. Mục tiêu là **cải thiện hệ thống quan sát**, không phải "ai quên bật TraceID".
+
+---
+
+## 24. Improvement experiments (30/60/90 ngày)
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> Đừng "triển khai observability nền tảng" một lần. Chạy **experiment có metric thành công** theo nhịp 30/60/90.
+
+### 30 ngày — Baseline & gaps
+
+| Experiment | Cách làm | Success metric |
+|------------|---------|----------------|
+| Inventory signals | Liệt kê critical journeys + RED hiện có | 100% journey có ít nhất Rate+Error |
+| Correlation audit | Random 20 incidents/traces: % jump metric→trace→log | ≥ 70% thành công |
+| Cardinality top offenders | Top 20 metrics by series | Có owner + plan drop/aggregate |
+| Alert hygiene | Đếm pages/tuần + % no action | Giảm 20% noisy alerts |
+| Brownout tabletop | Diễn tập partial fail 1 dependency | Runbook + SLI gap list |
+
+**Deliverables 30 ngày**:
+
+- Dashboard "Customer / SLI" tách "Infra".
+- Document label policy 1 trang.
+- List 10 gap correlation ưu tiên.
+
+### 60 ngày — Fix highest leverage
+
+| Experiment | Cách làm | Success metric |
+|------------|---------|----------------|
+| Exemplars path | Bật SDK + Prometheus + Grafana | On-call drill <2 phút metric→trace |
+| TraceID in logs | Middleware + collector enforce | ≥ 95% app logs có trace_id |
+| Burn-rate alerts | Thay 3 static thresholds/service | MTTA hữu ích tăng (survey) |
+| Series budget | Limit + recording aggregate | head_series ổn / +alert |
+| USE+RED pairing | Template dashboard chuẩn | 100% tier-1 services |
+
+**Deliverables 60 ngày**:
+
+- Tier-1 services: full correlation path.
+- Cardinality budget trong CI/platform gate (nếu có).
+- Postmortem template có mục "observability gap".
+
+### 90 ngày — Scale habits + AIOps-ready
+
+| Experiment | Cách làm | Success metric |
+|------------|---------|----------------|
+| Profiling pilot | 1–2 service critical + Pyroscope/compat | 1 incident dùng profile để RCA |
+| Cost per signal | Metrics vs logs vs traces $/day | Forecast + caps |
+| Synthetic + RUM | Critical journeys | Phát hiện brownout trước ticket |
+| Observability chaos | Kill Grafana/IdP drill | Dead man + break-glass OK |
+| Data for AIOps | Schema ổn định events | Feed được Ch08/Ch09/Ch10 |
+
+**Deliverables 90 ngày**:
+
+- Error budget policy + review nhịp.
+- Platform scorecard: correlation %, series budget, MTTR trend.
+- Backlog experiments tiếp theo map Ch13/Ch15.
+
+### Gợi ý đo lường chương trình
+
+```text
+North-star (gợi ý):
+  - Median time metric_spike → root_cause_hypothesis  (giảm)
+  - % incidents with full correlation path used       (tăng)
+  - Active series / service within budget             (tuân thủ)
+  - Pages per week that change user impact decision   (tăng tỷ lệ hữu ích)
+  - Observability cost / 1k requests                  (giữ ổn hoặc giảm)
+```
+
+> [!TIP]
+> **Vì sao**
+> 30/60/90 buộc team **chứng minh giá trị** trước khi xin budget Thanos/multi-region. Leadership hiểu "MTTR giảm 35%" hơn "chúng ta cần thêm 3 exporters".
+
+---
+
+## 25. Production Review
 
 **Các vấn đề tiềm ẩn**:
 
-1. **SPOF trên alert pipeline**: Alertmanager vẫn là SPOF tiềm ẩn dù Prometheus chạy HA pair. Khắc phục: Alertmanager cluster 3 nodes + mesh gossip. Chi tiết trong [Ch03-Prometheus/alerting](../03-prometheus/README.md).
+1. **SPOF trên alert pipeline**: Alertmanager vẫn là SPOF tiềm ẩn dù Prometheus chạy HA pair. Khắc phục: Alertmanager cluster 3 nodes + mesh gossip. Chi tiết trong [Ch03-Prometheus/alerting](../03-prometheus/README.vi.md).
 
 2. **Loki stream selector performance**: Queries LogQL không có stream selectors → full table scan. Áp đặt strict label policies.
 
@@ -1312,7 +1758,7 @@ cost_optimization:
 
 ---
 
-## 20. Improvement Roadmap
+## 26. Improvement Roadmap
 
 ### V2 — Advanced Observability
 - **Continuous Profiling**: Pyroscope — CPU/memory liên kết với traces

@@ -6,19 +6,19 @@
 
 ## Prerequisites
 
-- [01 — Observability](../01-observability/README.md) — phải hiểu rõ các khái niệm metrics, logs, traces
+- [01 — Observability](../01-observability/README.vi.md) — phải hiểu rõ các khái niệm metrics, logs, traces
 - Kiến thức Kubernetes cơ bản (DaemonSet, Deployment, ConfigMap)
 
 ## Related Documents
 
-- [03 — Prometheus](../03-prometheus/README.md) — nhận metrics từ OTel Collector
-- [04 — Loki](../04-loki/README.md) — nhận logs từ OTel Collector
-- [05 — Tempo](../05-tempo/README.md) — nhận traces từ OTel Collector
-- [06 — Kafka](../06-kafka/README.md) — OTel Collector có thể export sang Kafka
+- [03 — Prometheus](../03-prometheus/README.vi.md) — nhận metrics từ OTel Collector
+- [04 — Loki](../04-loki/README.vi.md) — nhận logs từ OTel Collector
+- [05 — Tempo](../05-tempo/README.vi.md) — nhận traces từ OTel Collector
+- [06 — Kafka](../06-kafka/README.vi.md) — OTel Collector có thể export sang Kafka
 
 ## Next Reading
 
-Sau chương này, hãy chuyển sang [03 — Prometheus](../03-prometheus/README.md).
+Sau chương này, hãy chuyển sang [03 — Prometheus](../03-prometheus/README.vi.md).
 
 ---
 
@@ -41,7 +41,13 @@ Sau chương này, hãy chuyển sang [03 — Prometheus](../03-prometheus/READM
 15. [Scaling](#15-scaling)
 16. [Security](#16-security)
 17. [Cost](#17-cost)
-18. [Production Review](#18-production-review)
+18. [Tư duy problem-solving trong production](#18-tư-duy-problem-solving-trong-production)
+19. [Edge cases thực tế](#19-edge-cases-thực-tế)
+20. [Decision trees](#20-decision-trees)
+21. [Bài học từ Big Tech / public incidents](#21-bài-học-từ-big-tech--public-incidents)
+22. [Câu hỏi Socratic cho on-call](#22-câu-hỏi-socratic-cho-on-call)
+23. [Improvement experiments (30/60/90 ngày)](#23-improvement-experiments-306090-ngày)
+24. [Production Review](#24-production-review)
 
 ---
 
@@ -1022,7 +1028,403 @@ Logs — tác động của filter:
 
 ---
 
-## 18. Production Review
+## 18. Tư duy problem-solving trong production
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> OpenTelemetry không phải "cài agent xong là xong". Production OTel là bài toán **độ đúng của context**, **thứ tự xử lý**, và **điểm thất bại đơn lẻ (SPOF)** trên đường telemetry. On-call OTel giỏi hỏi: *dữ liệu có mặt không, có đúng không, và có đủ rẻ để sống sót peak traffic không?*
+
+### 18.1 Auto vs Manual instrumentation — chọn bằng câu hỏi, không bằng mốt
+
+| Câu hỏi | Auto-instrumentation | Manual instrumentation |
+|---------|----------------------|------------------------|
+| Framework/HTTP/DB phổ biến? | Ưu tiên auto | — |
+| Business span (checkout, risk score)? | Không đủ | **Bắt buộc manual** |
+| Legacy lib không có plugin? | Có thể miss | Manual / wrapper |
+| Thời gian time-to-value | Nhanh | Chậm hơn, sâu hơn |
+| Rủi ro overhead / version pin | Agent version risk | Code ownership |
+
+> [!TIP]
+> **Vì sao**
+> Auto cho **coverage**; manual cho **meaning**. AIOps và RCA cần meaning (span name ổn định, attributes semantic). Strategy thắng: auto làm nền + manual cho critical path + semconv.
+
+Quy tắc ngón tay cái:
+
+1. Tier-1 HTTP/gRPC/DB/messaging → auto trước.
+2. Mọi boundary domain (payment, authz decision, saga step) → manual span.
+3. Không manual-span từng hàm nội bộ — noise + cost.
+4. Attributes theo [semantic conventions](https://opentelemetry.io/docs/specs/semconv/); tránh invent `my_company_foo` nếu đã có chuẩn.
+
+### 18.2 Context propagation breaks — "trace bị cụt" là bug sản xuất
+
+Context propagation là **xương sống** distributed tracing. Gãy thường im lặng:
+
+- Service A tạo root; Service B tạo **root mới** (mất parent).
+- Async: publish message không inject; consumer không extract.
+- Gateway/mesh strip headers (`traceparent`, baggage).
+- Language boundary: Java → Node qua HTTP thiếu propagator config.
+- Fan-out: chỉ child đầu tiên có context.
+
+Tư duy debug:
+
+```text
+1. Lấy 1 request_id/user action cụ thể
+2. Tìm span đầu (root) — service nào?
+3. So sánh network hop vs span tree
+4. Hop nào có request nhưng không có child span? → break tại đó
+5. Check: propagator, header allowlist, middleware order, async context
+```
+
+> [!WARNING]
+> **Edge**
+> "Có traces" ≠ "propagation đúng". Dashboard Tempo full màu vẫn có thể là **rừng root span rời**, không phải 1 journey. Đo bằng % traces multi-service depth ≥ N.
+
+### 18.3 Collector SPOF — agent chết, bạn mù; gateway chết, bạn mất sample có chủ đích
+
+Hai lớp deployment phổ biến:
+
+- **Agent (DaemonSet/sidecar)**: gần app; fail → node/pod đó mất telemetry local.
+- **Gateway (Deployment)**: tail sampling, routing, fan-out; fail → mất enrichment/sampling policy tập trung.
+
+Tư duy reliability:
+
+| Thành phần | Failure mode | Impact | Mitigation |
+|------------|--------------|--------|------------|
+| Agent | OOM / crash | Mất signals node | resource limit đúng, memory_limiter, restart policy |
+| Gateway | 1 replica | SPOF sampling/export | ≥3 replicas + PDB |
+| Gateway LB | round-robin spoils tail sample | Decision sai | hash by traceID |
+| Exporter backend | Tempo/Loki down | Backpressure / drop | queue + retry + disk WAL |
+| Config reload | bad YAML | Pipeline stop | validation CI, canary collector |
+
+### 18.4 Processor ordering — *tại sao thứ tự quan trọng hơn "có processor"*
+
+Pipeline OTel **không giao hoán**. Ví dụ sai kinh điển:
+
+```text
+SAI:  filter → batch → memory_limiter
+      (đã tốn RAM trước khi limit)
+
+SAI:  tail_sampling → attributes(add tenant)
+      (sample trước khi có đủ attr để policy)
+
+ĐÚNG (rút gọn):
+  memory_limiter → [attributes/filter/transform] → batch → exporters
+  (tail_sampling thường gần cuối path traces, sau khi đã enrich đủ)
+```
+
+> [!TIP]
+> **Vì sao**
+> `memory_limiter` đầu tiên bảo vệ process. `batch` gần exporter tối ưu network. `filter` sớm giảm CPU. `transform` trước khi export để backend nhận schema sạch. Sai thứ tự = OOM + drop ngẫu nhiên + policy sampling sai.
+
+### 18.5 Problem-solving loop cho "không thấy data"
+
+```text
+App SDK → Agent → Gateway → Backend (Prom/Loki/Tempo)
+   |         |        |            |
+   export    receive  process      ingest
+   errors    refused  drops        rejections
+```
+
+Luôn đi **từ phải sang trái** nếu backend empty, hoặc **trái sang phải** nếu app log export error:
+
+1. Backend có nhận tenant/namespace khác không?
+2. Gateway exporter metrics: sent / failed / queue.
+3. Agent → gateway connectivity / mTLS / auth.
+4. SDK endpoint env (`OTEL_EXPORTER_OTLP_ENDPOINT`) đúng port/protocol.
+5. Sampling: có thể đang drop 99% — dùng forced error trace test.
+
+---
+
+## 19. Edge cases thực tế
+
+### EC-01 — Auto-instrument "có span" nhưng thiếu business context
+
+| | |
+|--|--|
+| **Triệu chứng** | Trace chỉ thấy `HTTP GET` / `SELECT`; không biết bước checkout nào fail. |
+| **Nguyên nhân** | Chỉ auto; không manual span domain. |
+| **Phát hiện** | Review span names trên critical path; product hỏi "chỗ nào?". |
+| **Phòng** | Instrumentation standard: list required business spans per service. |
+
+### EC-02 — Manual span quá mịn → cost + noise
+
+| | |
+|--|--|
+| **Triệu chứng** | 500+ spans/request; Tempo chậm; bill tăng. |
+| **Nguyên nhân** | Span mọi helper; loop tạo span. |
+| **Phát hiện** | p99 spans per trace; collector throughput. |
+| **Phòng** | Span budget/request; suppress library spans; sample internal. |
+
+### EC-03 — `traceparent` bị API gateway strip
+
+| | |
+|--|--|
+| **Triệu chứng** | Mỗi service một root trace; correlation vỡ cross-service. |
+| **Nguyên nhân** | Allowlist header không gồm W3C trace context. |
+| **Phát hiện** | So request headers ingress vs app; Tempo service graph đứt. |
+| **Phòng** | Gateway config allow `traceparent`, `tracestate`, baggage; contract test. |
+
+### EC-04 — Async messaging mất context
+
+| | |
+|--|--|
+| **Triệu chứng** | HTTP path có trace; consumer Kafka là root riêng. |
+| **Nguyên nhân** | Không inject vào message header/carrier. |
+| **Phát hiện** | Trace tree dừng ở produce; consumer không parent. |
+| **Phòng** | Propagator cho Kafka/SQS; test e2e produce→consume. |
+
+### EC-05 — Collector single replica gateway
+
+| | |
+|--|--|
+| **Triệu chứng** | Deploy gateway → gap 2–5 phút telemetry toàn cluster. |
+| **Nguyên nhân** | 1 pod; rolling update không PDB. |
+| **Phát hiện** | `up` metric gateway; export lag. |
+| **Phòng** | min 3 replicas, PDB, maxUnavailable 1; pre-stop drain. |
+
+### EC-06 — Tail sampling sai khi scale-out
+
+| | |
+|--|--|
+| **Triệu chứng** | Error traces "biến mất" dù policy 100% errors. |
+| **Nguyên nhân** | Spans cùng trace vào khác replica; decision không consistent. |
+| **Phát hiện** | So error metrics vs kept error traces; load balancer mode. |
+| **Phòng** | Consistent hash routing by traceID; hoặc load-balancing exporter. |
+
+### EC-07 — memory_limiter không đứng đầu pipeline
+
+| | |
+|--|--|
+| **Triệu chứng** | Collector OOMKill dù đã set limiter. |
+| **Nguyên nhân** | Processor nặng chạy trước; batch phình RAM. |
+| **Phát hiện** | Pipeline config review; container memory working set. |
+| **Phòng** | Lint config: memory_limiter first; load test. |
+
+### EC-08 — filter sau batch / sai điều kiện → nuốt error logs
+
+| | |
+|--|--|
+| **Triệu chứng** | Production thiếu ERROR logs; chỉ còn INFO. |
+| **Nguyên nhân** | Filter severity sai; transform field name lệch. |
+| **Phát hiện** | Canary log ERROR với marker; metric log count by severity. |
+| **Phòng** | Unit test OTTL; staged rollout filter; never drop unknown severity blindly. |
+
+### EC-09 — Java agent version pin gây deadlock / permgen issues
+
+| | |
+|--|--|
+| **Triệu chứng** | Sau upgrade agent, latency/thread spike. |
+| **Nguyên nhân** | Incompatible bytecode instrumentation. |
+| **Phát hiện** | Diff agent version canary; flight recorder. |
+| **Phòng** | Pin version; canary 5%; rollback playbook; matrix test JDK. |
+
+### EC-10 — Fan-out exporter: một backend chậm làm backpressure toàn pipeline
+
+| | |
+|--|--|
+| **Triệu chứng** | Loki chậm → traces cũng drop. |
+| **Nguyên nhân** | Shared pipeline/queue; blocking export. |
+| **Phát hiện** | Exporter queue size; failed per backend. |
+| **Phòng** | Tách pipeline; sending_queue; timeout; isolate slow sink. |
+
+### EC-11 — Resource attributes thiếu `service.name`
+
+| | |
+|--|--|
+| **Triệu chứng** | Grafana hiện `unknown_service`; khó filter. |
+| **Nguyên nhân** | SDK resource detector miss; env chưa set. |
+| **Phát hiện** | Count spans without service.name. |
+| **Phòng** | Enforce tại collector (transform default); platform chart defaults. |
+
+### EC-12 — PII lọt baggage / attributes
+
+| | |
+|--|--|
+| **Triệu chứng** | Email/token xuất hiện trên Tempo/Loki. |
+| **Nguyên nhân** | Dev set attribute debug; baggage propagate secrets. |
+| **Phát hiện** | Scan attributes; DLP sample; security review. |
+| **Phòng** | Redact processor; allowlist attributes; ban sensitive keys in CI. |
+
+---
+
+## 20. Decision trees
+
+### 20.1 Auto, manual, hay hybrid?
+
+```mermaid
+flowchart TD
+    A[Service mới / legacy] --> B{Có OTel auto cho stack?}
+    B -->|Không| C[Manual + library wrappers]
+    B -->|Có| D[Bật auto cho HTTP/DB/RPC]
+    D --> E{Critical business path?}
+    E -->|Có| F[Thêm manual spans + semconv attrs]
+    E -->|Không| G[Giữ auto + resource attrs chuẩn]
+    F --> H[Đặt span budget + review cardinality attrs]
+    C --> H
+    G --> H
+```
+
+### 20.2 Trace bị cụt — khoanh vùng
+
+```mermaid
+flowchart TD
+    A[Trace depth = 1 dù multi-service call] --> B{Header traceparent tới service B?}
+    B -->|Không| C[Gateway/mesh/proxy strip hoặc client không inject]
+    B -->|Có| D{SDK B extract + propagator đúng?}
+    D -->|Không| E[Sửa propagator / middleware order]
+    D -->|Có| F{Async / thread hop?}
+    F -->|Có| G[Context lost in executor — wrap context]
+    F -->|Không| H[Sampling drop child? kiểm tra collector policy]
+```
+
+### 20.3 Collector drop data
+
+```mermaid
+flowchart TD
+    A[Thiếu telemetry] --> B{SDK export errors?}
+    B -->|Có| C[Endpoint / TLS / auth / backpressure]
+    B -->|Không| D{Agent receive tăng?}
+    D -->|Không| E[Network path / DNS / NetworkPolicy]
+    D -->|Có| F{Processor drop metrics tăng?}
+    F -->|Có| G[Filter/tail_sample/memory_limiter]
+    F -->|Không| H{Exporter failed?}
+    H -->|Có| I[Backend health + queue + retry]
+    H -->|Không| J[Sai tenant/labels — data ở chỗ khác]
+```
+
+### 20.4 Sửa processor order
+
+```text
+Luôn hỏi:
+1. Cái gì bảo vệ process? → memory_limiter sớm
+2. Cái gì giảm volume sớm? → filter sớm (sau limit)
+3. Cái gì cần full signal? → tail_sampling sau enrich
+4. Cái gì tối ưu I/O? → batch gần exporter
+```
+
+---
+
+## 21. Bài học từ Big Tech / public incidents
+
+> [!TIP]
+> **Vì sao**
+> Vendor-neutral không miễn nhiễm operational failure. Map sang [Ch13 Big Tech](../13-bigtech-aiops/README.vi.md) / [Ch15 Famous Incidents](../15-famous-incidents/README.vi.md).
+
+### 21.1 Agent/sidecar blast radius
+
+Các org lớn học rằng **instrumentation agent** là dependency runtime: CVE, perf regression, incompat JDK. Pattern: progressive delivery cho agent giống app; kill switch tắt instrumentation.
+
+### 21.2 Sampling policy incidents
+
+Public write-ups về tracing cost: head sample thấp → mất rare bugs; sample cao → bill cháy. Tail-based + error-aware là đáp án engineering, nhưng **routing** phải đúng (traceID affinity).
+
+### 21.3 Single pipeline / multi-sink coupling
+
+Khi một sink (log) chậm kéo cả metrics/traces, multi-signal platform "tự DDoS". Bài học: isolate pipelines, backpressure per signal, priority queues (metrics > traces > debug logs trong khủng hoảng).
+
+### 21.4 Semantic convention drift
+
+Không chuẩn hóa span/attr → AIOps và dashboard vỡ sau 6 tháng. Big tech invest schema governance; platform team review semconv như API review.
+
+### 21.5 Mental map
+
+| Bài học | Chapter OTel | Sang |
+|---------|--------------|------|
+| Progressive agent rollout | Operator/auto-instr | Ch12 production |
+| Sampling + cost | Tail sampling processor | Ch01 cost, Ch05 Tempo |
+| Pipeline isolation | Exporters/pipelines | Ch06 Kafka buffer patterns |
+| Schema governance | Attributes/transform | Ch09 RCA features, Ch10 agents |
+
+---
+
+## 22. Câu hỏi Socratic cho on-call
+
+### 22.1 Khi "không có trace"
+
+1. Bạn đang tìm theo TraceID, service name, hay khoảng thời gian? Cái nào đáng tin hơn lúc này?
+2. Request thật sự đi qua service nào? Có bằng chứng từ metrics/logs không?
+3. Đây là không export, bị filter, hay bị sample?
+4. Collector nào (agent/gateway) nằm trên path? Metrics collector nói gì?
+5. Protocol HTTP/gRPC OTLP có khớp endpoint không?
+
+### 22.2 Khi trace "có nhưng vô dụng"
+
+6. Span names có giúp bạn kể câu chuyện business không?
+7. Attribute nào thiếu để phân biệt tenant/version/region?
+8. Có bao nhiêu spans/request? Có đang tự làm nhiễu không?
+9. Error có được mark status=ERROR đúng không?
+10. Parent-child có phản ánh đúng dependency graph không?
+
+### 22.3 Khi collector/perf
+
+11. memory_limiter có đứng đầu không? Ai review thứ tự lần cuối?
+12. Nếu gateway mất 1 AZ, sampling decision còn đúng không?
+13. Backend chậm ảnh hưởng signal khác ra sao?
+14. Auto agent đang cộng bao nhiêu CPU/RAM so với budget?
+15. Có PII trên attributes không — bạn kiểm bằng cách nào?
+
+### 22.4 Sau sự cố
+
+16. Cần thêm manual span hay bớt auto noise?
+17. Test nào sẽ fail CI nếu propagation gãy lần nữa?
+18. Runbook collector OOM có đủ 5 lệnh đầu không?
+19. Experiment 30 ngày nào giảm time-to-first-useful-trace?
+20. Dữ liệu OTel đã sẵn sàng cho correlation Ch01 / RCA Ch09 chưa?
+
+---
+
+## 23. Improvement experiments (30/60/90 ngày)
+
+### 30 ngày — Visibility & safety
+
+| Experiment | Cách làm | Success metric |
+|------------|---------|----------------|
+| Propagation audit | 10 critical flows e2e | ≥80% multi-service traces depth OK |
+| Collector golden signals | Dashboard sent/refused/queue/OOM | Alert on drop rate |
+| Processor order lint | Policy + PR template | 100% pipelines memory_limiter first |
+| service.name coverage | Transform default | 0 unknown_service tier-1 |
+| Agent canary process | 1 namespace pin version | Rollback <15 phút documented |
+
+**Deliverables**: topology diagram agent→gateway→backends; list break points.
+
+### 60 ngày — Quality & cost
+
+| Experiment | Cách làm | Success metric |
+|------------|---------|----------------|
+| Business span pack | 5 journeys manual spans | RCA drill dùng đúng span |
+| Tail sampling + hash LB | Policy errors/slow | Error trace capture ≥95% vs metrics |
+| Pipeline isolation | Tách logs vs traces export | Slow Loki không drop traces |
+| Attr allowlist | Redact PII | 0 findings sample scan |
+| Span budget | Max spans/trace alert | p95 spans/trace trong ngưỡng |
+
+**Deliverables**: sampling policy doc; cost before/after.
+
+### 90 ngày — Platform maturity
+
+| Experiment | Cách làm | Success metric |
+|------------|---------|----------------|
+| OTel Operator at scale | Auto-instr tier-1 | Time-to-instrument service mới <1 ngày |
+| Chaos collector | Kill gateway pods | No multi-minute full gap |
+| Schema registry light | Semconv review board | Dashboard break rate giảm |
+| AIOps-ready export | Stable attrs + Kafka | Consumer Ch08/10 đọc được |
+| SLO for telemetry | % successful export | Error budget cho pipeline telemetry |
+
+```text
+North-star gợi ý:
+  - % critical requests with complete trace tree
+  - Collector drop rate (target ~0 under normal)
+  - p95 time from deploy → useful spans in Tempo
+  - Telemetry cost / 1M spans
+  - MTTD for "broken propagation" via synthetic
+```
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> OTel chín muồi khi **mất instrumentation cũng bị coi là incident** — vì bạn đang bay không hộp đen.
+
+---
+
+## 24. Production Review
 
 **Các vấn đề tiềm ẩn**:
 

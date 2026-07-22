@@ -6,19 +6,23 @@
 
 ## Prerequisites
 
-- [07 — Anomaly Detection](../07-anomaly-detection/README.md) — các tín hiệu bất thường làm đầu vào cho RCA
-- [08 — Alert Correlation](../08-alert-correlation/README.md) — các nhóm incident tương quan
-- [04 — Loki](../04-loki/README.md) — logs đóng vai trò làm bằng chứng RCA
-- [05 — Tempo](../05-tempo/README.md) — traces đóng vai trò làm bằng chứng RCA
+- [07 — Anomaly Detection](../07-anomaly-detection/README.vi.md) — các tín hiệu bất thường làm đầu vào cho RCA
+- [08 — Alert Correlation](../08-alert-correlation/README.vi.md) — các nhóm incident tương quan
+- [04 — Loki](../04-loki/README.vi.md) — logs đóng vai trò làm bằng chứng RCA
+- [05 — Tempo](../05-tempo/README.vi.md) — traces đóng vai trò làm bằng chứng RCA
 
 ## Related Documents
 
-- [10 — LLM Agent](../10-llm-agent/README.md) — sử dụng đầu ra của RCA để điều tra và xử lý
-- [11 — Remediation](../11-remediation/README.md) — kết quả RCA giúp định hướng lựa chọn phương án khắc phục
+- [10 — LLM Agent](../10-llm-agent/README.vi.md) — sử dụng đầu ra của RCA để điều tra và xử lý
+- [11 — Remediation](../11-remediation/README.vi.md) — kết quả RCA giúp định hướng lựa chọn phương án khắc phục
+- [12 — Production Operations](../12-production/README.vi.md) — đo accuracy RCA, game day drills
+- [13 — Big Tech AIOps](../13-bigtech-aiops/README.vi.md) — RCA / incident diagnosis patterns ở Big Tech
+- [14 — E-commerce & Banking](../14-ecommerce-banking/README.vi.md) — RCA cho payment cascade, fraud false-positive confounds
+- [15 — Famous Incidents](../15-famous-incidents/README.vi.md) — bài học correlation≠causation từ outage thực
 
 ## Next Reading
 
-Sau chương này, hãy chuyển sang [10 — LLM Agent](../10-llm-agent/README.md).
+Sau chương này, hãy chuyển sang [10 — LLM Agent](../10-llm-agent/README.vi.md).
 
 ---
 
@@ -43,11 +47,19 @@ Sau chương này, hãy chuyển sang [10 — LLM Agent](../10-llm-agent/README.
 17. [Scaling](#17-scaling)
 18. [Security](#18-security)
 19. [Cost](#19-cost)
-20. [Production Review](#20-production-review)
+20. [Tư duy sâu: Correlation≠Causation, Multi-root, Evidence Quality, Time Budget](#20-tư-duy-sâu-correlationcausation-multi-root-evidence-quality-time-budget)
+21. [Production Review](#21-production-review)
 
 ---
 
 ## 1. Why Automated RCA?
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> RCA tự động **không tìm "sự thật tuyệt đối"** — nó sinh **giả thuyết có hạng mục bằng chứng** đủ tốt để on-call quyết định trong phút đầu. Mục tiêu sản phẩm là giảm *time-to-plausible-hypothesis*, không phải độ chính xác academic 100%.
+
+> [!IMPORTANT]
+> Mọi pipeline remediation tự động (Chương 11) chỉ được gắn vào RCA khi **confidence + evidence quality** vượt ngưỡng *và* failure mode nằm trong allowlist. RCA sai + auto-remediate = outage do AIOps.
 
 ### The Manual RCA Problem
 
@@ -1549,7 +1561,245 @@ resources:
 
 ---
 
-## 20. Production Review
+## 20. Tư duy sâu: Correlation≠Causation, Multi-root, Evidence Quality, Time Budget
+
+### 20.1 Correlation ≠ causation — bẫy kinh điển trong RCA
+
+> [!WARNING]
+> **Cảnh báo triết học có giá tiền**: Hai dịch vụ cùng đỏ không có nghĩa A gây ra B. Trong production, **confounder** (deploy global, shared DB, DNS, cloud AZ) thường tạo correlation mạnh mà không có cạnh nhân quả trực tiếp.
+
+| Bẫy | Ví dụ | RCA naive kết luận | Thực tế |
+|-----|-------|--------------------|---------|
+| Common cause | AZ network blip | `checkout → payment` cascade | Cả hai phụ thuộc ENI/AZ |
+| Reverse causation | Error rate tăng → CPU tăng (retry storm) | CPU là root | App error là root; CPU là symptom |
+| Temporal coincidence | Cron + deploy cùng phút | Deploy gây batch fail | 2 incidents độc lập |
+| Selection bias | Chỉ trace error paths | Span X luôn "root" | Sampling bias |
+| Proxy metric | Queue depth ↑ với latency | Queue là root | Upstream slow producer |
+
+```python
+def causation_sanity_checks(hypothesis: dict, evidence: list) -> list:
+    """
+    Trả về danh sách warning — không auto-reject, nhưng hạ confidence.
+    """
+    warnings = []
+    if hypothesis.get("only_correlational") and not hypothesis.get("has_trace_path"):
+        warnings.append("corr_without_path: correlation only, no causal path")
+    if hypothesis.get("root") in hypothesis.get("symptoms", []):
+        warnings.append("root_in_symptoms: circular ranking")
+    # Symptom xuất hiện TRƯỚC candidate root → nghi reverse causation
+    if evidence:
+        root_t = min((e["t"] for e in evidence if e.get("role") == "root"), default=None)
+        sym_t = min((e["t"] for e in evidence if e.get("role") == "symptom"), default=None)
+        if root_t and sym_t and sym_t < root_t - 30:
+            warnings.append("temporal_reverse: symptom predates root by >30s")
+    return warnings
+```
+
+> [!TIP]
+> **Checklist causation tối thiểu trước khi tin rank #1**:
+> 1) Có path dependency hoặc shared infra node?
+> 2) Thứ tự thời gian root ≤ symptom?
+> 3) Có change event hoặc log signature hỗ trợ?
+> 4) Giả thuyết có **counter-evidence** đã bị bác?
+> Nếu chỉ (1) temporal gần — ghi `confidence_cap=0.55`.
+
+Bài học outage thật: [15 — Famous Incidents](../15-famous-incidents/README.vi.md).
+
+### 20.2 Confounding: deploy + traffic spike cùng lúc
+
+Kịch bản Friday afternoon kinh điển:
+
+```
+t-20m  Marketing bật campaign → RPS ×3
+t-12m  Deploy payment-service@2.15 (connection pool default vẫn 20)
+t-5m   Error budget burn 14x
+```
+
+RCA chỉ nhìn change → **đổ 100% cho deploy** (dễ rollback).  
+RCA chỉ nhìn traffic → **scale blindly** (pool vẫn 20, vẫn chết).  
+**Root thật**: interaction effect — pool size không theo traffic; deploy là trigger lộ defect sẵn có.
+
+```yaml
+confounder_policy:
+  if:
+    - change_within: 30m
+    - traffic_zscore: "> 2.5"
+  then:
+    rank_both:
+      - candidate: "deploy_regression"
+        needs: ["error signature new in version", "canary worse than baseline"]
+      - candidate: "capacity_exhaustion"
+        needs: ["saturation metrics", "pool/thread/cpu at limit"]
+      - candidate: "interaction"
+        needs: ["old code ok at low RPS", "new or old code fails at high RPS"]
+    ui:
+      show: "Possible confound: deploy AND traffic spike — verify both before rollback"
+```
+
+> [!IMPORTANT]
+> Rollback deploy khi root là pure traffic sẽ **không** cứu hệ thống và có thể làm mất fix đang rollout. Luôn so sánh: *version N vs N-1 dưới cùng load* (canary metrics / shadow).
+
+### 20.3 Multi-root-cause incidents
+
+Không phải mọi incident có 1 root. Các class multi-root:
+
+| Class | Mô tả | Cách RCA phải behave |
+|-------|--------|----------------------|
+| **AND-root** | Cần 2 điều kiện cùng lúc (bug + load) | Output 2 hypotheses "contributing factors" |
+| **Independent dual** | 2 outage chồng thời gian | 2 RCA results; không ép 1 winner |
+| **Cascading secondary** | Root A gây B, B trở thành root cục bộ | Primary + secondary roots với timeline |
+| **Partial mitigation residual** | Fix A xong, residual B còn | Re-run RCA after mitigate; đừng đóng incident sớm |
+
+```python
+def finalize_hypotheses(ranked: list, max_roots=2) -> dict:
+    """
+    Cho phép multi-root khi điểm #1 và #2 gần nhau và khác failure domain.
+    """
+    if len(ranked) < 2:
+        return {"mode": "single", "roots": ranked[:1]}
+
+    top, second = ranked[0], ranked[1]
+    close = abs(top["confidence"] - second["confidence"]) < 0.12
+    different_domain = top["failure_domain"] != second["failure_domain"]
+
+    if close and different_domain:
+        return {
+            "mode": "multi_root",
+            "roots": [top, second],
+            "note": "Two contributing causes with similar evidence weight",
+        }
+    if top["confidence"] >= 0.8 and (top["confidence"] - second["confidence"]) >= 0.25:
+        return {"mode": "single", "roots": [top]}
+    return {
+        "mode": "uncertain",
+        "roots": ranked[:max_roots],
+        "note": "Present alternatives; do not auto-remediate",
+    }
+```
+
+### 20.4 Evidence quality scoring (không chỉ confidence algorithm)
+
+`confidence` từ model dễ **ảo tưởng**. Tách **evidence quality** riêng:
+
+| Dimension | Cao | Thấp |
+|-----------|-----|------|
+| **Source fidelity** | Trace error span + exact log template | Chỉ metric correlation |
+| **Freshness** | Dữ liệu < 2 phút | Log/trace delay > 10 phút |
+| **Coverage** | Đủ services trong blast radius | Thiếu trace 1 hop critical |
+| **Consistency** | Topology + log + change cùng hướng | 3 algorithm mâu thuẫn |
+| **Counter-evidence** | Đã tìm và loại trừ | Chưa search counter |
+| **Provenance** | Query ids tái lập được | "LLM said so" không cite |
+
+```python
+def evidence_quality(ev: dict) -> float:
+    w = {
+        "trace_error_span": 0.30,
+        "log_template_match": 0.20,
+        "change_proximity": 0.20,
+        "topology_path": 0.15,
+        "metric_saturation": 0.10,
+        "historical_case": 0.05,
+    }
+    score = 0.0
+    for k, weight in w.items():
+        if ev.get(k):
+            score += weight * ev[k].get("strength", 1.0)
+    # Phạt thiếu freshness / coverage
+    if ev.get("data_age_s", 0) > 600:
+        score *= 0.7
+    if ev.get("coverage") == "partial":
+        score *= 0.85
+    if ev.get("algorithms_agree", 1) < 2:
+        score *= 0.8
+    return round(min(score, 1.0), 3)
+
+def publishable_confidence(model_conf: float, eq: float) -> float:
+    # Không cho model_conf vượt evidence quality quá xa
+    return round(min(model_conf, eq + 0.1) * (0.5 + 0.5 * eq), 3)
+```
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> UI nên hiện **2 số**: `model_confidence=0.91` và `evidence_quality=0.54` → hệ thống hiển thị **0.58 publishable**. On-call hiểu: "model chắc nhưng bằng chứng mỏng".
+
+### 20.5 When to stop searching (time budget)
+
+RCA không được thành black hole CPU. On-call cần **hypothesis lúc t+45s**, không phải essay lúc t+10m.
+
+```yaml
+rca_time_budget:
+  total_ms: 45000
+  phases:
+    collect_signals: 12000     # parallel Prom/Loki/Tempo/changes
+    cheap_algorithms: 8000     # topology + change + log regex
+    expensive_algorithms: 15000 # causal graph / GNN optional
+    rank_and_render: 5000
+  preemption:
+    if_p1_and_change_score_gt: 0.85
+      skip: ["gnn", "full_causal_pc"]
+      reason: "fast path deploy-correlated"
+  always_return:
+    - top_k_hypotheses: 3
+    - evidence_links: true
+    - partial_flag: true   # nếu budget cắt giữa chừng
+```
+
+```python
+import time
+
+def run_rca_with_budget(incident, collectors, algorithms, budget_s=45.0):
+    t0 = time.monotonic()
+    evidence = {}
+    # Phase collect — song song, hard timeout
+    evidence = collectors.gather(incident, timeout=min(12.0, budget_s * 0.3))
+
+    results = []
+    for algo in algorithms:  # sorted cheap → expensive
+        remaining = budget_s - (time.monotonic() - t0)
+        if remaining < 3.0:
+            break
+        if algo.cost == "expensive" and incident.severity == "P1" and has_strong_change(evidence):
+            continue  # preemption
+        results.append(algo.run(incident, evidence, timeout=min(algo.timeout, remaining - 2)))
+
+    ranked = rank_rca_hypotheses_from(results)
+    return {
+        "hypotheses": ranked,
+        "partial": (time.monotonic() - t0) >= budget_s - 0.5,
+        "elapsed_ms": int((time.monotonic() - t0) * 1000),
+        "algorithms_run": [r["name"] for r in results],
+    }
+```
+
+| Tình huống | Stop khi | Hành động tiếp |
+|------------|----------|----------------|
+| Strong change + matching error signature | t < 20s | Đề xuất rollback path; deep RCA async |
+| Multi-root uncertain | budget hết | Trả 2–3 alternatives; escalate human |
+| Data plane hỏng (Loki down) | collect fail | RCA partial + banner data gap |
+| Pager đã ack + human takeover | anytime | Freeze auto-rank; attach notes only |
+
+> [!TIP]
+> Chạy **async deep-RCA** sau fast path: GNN/causal đầy đủ ghi vào incident thread sau 2–5 phút mà không chặn page đầu.
+
+### 20.6 Anti-patterns RCA
+
+| Anti-pattern | Triệu chứng | Fix |
+|--------------|-------------|-----|
+| Winner-take-all ranking | Luôn 1 root 99% | Multi-root + evidence quality |
+| Blame the leaf | Luôn pod OOM cuối chuỗi | Causal order + shared infra |
+| Deploy monocausality | Mọi thứ = rollback | Confounder policy traffic×deploy |
+| Infinite tool fan-out | RCA 3 phút+ | Time budget + preemption |
+| Hide uncertainty | UI không partial flag | Bắt buộc `partial` + `warnings[]` |
+| Train on symptoms | GNN học wrong label | Label từ postmortem root only |
+
+> [!NOTE]
+> **Câu hỏi kiểm tra**: Confidence 0.94 nhưng chỉ có metric correlation, không log/trace/change — bạn **có được** kích hoạt auto-remediate không? Vì sao?
+
+Drill RCA trên famous outages: [15 — Famous Incidents](../15-famous-incidents/README.vi.md) · vận hành accuracy: [12 — Production](../12-production/README.vi.md).
+
+---
+
+## 21. Production Review
 
 ### Principal Engineer Assessment
 
@@ -1563,15 +1813,17 @@ resources:
 
 4. **Cô lập dữ liệu trong môi trường đa thuê (multi-tenant)**: Hệ thống RCA engine tuyệt đối không được phép vi phạm ranh giới dữ liệu giữa các tenants. Nếu truy vấn phân tích incident của tenant A hiển thị logs của tenant B, đây là lỗi bảo mật nghiêm trọng. Hãy cấu hình header X-Scope-OrgID của Loki đi kèm tài khoản truy cập riêng biệt cho từng tenant.
 
+5. **Evidence quality + time budget + multi-root** là ba trụ sản phẩm còn thiếu nếu chỉ rank algorithm confidence — xem §20.
+
 ### Chapter Scores
 
 | Tiêu chí | Điểm số | Ghi chú |
 |-----------|-------|-------|
 | Technical Accuracy | 9.7/10 | Thuật toán PC, GNN, Bayesian được mô tả chính xác |
-| Production Readiness | 9.5/10 | Truy vấn bất đồng bộ, định nghĩa output schema đầy đủ, cấu hình k8s deploy rõ ràng |
-| Depth | 9.8/10 | Giới thiệu đầy đủ 7 phương pháp RCA từ topology đến GNN |
-| Practical Value | 9.7/10 | Có code Python đầy đủ cho mỗi phương pháp |
-| Architecture Quality | 9.6/10 | Thiết kế thu thập song song bằng chứng, sắp xếp giả thuyết đầu ra tối ưu |
+| Production Readiness | 9.6/10 | Async collect, schema, time budget, evidence quality |
+| Depth | 9.8/10 | 7 phương pháp RCA + causation traps + multi-root |
+| Practical Value | 9.8/10 | Code Python + confounder policy + stop-search budget |
+| Architecture Quality | 9.6/10 | Thu thập song song bằng chứng, sắp xếp giả thuyết đầu ra |
 | Observability | 9.6/10 | Theo dõi sát sao độ chính xác, latency phân tích, consumer lag |
 | Security | 9.6/10 | Có chính sách kiểm soát PII, cô lập tenant bảo mật |
 | Scalability | 9.5/10 | Hỗ trợ mở rộng dọc + mở rộng ngang theo consumer lag |

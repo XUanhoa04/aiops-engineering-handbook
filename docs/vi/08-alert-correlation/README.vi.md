@@ -6,19 +6,23 @@
 
 ## Prerequisites
 
-- [07 — Anomaly Detection](../07-anomaly-detection/README.md) — sinh ra các sự kiện bất thường làm đầu vào tiêu thụ ở đây
-- [03 — Prometheus](../03-prometheus/README.md) — nguồn cảnh báo thông qua Alertmanager
-- [06 — Kafka](../06-kafka/README.md) — lớp vận chuyển cho các sự kiện bất thường
+- [07 — Anomaly Detection](../07-anomaly-detection/README.vi.md) — sinh ra các sự kiện bất thường làm đầu vào tiêu thụ ở đây
+- [03 — Prometheus](../03-prometheus/README.vi.md) — nguồn cảnh báo thông qua Alertmanager
+- [06 — Kafka](../06-kafka/README.vi.md) — lớp vận chuyển cho các sự kiện bất thường
 
 ## Related Documents
 
-- [09 — Root Cause Analysis](../09-root-cause-analysis/README.md) — nhận các nhóm cảnh báo tương quan làm đầu vào
-- [10 — LLM Agent](../10-llm-agent/README.md) — sử dụng ngữ cảnh tương quan để điều tra sự cố
-- [03 — Prometheus](../03-prometheus/README.md) — phân nhóm cảnh báo trên Alertmanager (mức độ liên kết đơn giản)
+- [09 — Root Cause Analysis](../09-root-cause-analysis/README.vi.md) — nhận các nhóm cảnh báo tương quan làm đầu vào
+- [10 — LLM Agent](../10-llm-agent/README.vi.md) — sử dụng ngữ cảnh tương quan để điều tra sự cố
+- [03 — Prometheus](../03-prometheus/README.vi.md) — phân nhóm cảnh báo trên Alertmanager (mức độ liên kết đơn giản)
+- [12 — Production Operations](../12-production/README.vi.md) — SLO correlation engine, storm drills
+- [13 — Big Tech AIOps](../13-bigtech-aiops/README.vi.md) — correlation / incident grouping ở quy mô hyperscaler
+- [14 — E-commerce & Banking](../14-ecommerce-banking/README.vi.md) — multi-region cascade, payment fan-out storms
+- [15 — Famous Incidents](../15-famous-incidents/README.vi.md) — case study alert storm và correlated outages
 
 ## Next Reading
 
-Sau chương này, hãy chuyển sang [09 — Root Cause Analysis](../09-root-cause-analysis/README.md).
+Sau chương này, hãy chuyển sang [09 — Root Cause Analysis](../09-root-cause-analysis/README.vi.md).
 
 ---
 
@@ -42,11 +46,19 @@ Sau chương này, hãy chuyển sang [09 — Root Cause Analysis](../09-root-ca
 16. [Scaling](#16-scaling)
 17. [Security](#17-security)
 18. [Cost](#18-cost)
-19. [Production Review](#19-production-review)
+19. [Tư duy sâu: Topology stale, Time-window, Cascade vs Multi-failure, Storm UX](#19-tư-duy-sâu-topology-stale-time-window-cascade-vs-multi-failure-storm-ux)
+20. [Production Review](#20-production-review)
 
 ---
 
 ## 1. Why Alert Correlation?
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> Correlation không "giảm alert" bằng cách vứt thông tin — nó **nén cardinality sự kiện** thành **1 đơn vị nhận thức** (incident) mà não người có thể xử lý trong <2 phút. ROI lớn nhất của AIOps thường nằm ở lớp này, không phải ở LSTM hay LLM.
+
+> [!TIP]
+> **Metric thành công của correlation**: không phải "alerts suppressed %", mà là **median alerts-per-incident** (mục tiêu 5–20), **time-to-first-coherent-incident**, và **split/merge correction rate** sau postmortem.
 
 ### The Alert Storm Problem
 
@@ -1322,7 +1334,230 @@ spec:
 
 ---
 
-## 19. Production Review
+## 19. Tư duy sâu: Topology stale, Time-window, Cascade vs Multi-failure, Storm UX
+
+### 19.1 Topology stale graph — tệ hơn là không có graph
+
+> [!WARNING]
+> **Graph sai tệ hơn no-graph.** Không có topology, bạn chỉ **under-merge** (nhiều incident rời). Graph stale có edge sai sẽ **over-merge** hoặc **đảo root cause** — on-call tin 1 câu chuyện sai và mất 20–40 phút.
+
+| Kiểu stale | Triệu chứng | Hậu quả | Mitigation |
+|------------|-------------|---------|------------|
+| Edge đã chết (service gỡ dep) | Vẫn merge A↔B | False merge 2 incidents độc lập | TTL edge; decay weight theo last_seen_call |
+| Edge mới chưa có (service mới) | Không merge cascade thật | Alert storm vẫn page rời | Bootstrap từ SpanMetrics 5–15 phút; fallback temporal+label |
+| Chiều edge đảo (client/server nhầm) | Root = downstream | RCA/remediation sai hướng | Validate bằng trace parent-child + server span |
+| Missing shared dependency (DB/Kafka) | 2 service lỗi cùng lúc không merge | On-call nghĩ 2 outage | Thêm infra nodes (db, queue, cache) vào graph |
+| Multi-cluster mù | Cross-cluster cascade tách incident | MTTR tăng | Cluster-aware graph + shared resource edges |
+
+```python
+class TopologyHealthGuard:
+    """
+    Chặn correlation dùng graph quá cũ hoặc quá thưa.
+    """
+    def __init__(self, max_age_seconds=900, min_edge_coverage=0.5):
+        self.max_age_seconds = max_age_seconds
+        self.min_edge_coverage = min_edge_coverage
+
+    def can_use_topology(self, graph_meta: dict, active_services: set) -> dict:
+        age = graph_meta["age_seconds"]
+        covered = len(graph_meta["services_with_edges"] & active_services) / max(1, len(active_services))
+
+        if age > self.max_age_seconds:
+            return {
+                "use_topology": False,
+                "reason": "stale_graph",
+                "fallback": ["temporal", "label_similarity", "semantic"],
+                "degrade_confidence": 0.15,
+            }
+        if covered < self.min_edge_coverage:
+            return {
+                "use_topology": True,
+                "reason": "sparse_graph",
+                "topology_weight_cap": 0.20,  # hạ weight topology
+                "fallback": ["temporal"],
+            }
+        return {"use_topology": True, "topology_weight": 0.40}
+```
+
+> [!IMPORTANT]
+> Khi `stale_graph=true`, **tắt** causal ordering dựa topology; chỉ temporal clustering + hiển thị banner: *"Topology outdated — correlation confidence reduced"*. Đừng im lặng dùng graph thối.
+
+**Operational rule**: refresh graph mỗi 5–15 phút; metric `aiops_topology_graph_age_seconds`; page platform nếu age > 30 phút. Chi tiết multi-region graph: [14 — E-commerce & Banking](../14-ecommerce-banking/README.vi.md).
+
+### 19.2 Time-window tuning: quá ngắn vs quá dài
+
+| Window | Ưu | Nhược | Khi nào dùng |
+|--------|----|-------|--------------|
+| 60–120s | Incident sớm, ít trộn | Bỏ sót cascade chậm (DB pool drain 5–10 phút) | Hard-down, probe fail |
+| **300s (5m)** | Cân bằng tốt cho microservice | Vẫn miss batch/cron cascade | Default production |
+| 10–15m | Gom được slow cascade | Trộn 2 incidents độc lập; chậm page | Batch jobs, data pipelines |
+| 30m+ | Chỉ analytics offline | Vô dụng cho on-call real-time | Post-hoc correlation report |
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> Window không phải một số duy nhất. Dùng **two-phase window**: *fast path* 90s để page sớm với partial group; *late-join* thêm 5–10 phút để merge alert đến muộn vào incident đã mở — không tạo incident mới.
+
+```yaml
+correlation_windows:
+  fast_path:
+    seconds: 90
+    min_alerts: 2
+    action: create_or_update_incident
+  late_join:
+    seconds: 600
+    action: attach_to_open_incident_if_score_gt_0.7
+  hard_split:
+    # Nếu 2 nhóm không có topology path và delta_t > 180s → giữ tách
+    independent_gap_seconds: 180
+```
+
+**Dấu hiệu window sai**:
+
+- Quá ngắn: `alerts_per_incident` median < 3; engineer merge tay trên PagerDuty
+- Quá dài: `time_to_first_incident` > 8 phút; 1 incident chứa 2 root causes khác nhau trong postmortem
+
+### 19.3 Cascade vs independent multi-failures (correlated false merge)
+
+Đây là failure mode nguy hiểm nhất của correlation: **gộp 2 outage độc lập thành 1**, khiến on-call chỉ sửa một nửa.
+
+```
+Timeline thật:
+  t=0    payment-db connection storm  (region A)
+  t=90s  CDN config push bad          (global)  ← độc lập
+
+Topology/temporal engine thấy:
+  payment ↓, checkout ↓, edge latency ↑ gần nhau về thời gian
+  → merge thành 1 incident "payment cascade"
+
+Hậu quả:
+  Team chỉ rollback payment pool; CDN vẫn hỏng 40 phút
+```
+
+**Tín hiệu cần SPLIT (không merge)**:
+
+1. Không có path topology ≤ max_depth giữa 2 root candidates
+2. Failure mode khác class (db_conn vs dns vs cert vs deploy)
+3. `change_events` trỏ 2 hệ thống không liên quan trong ±15 phút
+4. Blast radius geo khác nhau (1 region vs global)
+5. Semantic similarity title thấp + label Jaccard thấp dù temporal gần
+
+```python
+def should_merge(group_a: dict, group_b: dict, graph, changes) -> dict:
+    topo_dist = graph.distance(group_a["root"], group_b["root"])  # inf if none
+    temporal_gap = abs(group_a["t0"] - group_b["t0"]).total_seconds()
+    same_failure_class = group_a["failure_class"] == group_b["failure_class"]
+    shared_change = changes.shared_root_cause(group_a, group_b)
+
+    score = 0.0
+    if topo_dist <= 3:
+        score += 0.4 * (1 - topo_dist / 3)
+    if temporal_gap < 120:
+        score += 0.3
+    elif temporal_gap < 300:
+        score += 0.15
+    if same_failure_class:
+        score += 0.15
+    if shared_change:
+        score += 0.25
+
+    # Hard veto: khác region-scope + không shared infra + gap > 60s
+    if group_a["scope"] != group_b["scope"] and not shared_change and temporal_gap > 60:
+        return {"merge": False, "reason": "independent_multi_failure_veto", "score": score}
+
+    return {"merge": score >= 0.60, "score": score, "reason": "score_threshold"}
+```
+
+> [!TIP]
+> **UX an toàn**: khi score merge ở vùng xám (0.55–0.70), tạo **incident linked** (related) thay vì hard-merge. On-call thấy "có thể liên quan" nhưng vẫn có 2 timeline — tốt hơn 1 timeline sai.
+
+Case study multi-failure: [15 — Famous Incidents](../15-famous-incidents/README.vi.md).
+
+### 19.4 Storm suppression UX cho con người
+
+Suppression kỹ thuật (dedup, silence) không đủ — cần **UX giúp não người** trong 30 giây đầu.
+
+**Yêu cầu UX khi storm**:
+
+| Yếu tố | Tốt | Xấu |
+|--------|-----|-----|
+| Tiêu đề | `payment-db pool exhausted → 12 services (cascade)` | `Alertmanager: many firing` |
+| Root vs symptom | Root gắn ⭐; symptom collapsed | 40 alert cùng cấp |
+| Progress | `47 alerts suppressed into this incident` | Không biết còn bao nhiêu ẩn |
+| Action | 1 nút: Open runbook / Ack / Page secondary | 15 deep-link rời |
+| Noise control | `Silence related 30m` scoped incident_id | Global silence toàn cluster |
+| Confidence | `Correlation confidence 0.82 (topology stale: no)` | Không có uncertainty |
+| Split control | `Split into independent incident` | Không sửa được false merge |
+
+```markdown
+## Incident INC-20481  ·  P1  ·  confidence 0.84
+**Root (hypothesis):** payment-service → payment-db connection pool
+**Impact:** checkout, order, api-gateway (9 services) · error budget burn 14x
+**Suppressed:** 63 raw alerts · 11 pods · 3 clusters signals
+**Topology:** fresh (age 4m) · path depth 2
+**Changes (15m):** deploy payment-service@2.14.3 (8m ago)
+**Runbook:** /runbooks/db-conn-pool
+**Related (not merged):** CDN latency region-EU (score 0.41)
+
+[Ack] [Page DB on-call] [Silence related 30m] [Mark false-merge / Split] [Open Grafana]
+```
+
+> [!WARNING]
+> **Anti-pattern storm UX**: forward nguyên webhook Alertmanager vào Slack. Storm 200 message = zero signal. Mọi pageable path phải đi qua **incident card** đã correlate.
+
+### 19.5 Problem-solving: khi correlation engine "tạo ra" incident xấu
+
+| Vấn đề | Metric phát hiện | Fix ngắn hạn | Fix dài hạn |
+|--------|------------------|--------------|-------------|
+| Over-merge | Postmortem split rate > 15% | Tăng `min_correlation_score`; bật veto multi-failure | Cải thiện failure_class + change correlation |
+| Under-merge | alerts_per_incident < 3; manual merge | Nới window late-join; tăng topology weight | Graph coverage, shared infra nodes |
+| Root sai | RCA đảo downstream | Tắt causal order khi graph stale | Trace-based edge direction |
+| Flapping incidents | create/close thrash | Flap detector: 3 flaps/15m → sticky open | Hysteresis close 5–10m |
+| Storm bypass correlation | PagerDuty raw flood | Alertmanager route chỉ → Kafka, cấm fan-out song song | Single ingress path |
+
+> [!NOTE]
+> **Câu hỏi kiểm tra**: Bạn nhận 1 incident card với 80 suppressed alerts nhưng root là `api-gateway`. Bạn tin hay nghi? Dựa vào **signal nào** để quyết định split?
+
+Drill storm định kỳ trong game day: [12 — Production](../12-production/README.vi.md). Pattern Big Tech: [13 — Big Tech AIOps](../13-bigtech-aiops/README.vi.md).
+
+### 19.6 Decision log: merge / link / split
+
+On-call và postmortem cần ngôn ngữ chung:
+
+| Quyết định | Định nghĩa | Khi dùng | Ghi vào incident |
+|------------|------------|----------|------------------|
+| **MERGE** | Một timeline, một commander | score ≥ 0.70 + không veto | `correlation_decision=merge` |
+| **LINK** | Hai timeline, related | 0.55–0.70 hoặc multi-failure nghi | `related_incident_ids[]` |
+| **SPLIT** | Tách group đã merge sai | Post-ack evidence mâu thuẫn | `split_from=INC-…` + reason |
+| **SUPPRESS_ONLY** | Không tạo incident mới | Thuộc open incident cùng scope | `parent_incident_id` |
+
+```python
+def record_correlation_decision(incident_id: str, decision: str, reason: str, actor: str):
+    """
+    Mọi merge/split thủ công phải audit — dùng để đo quality và train weights.
+    """
+    assert decision in {"merge", "link", "split", "suppress_only"}
+    return {
+        "incident_id": incident_id,
+        "decision": decision,
+        "reason": reason,
+        "actor": actor,  # "engine" | "human:alice"
+        "ts": "ISO-8601",
+    }
+```
+
+**KPI bổ sung** (ngoài alerts-per-incident):
+
+- `human_split_rate` 7d — target < 10%
+- `human_merge_rate` 7d — target < 15% (cao = under-merge)
+- `% incidents with topology_stale=true` — target < 5%
+- `storm_raw_pages` (pages không qua correlation) — target = 0
+
+> [!IMPORTANT]
+> Nếu `human_split_rate` tăng sau khi nới window — bạn đang **mua under-noise bằng over-merge**. Trả lại quality bằng late-join + link, không phải hard-merge.
+
+---
+
+## 20. Production Review
 
 ### Principal Engineer Assessment
 
@@ -1336,14 +1571,18 @@ spec:
 
 4. **Vòng phản hồi chất lượng liên kết (Feedback loop)**: Cần có cơ chế đánh giá độ chính xác của việc gom nhóm cảnh báo (thực hiện ở bước đánh giá sau sự cố). Yêu cầu kỹ sư xử lý trực tiếp tích cực đánh dấu các nhóm tương quan là "chính xác" hay "sai lệch" trên giao diện xem incident post-mortem.
 
+5. **Stale topology + false merge multi-failure**: Phải có health guard cho graph và soft-link thay vì hard-merge vùng xám — xem §19.
+
+6. **Storm UX + decision audit (merge/link/split)**: Không chỉ đúng thuật toán — on-call cần card nén được và sửa được quyết định engine; đo `human_split_rate` / `human_merge_rate`.
+
 ### Chapter Scores
 
 | Tiêu chí | Điểm số | Ghi chú |
 |-----------|-------|-------|
 | Technical Accuracy | 9.6/10 | Thuật toán phân tích, tính toán tương quan chéo, causal ordering xác thực |
-| Production Readiness | 9.6/10 | Trạng thái Redis, thiết lập Kubernetes deployment, cơ chế suppression rõ ràng |
-| Depth | 9.7/10 | Giới thiệu đầy đủ 4 thuật toán tương quan + topology + temporal |
-| Practical Value | 9.7/10 | Có mã nguồn triển khai Python thực tế |
+| Production Readiness | 9.7/10 | Redis, K8s, suppression, topology guard, storm UX |
+| Depth | 9.8/10 | 4 thuật toán + topology + temporal + edge thinking cascade/split |
+| Practical Value | 9.8/10 | Python thực tế + playbook merge/split + incident card UX |
 | Architecture Quality | 9.7/10 | Thiết kế pipeline 5 bước rõ ràng kèm mốc thời gian xử lý |
 | Observability | 9.6/10 | Cấu hình đầy đủ metrics hiệu năng, cảnh báo lag |
 | Security | 9.5/10 | Bảo mật mTLS, KMS, SASL/SSL đầy đủ |

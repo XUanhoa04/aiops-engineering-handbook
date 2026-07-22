@@ -1,25 +1,38 @@
-# AIOps Engineering Handbook
+# Cẩm nang Kỹ thuật AIOps (AIOps Engineering Handbook)
 
-> **A production-grade reference for building Autonomous Intelligent Operations platforms on AWS, Kubernetes, and Cloud Native infrastructure.**
+> **Tài liệu tham chiếu chuẩn sản xuất (production-grade) để xây dựng các nền tảng Vận hành Thông minh Tự động (Autonomous Intelligent Operations) trên AWS, Kubernetes và hạ tầng Cloud Native.**
 
 [![Status](https://img.shields.io/badge/status-active-brightgreen)](.)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Audience](https://img.shields.io/badge/audience-SRE%20%7C%20DevOps%20%7C%20Platform%20Engineer%20%7C%20ML%20Engineer-orange)](.)
+[![Language](https://img.shields.io/badge/language-Tiếng%20Việt-red)](.)
+[![Chapters](https://img.shields.io/badge/chapters-16-blue)](docs/vi/)
+[![Audience](https://img.shields.io/badge/audience-SRE%20%7C%20DevOps%20%7C%20Platform%20%7C%20ML-orange)](.)
+[![GitHub](https://img.shields.io/badge/github-XUanhoa04%2Faiops--engineering--handbook-black)](https://github.com/XUanhoa04/aiops-engineering-handbook)
+
+| | |
+|---|---|
+| **Ngôn ngữ** | Tiếng Việt |
+| **Số chương** | 16 (Foundation → Case Studies) |
+| **Cấp độ** | Staff / Principal SRE |
+| **Repo** | [github.com/XUanhoa04/aiops-engineering-handbook](https://github.com/XUanhoa04/aiops-engineering-handbook) |
+| **Nội dung** | `docs/vi/` |
 
 ---
 
-## What Is This Handbook?
+## Handbook này là gì?
 
-This handbook documents the **complete architecture, design decisions, algorithms, operational practices, and production lessons** for building an AIOps platform from first principles.
+Tài liệu ghi nhận **kiến trúc, quyết định thiết kế, thuật toán, thực tiễn vận hành và bài học production** để xây dựng nền tảng AIOps từ nguyên lý cơ bản.
 
-It is written at the **Principal Engineer / Staff SRE** level. It assumes:
+Viết ở cấp độ **Principal Engineer / Staff SRE**. Giả định:
 
-- You are comfortable with distributed systems
-- You understand Kubernetes and container orchestration
-- You have operational AWS experience
-- You want to understand **why**, not just **how**
+- Bạn quen hệ thống phân tán
+- Bạn hiểu Kubernetes và container orchestration
+- Bạn có kinh nghiệm vận hành AWS / cloud native
+- Bạn muốn hiểu **tại sao (why)**, không chỉ **làm thế nào (how)**
 
-Each chapter covers: **Why → What → How → Trade-offs → Production Best Practices → Common Mistakes → Monitoring → Scaling → Security → Cost → Improvement**.
+Mỗi chương theo khung: **Why → What → How → Trade-offs → Edge Cases → Problem-Solving → Production Practices → Common Mistakes → Monitoring → Scaling → Security → Cost → Improvement**.
+
+Trọng tâm bản này: **tư duy vận hành** — mental models, decision trees, edge case production, case study Big Tech / e-commerce / banking, và postmortem sự cố công khai. Mục tiêu không chỉ “chạy được code”, mà hiểu **vì sao pipeline AIOps được thiết kế như vậy** và **khi nào nó thất bại**.
 
 ---
 
@@ -99,57 +112,79 @@ graph LR
     J --> K[10 LLM Agent]
     K --> L[11 Remediation]
     L --> M[12 Production]
+    M --> N[13 Big Tech AIOps]
+    N --> O[14 Ecommerce Banking]
+    O --> P[15 Famous Incidents]
 
     style A fill:#2d3561,color:#fff
     style M fill:#e94560,color:#fff
+    style N fill:#0f766e,color:#fff
+    style O fill:#0f766e,color:#fff
+    style P fill:#0f766e,color:#fff
 ```
+
+**Lộ trình tư duy (khuyến nghị):**
+
+1. **Nền tảng** (00–01): alert fatigue, OODA, SLO, observability trước AI  
+2. **Telemetry** (02–06): thu thập đúng → transport bền; cardinality, lag, sampling  
+3. **Intelligence** (07–10): detect → correlate → RCA → LLM; hỏi “khi nào model sai?”  
+4. **Action + Production** (11–12): remediation an toàn, dogfood, DR control plane  
+5. **Case study thực chiến** (13–15): Big Tech patterns, domain e-com/bank, postmortem  
 
 ---
 
-## Table of Contents
+## Mục lục (`docs/vi/`)
 
 ### 📖 Foundation
 
-| # | Document | Description | Status |
-|---|----------|-------------|--------|
-| 00 | [Introduction](docs/00-introduction.md) | AIOps philosophy, ROI, maturity model | ✅ Done |
-| 01 | [Observability](docs/01-observability/README.md) | Three Pillars, Metric types, Logs, Traces, SLO/SLA, Cardinality | ✅ Done |
+| # | Tài liệu | Mô tả |
+|---|----------|--------|
+| 00 | [Introduction](docs/vi/00-introduction.vi.md) | Triết lý AIOps, OODA, ROI, maturity, edge cases, flywheel |
+| 01 | [Observability](docs/vi/01-observability/README.vi.md) | 3 pillars, SLO, cardinality, brownout, decision trees |
 
 ### 📡 Telemetry Stack
 
-| # | Document | Description | Status |
-|---|----------|-------------|--------|
-| 02 | [OpenTelemetry](docs/02-opentelemetry/README.md) | OTLP protocol, Collector architecture, all receivers/processors/exporters | ✅ Done |
-| 03 | [Prometheus](docs/03-prometheus/README.md) | TSDB internals, PromQL, HA, Thanos, CloudWatch vs VictoriaMetrics | ✅ Done |
-| 04 | [Loki](docs/04-loki/README.md) | Architecture, LogQL deep-dive, S3 backend, ELK comparison, cost | ✅ Done |
-| 05 | [Tempo](docs/05-tempo/README.md) | Parquet storage, TraceQL, SpanMetrics, Jaeger/X-Ray comparison | ✅ Done |
+| # | Tài liệu | Mô tả |
+|---|----------|--------|
+| 02 | [OpenTelemetry](docs/vi/02-opentelemetry/README.vi.md) | OTLP, Collector SPOF, context propagation, processor ordering |
+| 03 | [Prometheus](docs/vi/03-prometheus/README.vi.md) | Pull model, high-cardinality, Thanos, remote_write |
+| 04 | [Loki](docs/vi/04-loki/README.vi.md) | Index-labels-only, LogQL, noisy neighbor, structured logging |
+| 05 | [Tempo](docs/vi/05-tempo/README.vi.md) | Sampling paradox, trace RCA, PII spans, cost vs coverage |
 
 ### 🚌 Transport Layer
 
-| # | Document | Description | Status |
-|---|----------|-------------|--------|
-| 06 | [Kafka / Kinesis](docs/06-kafka/README.md) | Producer/consumer, EOS, MSK, Kinesis vs Kafka, DLQ, Schema Registry | ✅ Done |
+| # | Tài liệu | Mô tả |
+|---|----------|--------|
+| 06 | [Kafka / Kinesis](docs/vi/06-kafka/README.vi.md) | Backpressure, lag-as-signal, poison message, bypass |
 
 ### 🧠 Intelligence Layer
 
-| # | Document | Description | Status |
-|---|----------|-------------|--------|
-| 07 | [Anomaly Detection](docs/07-anomaly-detection/README.md) | 12 algorithms: EWMA→STL→IF→LSTM→Transformer→Drain→DeepLog, ensemble, production | ✅ Done |
-| 08 | [Alert Correlation](docs/08-alert-correlation/README.md) | 5-stage pipeline, topology correlation, temporal cross-correlation, semantic similarity | ✅ Done |
-| 09 | [Root Cause Analysis](docs/09-root-cause-analysis/README.md) | Topology traversal, PC algorithm, Bayesian network, GNN (MicroRCA), trace+log analysis | ✅ Done |
-| 10 | [LLM Investigation Agent](docs/10-llm-agent/README.md) | RAG, LangGraph/ReAct, tool use, SRE prompting, safety gates, HITL, cost analysis | ✅ Done |
+| # | Tài liệu | Mô tả |
+|---|----------|--------|
+| 07 | [Anomaly Detection](docs/vi/07-anomaly-detection/README.vi.md) | Ensemble, drift, khi **không** dùng ML, labeling loop |
+| 08 | [Alert Correlation](docs/vi/08-alert-correlation/README.vi.md) | Topology stale, cascade vs multi-fail, storm UX |
+| 09 | [Root Cause Analysis](docs/vi/09-root-cause-analysis/README.vi.md) | Causation traps, multi-root, evidence quality, time budget |
+| 10 | [LLM Investigation Agent](docs/vi/10-llm-agent/README.vi.md) | Hallucination, prompt injection, sandbox, AI SRE vs AIOps |
 
 ### ⚙️ Action Layer
 
-| # | Document | Description | Status |
-|---|----------|-------------|--------|
-| 11 | [Automated Remediation](docs/11-remediation/README.md) | Action catalog (Tier 1-3), K8s executor, SSM, canary rollout, safety gates, audit log | ✅ Done |
+| # | Tài liệu | Mô tả |
+|---|----------|--------|
+| 11 | [Automated Remediation](docs/vi/11-remediation/README.vi.md) | Automation paradox, dual-control, never freeform shell |
 
 ### 🏭 Production
 
-| # | Document | Description | Status |
-|---|----------|-------------|--------|
-| 12 | [Production Operations](docs/12-production/README.md) | HA, DR, chaos engineering, cost governance (~$9,364/month), security, 49x ROI analysis | ✅ Done |
+| # | Tài liệu | Mô tả |
+|---|----------|--------|
+| 12 | [Production Operations](docs/vi/12-production/README.vi.md) | HA/DR, dogfood AIOps, cost runaway, RACI, game days |
+
+### 🌍 Case Studies & Lessons
+
+| # | Tài liệu | Mô tả |
+|---|----------|--------|
+| 13 | [Big Tech AIOps](docs/vi/13-bigtech-aiops/README.vi.md) | Google SRE, Netflix chaos, AWS ops-tools, Meta, Uber Michelangelo |
+| 14 | [E-commerce & Banking](docs/vi/14-ecommerce-banking/README.vi.md) | BFCM, core banking, PCI, multi-PSP, money-path safety |
+| 15 | [Famous Incidents](docs/vi/15-famous-incidents/README.vi.md) | S3 2017, DynamoDB DNS, Meta 2021, Cloudflare → AIOps design |
 
 ---
 
@@ -171,59 +206,54 @@ graph TD
     RCA --> LLM[10-llm-agent]
     LLM --> REM[11-remediation]
     REM --> PROD[12-production]
+    PROD --> BIG[13-bigtech-aiops]
+    BIG --> DOM[14-ecommerce-banking]
+    DOM --> INC[15-famous-incidents]
 
     OBS --> PROM
     OBS --> LOKI
     OBS --> TEMPO
     PROM --> AD
     AD --> LLM
+    INC -.->|game days| PROD
+    BIG -.->|patterns| AD
 ```
 
 ---
 
-## Repository Progress
+## Cách dùng
 
-```
-Foundation          ████████████████████  100% (2/2)   ✅
-Telemetry Stack     ████████████████████  100% (4/4)   ✅
-Transport Layer     ████████████████████  100% (1/1)   ✅
-Intelligence Layer  ████████████████████  100% (4/4)   ✅
-Action Layer        ████████████████████  100% (1/1)   ✅
-Production          ████████████████████  100% (1/1)   ✅
+> Với mỗi section, trả lời 3 câu trước khi đọc tiếp: (1) Vấn đề thật đang giải? (2) Trade-off là gì? (3) Edge case nào làm vỡ thiết kế này?
 
-Overall Progress    ████████████████████  100% (13/13 chapters)  🎉 COMPLETE
-```
+### DevOps / SRE
+[Observability](docs/vi/01-observability/README.vi.md) → [Prometheus](docs/vi/03-prometheus/README.vi.md) → [Kafka](docs/vi/06-kafka/README.vi.md) → [Remediation](docs/vi/11-remediation/README.vi.md) → [Famous Incidents](docs/vi/15-famous-incidents/README.vi.md)
 
----
+### Platform Engineer
+[OpenTelemetry](docs/vi/02-opentelemetry/README.vi.md) → [Prometheus](docs/vi/03-prometheus/README.vi.md) → [Loki](docs/vi/04-loki/README.vi.md) → [Tempo](docs/vi/05-tempo/README.vi.md) → [Production](docs/vi/12-production/README.vi.md)
 
-## How to Use This Handbook
+### ML Engineer
+[Anomaly Detection](docs/vi/07-anomaly-detection/README.vi.md) → [Alert Correlation](docs/vi/08-alert-correlation/README.vi.md) → [RCA](docs/vi/09-root-cause-analysis/README.vi.md) → [LLM Agent](docs/vi/10-llm-agent/README.vi.md) → [Big Tech](docs/vi/13-bigtech-aiops/README.vi.md)
 
-### If you are a **DevOps/SRE Engineer**
-Start with [Observability](docs/01-observability/README.md) → [Prometheus](docs/03-prometheus/README.md) → [Kafka](docs/06-kafka/README.md) → [Remediation](docs/11-remediation/README.md)
+### Cloud Architect / Tech Lead
+[Introduction](docs/vi/00-introduction.vi.md) → [Production](docs/vi/12-production/README.vi.md) → [Big Tech](docs/vi/13-bigtech-aiops/README.vi.md) → [E-commerce & Banking](docs/vi/14-ecommerce-banking/README.vi.md)
 
-### If you are a **Platform Engineer**
-Start with [OpenTelemetry](docs/02-opentelemetry/README.md) → [Prometheus](docs/03-prometheus/README.md) → [Loki](docs/04-loki/README.md) → [Tempo](docs/05-tempo/README.md)
-
-### If you are an **ML Engineer**
-Start with [Anomaly Detection](docs/07-anomaly-detection/README.md) → [Alert Correlation](docs/08-alert-correlation/README.md) → [RCA](docs/09-root-cause-analysis/README.md) → [LLM Agent](docs/10-llm-agent/README.md)
-
-### If you are a **Cloud Architect**
-Start with [Introduction](docs/00-introduction.md) → [Production](docs/12-production/README.md) → [Kafka/MSK](docs/06-kafka/README.md)
+### On-call / Incident Commander
+[Famous Incidents](docs/vi/15-famous-incidents/README.vi.md) → [Alert Correlation](docs/vi/08-alert-correlation/README.vi.md) → [RCA](docs/vi/09-root-cause-analysis/README.vi.md) → [Remediation](docs/vi/11-remediation/README.vi.md)
 
 ---
 
 ## Tech Stack Reference
 
-| Layer | Primary | Alternative | AWS Managed |
-|-------|---------|-------------|-------------|
+| Lớp | Giải pháp chính | Thay thế | AWS Managed |
+|-----|-----------------|----------|-------------|
 | Metrics | Prometheus | VictoriaMetrics | CloudWatch |
 | Logs | Loki | ELK Stack | CloudWatch Logs |
 | Traces | Tempo | Jaeger | AWS X-Ray |
 | Collection | OpenTelemetry Collector | Fluent Bit | FireLens |
-| Streaming | Apache Kafka | Redis Streams | AWS Kinesis / MSK |
+| Streaming | Apache Kafka | Redis Streams | Kinesis / MSK |
 | Storage | S3 + Parquet | Thanos | S3 |
 | ML Inference | Python (scikit-learn) | TorchServe | SageMaker |
-| LLM | Claude / GPT-4 | Llama 3 (self-hosted) | Amazon Bedrock |
+| LLM | Claude / GPT-4 | Llama 3 (self-host) | Amazon Bedrock |
 | Remediation | AWS SSM Automation | Rundeck | SSM / Lambda |
 | Visualization | Grafana | Kibana | CloudWatch Dashboards |
 | Alerting | Alertmanager | Grafana Alerting | CloudWatch Alarms |
@@ -232,10 +262,23 @@ Start with [Introduction](docs/00-introduction.md) → [Production](docs/12-prod
 
 ## Contributing
 
-This is an evolving document. Each chapter follows the same quality bar:
-- **Technical Accuracy**: Verified against production deployments
-- **Depth**: Principal Engineer level, no hand-waving
-- **Trade-offs**: Every architectural decision is justified
-- **Production-Ready**: Includes failure modes, monitoring, scaling
+Mỗi chương nên đạt:
 
+- **Độ chính xác kỹ thuật** — bám thực tiễn production / tài liệu public
+- **Độ sâu** — cấp Staff/Principal, có trade-off rõ
+- **Edge cases** — khi thiết kế vỡ và cách phòng
+- **Production-ready** — monitoring, scaling, security, cost
 
+Issue / PR: [github.com/XUanhoa04/aiops-engineering-handbook](https://github.com/XUanhoa04/aiops-engineering-handbook)
+
+---
+
+## License
+
+MIT License — xem [LICENSE](LICENSE).
+
+---
+
+## Maintainers
+
+- **[@XUanhoa04](https://github.com/XUanhoa04)** — AIOps / SRE / Cloud Native handbook

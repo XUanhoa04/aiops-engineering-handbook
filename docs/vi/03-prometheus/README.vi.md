@@ -6,17 +6,17 @@
 
 ## Prerequisites
 
-- [01 — Observability](../01-observability/README.md) — các loại metrics và PromQL cơ bản
-- [02 — OpenTelemetry](../02-opentelemetry/README.md) — cách metrics di chuyển vào Prometheus
+- [01 — Observability](../01-observability/README.vi.md) — các loại metrics và PromQL cơ bản
+- [02 — OpenTelemetry](../02-opentelemetry/README.vi.md) — cách metrics di chuyển vào Prometheus
 
 ## Related Documents
 
-- [07 — Anomaly Detection](../07-anomaly-detection/README.md) — metrics của Prometheus làm input
-- [08 — Alert Correlation](../08-alert-correlation/README.md) — tiêu thụ alerts từ Prometheus
+- [07 — Anomaly Detection](../07-anomaly-detection/README.vi.md) — metrics của Prometheus làm input
+- [08 — Alert Correlation](../08-alert-correlation/README.vi.md) — tiêu thụ alerts từ Prometheus
 
 ## Next Reading
 
-Sau chương này, hãy chuyển sang [04 — Loki](../04-loki/README.md).
+Sau chương này, hãy chuyển sang [04 — Loki](../04-loki/README.vi.md).
 
 ---
 
@@ -56,7 +56,13 @@ Sau chương này, hãy chuyển sang [04 — Loki](../04-loki/README.md).
 17. [Scaling](#17-scaling)
 18. [Security](#18-security)
 19. [Cost](#19-cost)
-20. [Production Review](#20-production-review)
+20. [Tư duy problem-solving trong production](#20-tư-duy-problem-solving-trong-production)
+21. [Edge cases thực tế](#21-edge-cases-thực-tế)
+22. [Decision trees](#22-decision-trees)
+23. [Bài học từ Big Tech / public incidents](#23-bài-học-từ-big-tech--public-incidents)
+24. [Câu hỏi Socratic cho on-call](#24-câu-hỏi-socratic-cho-on-call)
+25. [Improvement experiments (30/60/90 ngày)](#25-improvement-experiments-306090-ngày)
+26. [Production Review](#26-production-review)
 
 ---
 
@@ -1084,7 +1090,396 @@ basic_auth_users:
 
 ---
 
-## 20. Production Review
+## 20. Tư duy problem-solving trong production
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> Prometheus production là bài toán **mô hình kéo (pull)**, **giới hạn cardinality**, **chi phí quy tắc ghi (recording rules)**, và **lựa chọn mở rộng** (federation vs Thanos vs remote_write). Kỹ sư giỏi không chỉ viết PromQL đẹp — họ giữ TSDB **sống** dưới peak và dưới deploy xấu.
+
+### 20.1 Vì sao pull model vẫn thắng trong nhiều hệ thống
+
+Pull không phải "cổ". Nó mang invariant vận hành:
+
+| Thuộc tính | Pull (Prometheus scrape) | Push (remote_write clients / Pushgateway) |
+|------------|--------------------------|---------------------------------------------|
+| Phát hiện down | Scrape fail = signal | Im lặng có thể = client chết *hoặc* không có traffic |
+| Kiểm soát load | Server quyết interval/targets | Client có thể stampede |
+| Service discovery | Trung tâm, relabel | Phân tán, khó audit |
+| Ephemeral jobs | Yếu hơn (cần Pushgateway) | Tự nhiên hơn |
+| Multi-tenant abuse | Target allowlist | Dễ bị flood nếu không auth |
+
+> [!TIP]
+> **Vì sao**
+> Pull buộc **danh sách target có chủ** — quan trọng khi AIOps/automation không được tin tưởng mù. Push phù hợp short-lived jobs và long-term storage path, không thay scrape nội bộ cluster một cách mù quáng.
+
+Tư duy chọn:
+
+1. Kubernetes services dài hơi → scrape + SD.
+2. Batch/cron giây → Pushgateway (cẩn thận lifetime metrics).
+3. Global store / HA durable → remote_write ra Thanos/Cortex/Mimir/AMP.
+4. Không push thẳng từ mỗi pod vào central Prometheus nếu chưa có shard/auth.
+
+### 20.2 High cardinality death — cái chết im lặng rồi ồn ào
+
+Ba giai đoạn:
+
+```text
+1) Âm ỉ: head_series tăng, compaction chậm, query p99 tăng
+2) Ồn: scrape duration > interval, WAL phình, rule eval chậm
+3) Chết: OOM, restart loop, gap metrics, alert storm / alert mù
+```
+
+Nguồn cardinality hay gặp:
+
+- `user_id`, `email`, `request_id`, `url` full path, `pod_name` *kết hợp* quá nhiều dims
+- Histogram buckets × labels quá rộng
+- Exporter "tốt bụng" export per-tenant series không bound
+
+> [!WARNING]
+> **Edge**
+> Một PR thêm label `customer_id` lên counter QPS có thể **hạ cả HA pair** trong vài giờ. Cardinality là security/reliability incident, không chỉ "tối ưu".
+
+### 20.3 Recording rules — tăng tốc query hay đốt CPU?
+
+Recording rules là **precompute**. Chi phí:
+
+- Eval interval × số rules × độ nặng biểu thức
+- Mỗi rule sinh series mới (có thể nhân cardinality nếu giữ nhiều labels)
+- Chậm rule eval → "Prometheus đang scrape OK nhưng alerting trễ"
+
+Tư duy:
+
+| Dùng recording khi | Tránh khi |
+|--------------------|-----------|
+| Dashboard/alert dùng lại biểu thức nặng | Biểu thức chỉ xem ad-hoc tháng một lần |
+| Cần giảm load query path | Rule nổ cardinality (group by high-card label) |
+| Chuẩn hóa SLI ratios | "Rule cho mọi panel" không kỷ luật |
+
+### 20.4 Federation vs Thanos (và họ hàng)
+
+| Nhu cầu | Federation | Thanos / Mimir / Cortex |
+|---------|------------|-------------------------|
+| Ít metric global, hierarchical | Phù hợp | Overkill |
+| LTS object storage | Yếu | Mạnh |
+| Global query nhiều cluster | Hạn chế / fragile | Query frontend |
+| Dedup HA pairs | Thủ công | Prefer Thanos dedup |
+| Ops complexity | Thấp–trung | Trung–cao |
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> Federation là **kính thiên văn hẹp** (chỉ kéo subset đã aggregate). Thanos là **kính toàn sky** + lịch sử. Đừng federation full raw series cross-DC.
+
+### 20.5 remote_write pitfalls — đường ống dễ vỡ
+
+remote_write biến Prometheus thành **producer**. Pitfalls:
+
+1. **Backpressure**: endpoint chậm → shards queue → RAM → OOM.
+2. **Metadata & exemplars**: config thiếu → mất correlation.
+3. **Relabel trên write**: drop nhầm series critical.
+4. **Multi-destination**: một sink chậm ảnh hưởng (tùy version/config queue).
+5. **Stampede sau restart**: WAL replay + catch-up.
+6. **Auth/tenant header** sai → data "biến mất" sang tenant khác im lặng.
+
+### 20.6 Vòng problem-solving Prometheus
+
+```text
+Symptom: query chậm / alert trễ / OOM / thiếu series
+  → head_series & churn?
+  → scrape duration vs interval?
+  → rule eval duration?
+  → compaction / WAL?
+  → remote_write queue & failures?
+  → cardinality top offenders?
+  → sau đó mới "tối ưu PromQL"
+```
+
+---
+
+## 21. Edge cases thực tế
+
+### EC-01 — Scrape success nhưng metric stale logic sai
+
+| | |
+|--|--|
+| **Triệu chứng** | Service chết vẫn "có data" vài phút; alert chậm. |
+| **Nguyên nhân** | Hiểu nhầm stale handling; dùng `increase` window kém; không có dead man's / up alert. |
+| **Phát hiện** | So `up==0` vs app RED; examine last scrape. |
+| **Phòng** | Alert trên `up`; recording + `absent()`; hiểu lookback. |
+
+### EC-02 — High cardinality từ `path` label
+
+| | |
+|--|--|
+| **Triệu chứng** | Series nổ theo URL; TSDB phình sau release FE routes. |
+| **Nguyên nhân** | Instrument HTTP với raw path thay vì route template. |
+| **Phát hiện** | Top labels by count; metric `http_requests_total`. |
+| **Phòng** | Low-card route label; drop path; exemplars cho chi tiết. |
+
+### EC-03 — Histogram buckets × labels = bom
+
+| | |
+|--|--|
+| **Triệu chứng** | Một latency metric chiếm hàng triệu series. |
+| **Nguyên nhân** | 20 buckets × 10 endpoints × 50 pods × 5 status... |
+| **Phát hiện** | Series count per metric name. |
+| **Phòng** | Native histograms; giảm labels; aggregate recording. |
+
+### EC-04 — Recording rule group by user_id
+
+| | |
+|--|--|
+| **Triệu chứng** | Rule eval 100% CPU; disk đầy. |
+| **Nguyên nhân** | Precompute high-card. |
+| **Phát hiện** | `prometheus_rule_group_iterations_missed`; series born by rule. |
+| **Phòng** | Code review rules; unit test cardinality estimate. |
+
+### EC-05 — Alert flapping do scrape timeout
+
+| | |
+|--|--|
+| **Triệu chứng** | `up` dao động; page đêm. |
+| **Nguyên nhân** | Target chậm; timeout thấp; GC pause. |
+| **Phát hiện** | scrape duration histogram; target health page. |
+| **Phòng** | timeout < interval có margin; optimize `/metrics`; sample less heavy metrics. |
+
+### EC-06 — HA pair double-notify
+
+| | |
+|--|--|
+| **Triệu chứng** | Mỗi alert page 2 lần. |
+| **Nguyên nhân** | Alertmanager không cluster / không dedup. |
+| **Phát hiện** | Hai generator URL khác nhau. |
+| **Phòng** | AM cluster; identical external labels strategy; Thanos ruler cẩn trọng. |
+
+### EC-07 — Federation kéo raw high-card
+
+| | |
+|--|--|
+| **Triệu chứng** | Global Prometheus chết; network bão. |
+| **Nguyên nhân** | Federate `{job=~".+"}` không aggregate. |
+| **Phát hiện** | Federation endpoint series count. |
+| **Phòng** | Only aggregated metrics; honor_labels cẩn thận; prefer Thanos. |
+
+### EC-08 — remote_write queue OOM
+
+| | |
+|--|--|
+| **Triệu chứng** | Prometheus RSS tăng khi AMP/Mimir slow. |
+| **Nguyên nhân** | Queue shard memory; không drop/backoff quan sát. |
+| **Phát hiện** | `prometheus_remote_storage_*` metrics. |
+| **Phòng** | Queue config; max samples; alert pending shards; capacity sink. |
+
+### EC-09 — Relabel drop `__name__` nhầm
+
+| | |
+|--|--|
+| **Triệu chứng** | Sau deploy config, mất một họ metric critical. |
+| **Nguyên nhân** | Regex relabel quá rộng. |
+| **Phát hiện** | Diff target labels; unit test relabel configs. |
+| **Phòng** | Prometheus config unit tests; canary scrape job. |
+
+### EC-10 — Pushgateway metrics bất tử
+
+| | |
+|--|--|
+| **Triệu chứng** | Job cũ vẫn hiện success mãi. |
+| **Nguyên nhân** | Không xóa group; stale push. |
+| **Phát hiện** | Pushgateway UI groups; last push time. |
+| **Phòng** | Lifecycle API delete; TTL pattern; prefer recording from batch logs. |
+
+### EC-11 — Thanos compact fail → query holes
+
+| | |
+|--|--|
+| **Triệu chứng** | Query long-range lỗi/partial. |
+| **Nguyên nhân** | Compactor singleton down; overlap blocks. |
+| **Phát hiện** | Compactor logs; bucket web. |
+| **Phòng** | Monitor compact; alert; runbook repair; single compact ownership. |
+
+### EC-12 — PromQL rate trên counter reset hiểu sai
+
+| | |
+|--|--|
+| **Triệu chứng** | Biểu đồ âm/spiky sau restart. |
+| **Nguyên nhân** | Dùng `idelta` nhầm; window < scrape. |
+| **Phát hiện** | So raw counter vs rate. |
+| **Phòng** | `rate`/`increase` đúng window ≥ 2–4× interval; recording chuẩn. |
+
+---
+
+## 22. Decision trees
+
+### 22.1 Pull, push, hay remote_write?
+
+```mermaid
+flowchart TD
+    A[Nguồn metric mới] --> B{Job dài hơi có /metrics?}
+    B -->|Có| C[Prometheus scrape + SD]
+    B -->|Không| D{Ephemeral batch?}
+    D -->|Có| E[Pushgateway có TTL/cleanup]
+    D -->|Không| F[Exporter sidecar hoặc OTel → remote_write]
+    C --> G{Cần LTS multi-cluster?}
+    G -->|Có| H[remote_write / Thanos sidecar]
+    G -->|Không| I[Local TSDB retention đủ]
+```
+
+### 22.2 Cardinality fire drill
+
+```mermaid
+flowchart TD
+    A[head_series tăng đột biến] --> B[Top metrics by series]
+    B --> C[Top labels values count]
+    C --> D{Có thể drop/relabel ngay?}
+    D -->|Có| E[Emergency relabel + restart/reload]
+    D -->|Không| F[Disable job / block target]
+    E --> G[Find owner PR / SDK]
+    F --> G
+    G --> H[Fix + cardinality budget + test]
+```
+
+### 22.3 Federation hay Thanos?
+
+```mermaid
+flowchart TD
+    A[Nhu cầu multi-cluster] --> B{Chỉ cần vài SLI global?}
+    B -->|Có| C[Federation aggregate metrics]
+    B -->|Không| D{Cần history rẻ trên S3?}
+    D -->|Có| E[Thanos/Mimir + object storage]
+    D -->|Không| F[HA pair + longer retention đắt]
+    E --> G{Team ops đủ?}
+    G -->|Không| H[Managed AMP/Grafana Cloud]
+    G -->|Có| E
+```
+
+### 22.4 Có nên thêm recording rule?
+
+```text
+YES nếu: dùng ≥3 nơi, query >1s thường xuyên, alert cần ổn định
+NO nếu: high-card group by, one-off debug, chưa có owner
+MAYBE: aggregate trước (sum without) rồi mới record
+```
+
+---
+
+## 23. Bài học từ Big Tech / public incidents
+
+### 23.1 Metric platforms và "series storms"
+
+Nhiều postmortem nội bộ/công khai quanh metric systems nhấn: **client defaults** và **unbounded labels** hạ control plane quan sát — khi đang cần chúng nhất.
+
+**Bài học**: quota per tenant/service; kill switch drop; progressive label rollout.
+
+### 23.2 Alerting on symptoms vs causes (SRE)
+
+Google SRE: alert **user pain** (SLI), dùng cause metrics để debug. Page on CPU là anti-pattern trừ saturation critically coupled.
+
+**Map**: burn-rate (Ch01) + Alertmanager (chapter này).
+
+### 23.3 Global query complexity
+
+Thanos/Cortex user stories: query fan-out storm, missing store gateway, compact debt. LTS không miễn phí — **ops cost** đổi từ disk Prometheus sang object store + microservices.
+
+### 23.4 remote_write as shared fate
+
+Khi remote store die, Prometheus local vẫn scrape — **trừ khi** queue ăn hết RAM. Design for **degrade**: local retention cứu short-term query.
+
+### 23.5 Links Ch13 / Ch15
+
+| Bài học | Prometheus | Sang |
+|---------|------------|------|
+| SLI alerting | Rules + AM | Ch01, Ch13 |
+| Cardinality SEV | TSDB | Ch15 cost incidents |
+| Multi-cluster view | Thanos | Ch12 multi-region |
+| Pipeline reliability | remote_write | Ch06 buffering analogies |
+
+---
+
+## 24. Câu hỏi Socratic cho on-call
+
+### 24.1 Scrape & data plane
+
+1. Target `up` đang 0 hay metric absent? Khác nhau thế nào với user impact?
+2. Scrape duration có ăn mòn interval không?
+3. Series biến mất do relabel, do job removed, hay do app không export?
+4. Bạn đang query primary nào — local, Thanos, AMP? Clock/range khớp?
+5. HA pair có lệch external labels không?
+
+### 24.2 Cardinality & rules
+
+6. Metric nào top series? Label nào thủ phạm?
+7. Recording rule có đang *sinh* cardinality không?
+8. Rule eval delay có làm alert trễ hơn MTTD cam kết không?
+9. Có budget series/service không — ai owns?
+10. Emergency drop plan có test chưa?
+
+### 24.3 remote_write / scale
+
+11. Queue pending có tăng không? Failures?
+12. Nếu remote chết 1 giờ, local còn query được gì?
+13. Federation đang kéo raw hay aggregate?
+14. Compactor Thanos có healthy không?
+15. PromQL window có ≥ vài scrape intervals không?
+
+### 24.4 Sau sự cố
+
+16. Cần thêm alert trên meta-metrics (`prometheus_*`) nào?
+17. PR nào suýt giết TSDB — gate nào thiếu?
+18. Dashboard có dùng recording thay raw nặng chưa?
+19. Experiment 30 ngày giảm head_series là gì?
+20. Dữ liệu đã đủ sạch cho anomaly detection Ch07 chưa?
+
+---
+
+## 25. Improvement experiments (30/60/90 ngày)
+
+### 30 ngày — Stabilize & measure
+
+| Experiment | Cách làm | Success metric |
+|------------|---------|----------------|
+| Series inventory | Top 50 metrics | Owner map 100% tier-1 |
+| Scrape SLO | duration p99 < 50% interval | Alert + dashboard |
+| Rule eval SLO | iterations missed = 0 | Alert |
+| AM dedup check | Page storm test | 1 notification / firing |
+| remote_write health | queue metrics | Alert on lag |
+
+**Deliverables**: cardinality policy 1-pager; meta-monitoring dashboard.
+
+### 60 ngày — Control plane hardening
+
+| Experiment | Cách làm | Success metric |
+|------------|---------|----------------|
+| Relabel unit tests | CI on prometheus.yml | 0 silent metric loss |
+| Recording hygiene | Xóa rules unused 30d | Eval CPU ↓ |
+| Native hist pilot | 1 service | Series ↓ latency metrics |
+| Emergency drop runbook | Game day | MTTM cardinality < 15m |
+| Federation/Thanos decision | ADR | Documented choice |
+
+### 90 ngày — Scale path
+
+| Experiment | Cách làm | Success metric |
+|------------|---------|----------------|
+| Thanos or managed LTS | Pilot 2 clusters | Query 30d OK |
+| Per-service series budget | Gate in pipeline | Violations visible |
+| SLI burn rules chuẩn | Template | 50% bớt static CPU pages |
+| Cost model | $/million samples | Forecast quarterly |
+| AIOps export | Remote write / Kafka rules | Ch07/08 consume |
+
+```text
+North-star:
+  - Head series within capacity headroom (e.g. <70% red line)
+  - Rule eval lag
+  - % alerts tied to SLI vs infra
+  - Time to mitigate cardinality incident
+  - Long-range query success rate
+```
+
+> [!TIP]
+> **Vì sao**
+> Prometheus "chạy" dễ; Prometheus **đáng tin ở scale** cần kỷ luật giống database production — vì nó *là* database production của tín hiệu.
+
+---
+
+## 26. Production Review
 
 **Các vấn đề tiềm ẩn**:
 

@@ -6,19 +6,23 @@
 
 ## Prerequisites
 
-- [01 — Observability](../01-observability/README.md) — các loại metric, cấu trúc log
-- [03 — Prometheus](../03-prometheus/README.md) — sử dụng PromQL để trích xuất đặc trưng (feature extraction)
-- [06 — Kafka](../06-kafka/README.md) — tiêu thụ telemetry, đẩy các sự kiện bất thường (anomaly events)
+- [01 — Observability](../01-observability/README.vi.md) — các loại metric, cấu trúc log
+- [03 — Prometheus](../03-prometheus/README.vi.md) — sử dụng PromQL để trích xuất đặc trưng (feature extraction)
+- [06 — Kafka](../06-kafka/README.vi.md) — tiêu thụ telemetry, đẩy các sự kiện bất thường (anomaly events)
 
 ## Related Documents
 
-- [08 — Alert Correlation](../08-alert-correlation/README.md) — nhận các sự kiện bất thường
-- [09 — Root Cause Analysis](../09-root-cause-analysis/README.md) — sử dụng ngữ cảnh bất thường
-- [10 — LLM Agent](../10-llm-agent/README.md) — sử dụng tín hiệu bất thường phục vụ điều tra sự cố
+- [08 — Alert Correlation](../08-alert-correlation/README.vi.md) — nhận các sự kiện bất thường
+- [09 — Root Cause Analysis](../09-root-cause-analysis/README.vi.md) — sử dụng ngữ cảnh bất thường
+- [10 — LLM Agent](../10-llm-agent/README.vi.md) — sử dụng tín hiệu bất thường phục vụ điều tra sự cố
+- [12 — Production Operations](../12-production/README.vi.md) — vận hành detector trên production, SLO platform
+- [13 — Big Tech AIOps](../13-bigtech-aiops/README.vi.md) — cách Google/Meta/Netflix vận hành detection ở quy mô lớn
+- [14 — E-commerce & Banking](../14-ecommerce-banking/README.vi.md) — seasonality Black Friday, compliance, latency-critical detection
+- [15 — Famous Incidents](../15-famous-incidents/README.vi.md) — case study drift/deploy-induced false alarms trong sự cố thực
 
 ## Next Reading
 
-Sau chương này, hãy chuyển sang [08 — Alert Correlation](../08-alert-correlation/README.md).
+Sau chương này, hãy chuyển sang [08 — Alert Correlation](../08-alert-correlation/README.vi.md).
 
 ---
 
@@ -48,11 +52,20 @@ Sau chương này, hãy chuyển sang [08 — Alert Correlation](../08-alert-cor
 22. [Scaling](#22-scaling)
 23. [Security](#23-security)
 24. [Cost](#24-cost)
-25. [Production Review](#25-production-review)
+25. [Tư duy sâu: Drift, Ensemble, Feedback Loop & Khi nào KHÔNG dùng ML](#25-tư-duy-sâu-drift-ensemble-feedback-loop--khi-nào-không-dùng-ml)
+26. [Production Review](#26-production-review)
 
 ---
 
 ## 1. Anomaly Detection Overview
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> Anomaly detection không phải là "càng nhạy càng tốt". Nhiệm vụ thật sự là **tối đa hóa tín hiệu có thể hành động** (actionable signal) trong khi **giữ alert fatigue dưới ngưỡng tin cậy của on-call**. Một detector recall 99% nhưng precision 40% sẽ bị mute trong 2 tuần. Hãy tối ưu theo **precision-at-page** trước, rồi mới mở rộng recall.
+
+> [!TIP]
+> **Vì sao static threshold vẫn sống sót?**
+> Threshold tĩnh rẻ, giải thích được, audit được, và đủ tốt cho SLO burn-rate rõ ràng. ML thắng khi baseline **thay đổi theo mùa, theo deploy, theo tenant**. Nếu metric có ngưỡng vật lý rõ (disk 95%, cert expire 14 ngày) — đừng ép ML.
 
 ### What Is an Anomaly?
 
@@ -1849,7 +1862,261 @@ consumer_config = {
 
 ---
 
-## 25. Production Review
+## 25. Tư duy sâu: Drift, Ensemble, Feedback Loop & Khi nào KHÔNG dùng ML
+
+Phần này bổ sung **tư duy vận hành** mà code/thuật toán thuần túy không giải quyết được: khi mô hình "đúng về mặt thống kê" nhưng **sai về mặt on-call**, và khi nào bạn nên **cố ý không dùng ML**.
+
+### 25.1 Concept Drift vs Seasonal vs Deploy-Induced Shift
+
+Ba hiện tượng trông giống nhau trên dashboard nhưng đòi hỏi phản ứng hoàn toàn khác:
+
+| Hiện tượng | Dấu hiệu | Ví dụ | Hành động đúng |
+|------------|----------|-------|----------------|
+| **Seasonal (chu kỳ)** | Lặp theo giờ/ngày/tuần; STL residual ổn định | Traffic e-commerce cao 20h–22h mỗi ngày | Dùng STL/SHESD; **không** retrain vội |
+| **Deploy-induced shift** | Bắt đầu đúng sau release; baseline mới ổn định | Deploy tối ưu CPU → mean CPU giảm 30% | Gắn change event; **warm-start baseline** sau deploy; suppress 10–30 phút có điều kiện |
+| **Concept drift** | Phân phối residual/score trôi từ từ; PSI tăng; FPR tăng âm thầm | Mix traffic mobile/web đổi dần theo quý | Retrain; shadow model; PSI alert > 0.2 |
+| **Sudden regime change** | Bước nhảy vĩnh viễn (migration, scale-out) | Chuyển DB primary → pool latency đổi hẳn | Reset state EWMA/LSTM sequence; đánh dấu "new normal" |
+
+> [!WARNING]
+> **Anti-pattern**: Coi mọi shift là anomaly. Sau Black Friday hoặc sau migration, mô hình cũ sẽ "la hét" liên tục. Nếu không có **change-aware suppression + retrain**, on-call sẽ mute detector — và bạn mất cả lớp detection khi sự cố thật xảy ra.
+
+```python
+def classify_shift(
+    metric_series,
+    deploy_events: list,
+    psi_score: float,
+    stl_seasonal_strength: float,
+    now,
+) -> str:
+    """
+    Phân loại kiểu shift trước khi quyết định alert / suppress / retrain.
+    """
+    recent_deploys = [
+        d for d in deploy_events
+        if 0 <= (now - d["ts"]).total_seconds() < 1800  # 30 phút
+        and d["service"] == metric_series.service
+    ]
+    if recent_deploys:
+        return "deploy_induced"
+
+    if stl_seasonal_strength > 0.6 and abs(metric_series.seasonal_z) > 3 and abs(metric_series.trend_z) < 1.5:
+        return "seasonal_expected"
+
+    if psi_score > 0.25:
+        return "concept_drift"
+
+    if metric_series.step_change_detected and metric_series.post_step_stability > 0.8:
+        return "regime_change"
+
+    return "point_or_contextual_anomaly"
+```
+
+**Playbook quyết định**:
+
+```
+shift_type == seasonal_expected     → không page; ghi annotation Grafana
+shift_type == deploy_induced        → giảm score ×0.7; gắn context deploy; page nếu residual tiếp tục tăng sau warm-up
+shift_type == concept_drift         → alert platform team; trigger retrain; giữ model cũ + shadow
+shift_type == regime_change         → reset baseline; require human "accept new normal"
+shift_type == point_or_contextual   → pipeline anomaly bình thường → Kafka aiops-anomalies
+```
+
+Xem thêm kịch bản seasonality thương mại tại [14 — E-commerce & Banking](../14-ecommerce-banking/README.vi.md) và các sự cố drift thực tế tại [15 — Famous Incidents](../15-famous-incidents/README.vi.md).
+
+### 25.2 Alert Fatigue từ mô hình quá nhạy
+
+> [!IMPORTANT]
+> **Precision-at-page là metric sản phẩm, không phải academic F1.**
+> On-call chỉ quan tâm: "Trong 10 lần bị page lúc 3h sáng, bao nhiêu lần là thật?" Nếu < 8/10, hệ thống sẽ bị bypass.
+
+**Dấu hiệu fatigue đang giết detector**:
+
+1. Median time-to-ack tăng dần qua các tuần
+2. Tỷ lệ `snooze` / `acknowledge without action` > 40%
+3. Channel Slack `#alerts` có reaction 🔇 nhiều hơn 🔧
+4. FPR 24h > 20% cho severity pageable
+5. Engineer tự viết script mute rule thay vì sửa model
+
+**Cách hạ độ nhạy có kiểm soát** (không "tắt bừa"):
+
+| Nút vặn | Hiệu ứng | Rủi ro |
+|---------|----------|--------|
+| Tăng `min_duration` 1 → 3–5 phút | Giảm spike nhiễu | Chậm phát hiện hard-down ngắn |
+| Ensemble majority thay vì any-vote | Giảm FP | Tăng FN khi chỉ 1 detector đúng |
+| Confidence gate score > 0.65 → 0.75 cho P1 | Ít page ban đêm | Miss anomaly "âm thầm" |
+| Service-tier policy (P1 chỉ cho checkout/payment) | Bảo vệ sleep | Blind spot service nội bộ |
+| Feedback-driven threshold | Học từ on-call | Bias nếu label kém |
+
+```yaml
+# Policy theo tier — tránh "mọi metric đều page được"
+detection_policy:
+  tier_critical:   # payment, checkout, auth
+    page_min_score: 0.75
+    min_consecutive_windows: 3
+    ensemble: majority  # ≥2 detectors
+  tier_standard:
+    page_min_score: 0.65
+    min_consecutive_windows: 2
+    ensemble: weighted
+  tier_internal:
+    page_min_score: 0.85
+    notify: slack_only  # không PagerDuty
+```
+
+### 25.3 Ensemble disagreement — edge cases
+
+Ensemble không phải lúc nào cũng "an toàn hơn một model". Các case khó:
+
+| Tình huống | EWMA | Isolation Forest | LSTM | Hành vi ensemble nguy hiểm |
+|------------|------|------------------|------|----------------------------|
+| Spike đơn lẻ 30s | Fire | Silent | Silent | Majority → miss hard outage ngắn |
+| Slow memory leak | Silent | Fire muộn | Fire sớm | Weighted OK nếu LSTM weight cao |
+| Deploy đổi shape | Fire | Fire | Fire | Cả 3 đồng ý → **false cascade** nếu không có deploy context |
+| Multi-variate (CPU OK, error↑) | Silent | Fire | Silent/Fire | Cần IF weight cao cho multivariate |
+| New service cold-start | Fire | N/A | N/A | Fallback statistical only |
+
+> [!TIP]
+> **Quy tắc disagreement**:
+> - **1/3 fire + score cao + metric critical** → soft-alert (Slack), không page
+> - **2/3 fire** → candidate page sau `min_duration`
+> - **3/3 fire ngay sau deploy** → **không** tin ngay; kiểm tra change window trước
+> - **Disagreement kéo dài > 1 giờ trên cùng metric** → ticket cho ML platform (model drift / feature bug)
+
+```python
+def ensemble_decision(votes: dict, context: dict) -> dict:
+    """
+    votes: {"ewma": 0.9, "iforest": 0.2, "lstm": 0.85}
+    """
+    firing = {k: v for k, v in votes.items() if v >= 0.65}
+    n = len(firing)
+
+    if context.get("in_deploy_window") and n >= 2:
+        return {
+            "action": "annotate_only",
+            "reason": "ensemble_agree_but_deploy_window",
+            "score": sum(votes.values()) / len(votes) * 0.6,
+        }
+
+    if n == 0:
+        return {"action": "drop", "score": 0.0}
+
+    if n == 1 and context.get("tier") == "critical":
+        only = next(iter(firing))
+        # EWMA-only spike trên critical: soft path, chờ confirm
+        return {
+            "action": "soft_alert" if only == "ewma" else "candidate",
+            "score": firing[only],
+            "disagreement": True,
+        }
+
+    if n >= 2:
+        return {
+            "action": "page_candidate",
+            "score": sum(firing.values()) / n,
+            "detectors": list(firing),
+        }
+
+    return {"action": "log_only", "score": max(votes.values())}
+```
+
+### 25.4 Labeling feedback loop từ on-call
+
+Không có label sạch → không có retrain có ý nghĩa. Nhưng **label từ on-call bị bias**:
+
+- On-call bấm FP khi đang mệt (true anomaly bị dán FP)
+- Incident lớn được gán 1 root cause → các anomaly phụ bị bỏ quên
+- Chỉ P1 được label; P3 im lặng → model học lệch severity
+- "Không rõ" bị skip → thiếu negative examples khó
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> Coi feedback là **noisy label**, không phải ground truth tuyệt đối. Dùng majority vote giữa: on-call label + postmortem + auto-verify (metric có về baseline sau fix không?).
+
+**Thiết kế feedback tối thiểu có giá trị**:
+
+```
+Slack/PagerDuty button:
+  [✅ True Positive]  [❌ False Positive]  [🤷 Unsure]  [🔁 Duplicate]
+
+Sau resolve:
+  - Nếu remediation thành công + metric normalize → weak label TP
+  - Nếu auto-close trong 5 phút không action → weak label likely-FP
+  - Postmortem root_cause_service → gán TP cho anomaly cùng service ± window
+```
+
+```python
+def build_retrain_labels(feedback_rows: list, auto_signals: list) -> list:
+    """
+    Kết hợp human feedback + weak labels; loại bỏ low-confidence.
+    """
+    labels = []
+    for row in feedback_rows:
+        if row["label"] == "unsure":
+            continue
+        conf = 0.9 if row["source"] == "postmortem" else 0.7
+        if row["label"] == "false_positive" and row.get("ack_latency_s", 999) < 30:
+            conf *= 0.8  # ack siêu nhanh có thể là "mute fatigue", không chắc FP
+        labels.append({**row, "label_confidence": conf})
+
+    for sig in auto_signals:
+        if sig["type"] == "normalized_after_fix":
+            labels.append({
+                "anomaly_id": sig["anomaly_id"],
+                "label": "true_positive",
+                "label_confidence": 0.6,
+                "source": "auto_verify",
+            })
+    return [x for x in labels if x["label_confidence"] >= 0.55]
+```
+
+**Chống poisoning feedback**: rate-limit label per user; audit user có tỷ lệ FP > 90% liên tục; tách "mute for me" khỏi "global FP".
+
+### 25.5 Khi nào KHÔNG dùng ML (static threshold / rule thắng)
+
+| Tình huống | Nên dùng | Lý do |
+|------------|----------|-------|
+| SLO burn-rate 14x/2% budget | Multi-window burn (Google SRE) | Định nghĩa nghiệp vụ rõ, audit được |
+| Disk / inode / cert expiry | Static + forecast đơn giản | Vật lý, monotonic |
+| Error budget policy | Rules + recording rules | Cần giải thích cho stakeholder |
+| Service < 2 tuần data | EWMA / modified z-score | Cold start; ML overfit |
+| Metric cardinality-explosive | Không detect per-series ML | Cost + noise; aggregate trước |
+| Compliance "explain every alert" | Rules + threshold | ML black-box khó audit |
+| Binary liveness (up/down) | Blackbox probe | Không cần phân phối |
+| Known-bad deploy marker | Change freeze / canary gate | Causal signal mạnh hơn residual |
+
+> [!WARNING]
+> **Anti-pattern "ML vanity"**: Thay 50 threshold tốt bằng 1 LSTM vì "nghe hiện đại". Kết quả: chi phí GPU, latency suy luận, và on-call không giải thích được alert cho sếp. ML chỉ thêm khi **rule/threshold đã chứng minh failure mode** (seasonality, multivariate, slow leak).
+
+**Cây quyết định nhanh**:
+
+```
+Metric có ngưỡng nghiệp vụ rõ?
+  YES → static / burn-rate / probe
+  NO  → có seasonality mạnh?
+          YES → STL + residual threshold (vẫn chưa cần DL)
+          NO  → multivariate / sequential phức tạp?
+                  YES → IF / LSTM / ensemble
+                  NO  → EWMA + modified z-score là đủ
+```
+
+### 25.6 Problem-solving playbook khi detector "hỏng im lặng"
+
+| Triệu chứng | Chẩn đoán nhanh | Fix |
+|-------------|-----------------|-----|
+| Không còn anomaly nào 48h | Consumer lag? score gate quá cao? data gap? | Check Kafka lag, PSI, scrape success |
+| Mọi service đều anomalous | Global clock skew, bad deploy feature, bad norm | Rollback model; so sánh shadow |
+| Chỉ 1 detector fire liên tục | Feature bug / scale mismatch | Per-detector canary metrics |
+| FPR tăng sau retrain | Train data chứa incident / leakage | Revert model registry version |
+| Recall giảm sau suppress rules | Suppress quá rộng theo topology | Scope suppress theo incident_id |
+
+> [!NOTE]
+> **Câu hỏi kiểm tra**: Detector im ắng 48h trên production 100 service — bạn kiểm tra **3 tín hiệu nào trước** trước khi tin rằng "hệ thống khỏe"?
+
+Liên hệ vận hành platform-level: [12 — Production](../12-production/README.vi.md). Cách Big Tech tách detection theo tier: [13 — Big Tech AIOps](../13-bigtech-aiops/README.vi.md).
+
+---
+
+## 26. Production Review
 
 ### Principal Engineer Assessment
 
@@ -1865,14 +2132,16 @@ consumer_config = {
 
 5. **Giải pháp LSTM đa biến (LSTNet / TPA-LSTM)**: Đối với các nhóm metrics có mối liên hệ mật thiết (như CPU + memory + error rate), mô hình LSTM đa biến sẽ mang lại hiệu quả tốt hơn so với việc chạy ba mô hình LSTM độc lập cho từng metric. Phần này chưa được đề cập ở phiên bản hiện tại — đánh dấu để bổ sung ở phiên bản V2.
 
+6. **Ensemble + change-awareness là bắt buộc production**: Không deploy anomaly detection "trần" không có deploy window, maintenance window, và precision-at-page policy. Xem §25.
+
 ### Chapter Scores
 
 | Tiêu chí | Điểm số | Ghi chú |
 |-----------|-------|-------|
 | Technical Accuracy | 9.7/10 | Toàn bộ các thuật toán được trình bày đầy đủ công thức toán học xác thực |
-| Production Readiness | 9.6/10 | Cung cấp chi tiết mô hình ensemble, giảm thiểu FP, pipeline huấn luyện lại |
-| Depth | 9.8/10 | Giới thiệu đầy đủ 12 thuật toán từ EWMA đến Transformer |
-| Practical Value | 9.7/10 | Có code triển khai Python thực tế |
+| Production Readiness | 9.7/10 | Ensemble, FP reduction, drift taxonomy, feedback loop |
+| Depth | 9.8/10 | Giới thiệu đầy đủ 12 thuật toán từ EWMA đến Transformer + edge thinking |
+| Practical Value | 9.8/10 | Có code triển khai Python thực tế + playbook vận hành |
 | Architecture Quality | 9.6/10 | Thiết kế pipeline hoàn chỉnh tích hợp cùng Kafka |
 | Observability | 9.6/10 | Có các câu lệnh PromQL để theo dõi tỷ lệ FP, lag, độ trễ hệ thống |
 | Security | 9.5/10 | Có cấu hình mã hóa model artifacts, chính sách bảo vệ PII |
