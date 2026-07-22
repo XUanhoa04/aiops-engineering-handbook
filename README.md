@@ -4,18 +4,19 @@
 
 [![Status](https://img.shields.io/badge/status-active-brightgreen)](.)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Language](https://img.shields.io/badge/language-Tiếng%20Việt-red)](.)
-[![Chapters](https://img.shields.io/badge/chapters-16-blue)](docs/vi/)
+[![Languages](https://img.shields.io/badge/languages-VI%20%7C%20EN-red)](.)
+[![Chapters](https://img.shields.io/badge/chapters-16%20%C3%97%202-blue)](docs/)
 [![Audience](https://img.shields.io/badge/audience-SRE%20%7C%20DevOps%20%7C%20Platform%20%7C%20ML-orange)](.)
 [![GitHub](https://img.shields.io/badge/github-XUanhoa04%2Faiops--engineering--handbook-black)](https://github.com/XUanhoa04/aiops-engineering-handbook)
 
 | | |
 |---|---|
-| **Ngôn ngữ** | Tiếng Việt |
-| **Số chương** | 16 (Foundation → Case Studies) |
-| **Cấp độ** | Staff / Principal SRE |
+| **Languages** | Tiếng Việt (`docs/vi/`) · English (`docs/en/`) |
+| **Chapters** | 16 per language (Foundation → Case Studies) |
+| **Level** | Staff / Principal SRE |
 | **Repo** | [github.com/XUanhoa04/aiops-engineering-handbook](https://github.com/XUanhoa04/aiops-engineering-handbook) |
-| **Nội dung** | `docs/vi/` |
+| **VI content** | [docs/vi/](docs/vi/) |
+| **EN content** | [docs/en/](docs/en/) — full translation of the Vietnamese edition |
 
 ---
 
@@ -133,58 +134,60 @@ graph LR
 
 ---
 
-## Mục lục (`docs/vi/`)
+## Table of contents (dual language)
+
+Same 16 chapters in both languages. English is a faithful translation of the Vietnamese edition.
 
 ### 📖 Foundation
 
-| # | Tài liệu | Mô tả |
-|---|----------|--------|
-| 00 | [Introduction](docs/vi/00-introduction.vi.md) | Triết lý AIOps, OODA, ROI, maturity, edge cases, flywheel |
-| 01 | [Observability](docs/vi/01-observability/README.vi.md) | 3 pillars, SLO, cardinality, brownout, decision trees |
+| # | Tiếng Việt | English | Topic |
+|---|------------|---------|--------|
+| 00 | [Introduction](docs/vi/00-introduction.vi.md) | [Introduction](docs/en/00-introduction.md) | AIOps philosophy, OODA, ROI, maturity, edge cases |
+| 01 | [Observability](docs/vi/01-observability/README.vi.md) | [Observability](docs/en/01-observability/README.md) | 3 pillars, SLO, cardinality, brownout |
 
 ### 📡 Telemetry Stack
 
-| # | Tài liệu | Mô tả |
-|---|----------|--------|
-| 02 | [OpenTelemetry](docs/vi/02-opentelemetry/README.vi.md) | OTLP, Collector SPOF, context propagation, processor ordering |
-| 03 | [Prometheus](docs/vi/03-prometheus/README.vi.md) | Pull model, high-cardinality, Thanos, remote_write |
-| 04 | [Loki](docs/vi/04-loki/README.vi.md) | Index-labels-only, LogQL, noisy neighbor, structured logging |
-| 05 | [Tempo](docs/vi/05-tempo/README.vi.md) | Sampling paradox, trace RCA, PII spans, cost vs coverage |
+| # | Tiếng Việt | English | Topic |
+|---|------------|---------|--------|
+| 02 | [OpenTelemetry](docs/vi/02-opentelemetry/README.vi.md) | [OpenTelemetry](docs/en/02-opentelemetry/README.md) | OTLP, Collector SPOF, context propagation |
+| 03 | [Prometheus](docs/vi/03-prometheus/README.vi.md) | [Prometheus](docs/en/03-prometheus/README.md) | Pull model, high-cardinality, Thanos |
+| 04 | [Loki](docs/vi/04-loki/README.vi.md) | [Loki](docs/en/04-loki/README.md) | Index-labels-only, LogQL, noisy neighbor |
+| 05 | [Tempo](docs/vi/05-tempo/README.vi.md) | [Tempo](docs/en/05-tempo/README.md) | Sampling paradox, trace RCA, cost vs coverage |
 
 ### 🚌 Transport Layer
 
-| # | Tài liệu | Mô tả |
-|---|----------|--------|
-| 06 | [Kafka / Kinesis](docs/vi/06-kafka/README.vi.md) | Backpressure, lag-as-signal, poison message, bypass |
+| # | Tiếng Việt | English | Topic |
+|---|------------|---------|--------|
+| 06 | [Kafka / Kinesis](docs/vi/06-kafka/README.vi.md) | [Kafka / Kinesis](docs/en/06-kafka/README.md) | Backpressure, lag-as-signal, poison message |
 
 ### 🧠 Intelligence Layer
 
-| # | Tài liệu | Mô tả |
-|---|----------|--------|
-| 07 | [Anomaly Detection](docs/vi/07-anomaly-detection/README.vi.md) | Ensemble, drift, khi **không** dùng ML, labeling loop |
-| 08 | [Alert Correlation](docs/vi/08-alert-correlation/README.vi.md) | Topology stale, cascade vs multi-fail, storm UX |
-| 09 | [Root Cause Analysis](docs/vi/09-root-cause-analysis/README.vi.md) | Causation traps, multi-root, evidence quality, time budget |
-| 10 | [LLM Investigation Agent](docs/vi/10-llm-agent/README.vi.md) | Hallucination, prompt injection, sandbox, AI SRE vs AIOps |
+| # | Tiếng Việt | English | Topic |
+|---|------------|---------|--------|
+| 07 | [Anomaly Detection](docs/vi/07-anomaly-detection/README.vi.md) | [Anomaly Detection](docs/en/07-anomaly-detection/README.md) | Ensemble, drift, when **not** to use ML |
+| 08 | [Alert Correlation](docs/vi/08-alert-correlation/README.vi.md) | [Alert Correlation](docs/en/08-alert-correlation/README.md) | Topology stale, cascade vs multi-fail |
+| 09 | [Root Cause Analysis](docs/vi/09-root-cause-analysis/README.vi.md) | [Root Cause Analysis](docs/en/09-root-cause-analysis/README.md) | Causation traps, multi-root, time budget |
+| 10 | [LLM Investigation Agent](docs/vi/10-llm-agent/README.vi.md) | [LLM Investigation Agent](docs/en/10-llm-agent/README.md) | Hallucination, prompt injection, AI SRE |
 
 ### ⚙️ Action Layer
 
-| # | Tài liệu | Mô tả |
-|---|----------|--------|
-| 11 | [Automated Remediation](docs/vi/11-remediation/README.vi.md) | Automation paradox, dual-control, never freeform shell |
+| # | Tiếng Việt | English | Topic |
+|---|------------|---------|--------|
+| 11 | [Automated Remediation](docs/vi/11-remediation/README.vi.md) | [Automated Remediation](docs/en/11-remediation/README.md) | Automation paradox, dual-control |
 
 ### 🏭 Production
 
-| # | Tài liệu | Mô tả |
-|---|----------|--------|
-| 12 | [Production Operations](docs/vi/12-production/README.vi.md) | HA/DR, dogfood AIOps, cost runaway, RACI, game days |
+| # | Tiếng Việt | English | Topic |
+|---|------------|---------|--------|
+| 12 | [Production Operations](docs/vi/12-production/README.vi.md) | [Production Operations](docs/en/12-production/README.md) | HA/DR, dogfood AIOps, RACI, game days |
 
 ### 🌍 Case Studies & Lessons
 
-| # | Tài liệu | Mô tả |
-|---|----------|--------|
-| 13 | [Big Tech AIOps](docs/vi/13-bigtech-aiops/README.vi.md) | Google SRE, Netflix chaos, AWS ops-tools, Meta, Uber Michelangelo |
-| 14 | [E-commerce & Banking](docs/vi/14-ecommerce-banking/README.vi.md) | BFCM, core banking, PCI, multi-PSP, money-path safety |
-| 15 | [Famous Incidents](docs/vi/15-famous-incidents/README.vi.md) | S3 2017, DynamoDB DNS, Meta 2021, Cloudflare → AIOps design |
+| # | Tiếng Việt | English | Topic |
+|---|------------|---------|--------|
+| 13 | [Big Tech AIOps](docs/vi/13-bigtech-aiops/README.vi.md) | [Big Tech AIOps](docs/en/13-bigtech-aiops/README.md) | Google, Netflix, AWS, Meta, Uber |
+| 14 | [E-commerce & Banking](docs/vi/14-ecommerce-banking/README.vi.md) | [E-commerce & Banking](docs/en/14-ecommerce-banking/README.md) | BFCM, core banking, PCI, multi-PSP |
+| 15 | [Famous Incidents](docs/vi/15-famous-incidents/README.vi.md) | [Famous Incidents](docs/en/15-famous-incidents/README.md) | S3 2017, DynamoDB DNS, Meta 2021, Cloudflare |
 
 ---
 
@@ -221,24 +224,27 @@ graph TD
 
 ---
 
-## Cách dùng
+## How to use / Cách dùng
 
-> Với mỗi section, trả lời 3 câu trước khi đọc tiếp: (1) Vấn đề thật đang giải? (2) Trade-off là gì? (3) Edge case nào làm vỡ thiết kế này?
+> For each section, answer three questions before continuing: (1) What real problem is this solving? (2) What is the trade-off? (3) Which edge case breaks this design?
+
+Pick **[English](docs/en/)** or **[Tiếng Việt](docs/vi/)** — same chapter numbers.
 
 ### DevOps / SRE
-[Observability](docs/vi/01-observability/README.vi.md) → [Prometheus](docs/vi/03-prometheus/README.vi.md) → [Kafka](docs/vi/06-kafka/README.vi.md) → [Remediation](docs/vi/11-remediation/README.vi.md) → [Famous Incidents](docs/vi/15-famous-incidents/README.vi.md)
+EN: [Observability](docs/en/01-observability/README.md) → [Prometheus](docs/en/03-prometheus/README.md) → [Kafka](docs/en/06-kafka/README.md) → [Remediation](docs/en/11-remediation/README.md) → [Incidents](docs/en/15-famous-incidents/README.md)  
+VI: [Observability](docs/vi/01-observability/README.vi.md) → … (same order under `docs/vi/`)
 
 ### Platform Engineer
-[OpenTelemetry](docs/vi/02-opentelemetry/README.vi.md) → [Prometheus](docs/vi/03-prometheus/README.vi.md) → [Loki](docs/vi/04-loki/README.vi.md) → [Tempo](docs/vi/05-tempo/README.vi.md) → [Production](docs/vi/12-production/README.vi.md)
+EN: [OpenTelemetry](docs/en/02-opentelemetry/README.md) → [Prometheus](docs/en/03-prometheus/README.md) → [Loki](docs/en/04-loki/README.md) → [Tempo](docs/en/05-tempo/README.md) → [Production](docs/en/12-production/README.md)
 
 ### ML Engineer
-[Anomaly Detection](docs/vi/07-anomaly-detection/README.vi.md) → [Alert Correlation](docs/vi/08-alert-correlation/README.vi.md) → [RCA](docs/vi/09-root-cause-analysis/README.vi.md) → [LLM Agent](docs/vi/10-llm-agent/README.vi.md) → [Big Tech](docs/vi/13-bigtech-aiops/README.vi.md)
+EN: [Anomaly Detection](docs/en/07-anomaly-detection/README.md) → [Alert Correlation](docs/en/08-alert-correlation/README.md) → [RCA](docs/en/09-root-cause-analysis/README.md) → [LLM Agent](docs/en/10-llm-agent/README.md) → [Big Tech](docs/en/13-bigtech-aiops/README.md)
 
 ### Cloud Architect / Tech Lead
-[Introduction](docs/vi/00-introduction.vi.md) → [Production](docs/vi/12-production/README.vi.md) → [Big Tech](docs/vi/13-bigtech-aiops/README.vi.md) → [E-commerce & Banking](docs/vi/14-ecommerce-banking/README.vi.md)
+EN: [Introduction](docs/en/00-introduction.md) → [Production](docs/en/12-production/README.md) → [Big Tech](docs/en/13-bigtech-aiops/README.md) → [E-commerce & Banking](docs/en/14-ecommerce-banking/README.md)
 
 ### On-call / Incident Commander
-[Famous Incidents](docs/vi/15-famous-incidents/README.vi.md) → [Alert Correlation](docs/vi/08-alert-correlation/README.vi.md) → [RCA](docs/vi/09-root-cause-analysis/README.vi.md) → [Remediation](docs/vi/11-remediation/README.vi.md)
+EN: [Famous Incidents](docs/en/15-famous-incidents/README.md) → [Alert Correlation](docs/en/08-alert-correlation/README.md) → [RCA](docs/en/09-root-cause-analysis/README.md) → [Remediation](docs/en/11-remediation/README.md)
 
 ---
 
