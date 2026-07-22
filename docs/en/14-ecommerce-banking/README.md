@@ -52,6 +52,10 @@ After this chapter, continue to [15 — Famous Incidents](../15-famous-incidents
 
 ## 1. Different domain constraints
 
+![Payment critical path](../../assets/diagrams/08-payment-critical-path.png)
+
+*Poster: shopper → checkout → risk → PSP → issuer, with RED + business SLIs + money-path traces.*
+
 > [!NOTE]
 > **KEY IDEA**
 > AIOps is not “one size fits all.” The same correlation/RCA pipeline exists, but **domain constraints** decide: which SLIs are hard, which remediations are forbidden, which baselines must be calendar-aware, and how long audit trails must be kept. E-commerce absorbs peak; banking absorbs always-on + compliance; pure SaaS absorbs tenant isolation. Wrong domain constraints = wrong safety-gate design.

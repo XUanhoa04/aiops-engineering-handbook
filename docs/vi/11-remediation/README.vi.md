@@ -57,6 +57,10 @@ Sau chương này, hãy chuyển sang [12 — Production Operations](../12-produ
 
 ## 1. Why Automated Remediation?
 
+![Remediation Safety Pipeline](../../assets/diagrams/05-remediation-safety.png)
+
+*Poster: confidence / risk gates → allow-listed executors → verify + circuit breaker + audit.*
+
 ### MTTR Economics
 
 ```

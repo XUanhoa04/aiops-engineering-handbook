@@ -2,6 +2,12 @@
 
 > **Chương này thiết lập nền tảng triết lý và kiến trúc của AIOps: tại sao nó tồn tại, nó giải quyết những vấn đề gì, nó thất bại ở đâu, và cách đo lường sự thành công.**
 
+### Architecture poster — pipeline AIOps end-to-end
+
+![AIOps Platform Pipeline](../assets/diagrams/01-aiops-pipeline.png)
+
+*Poster kiến trúc (PNG): Collection → Kafka → Storage → Intelligence → Action. Các flowchart logic bên dưới vẫn dùng Mermaid.*
+
 ---
 
 ## Prerequisites

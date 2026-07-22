@@ -39,59 +39,11 @@ Trọng tâm bản này: **tư duy vận hành** — mental models, decision tre
 
 ## Architecture Overview
 
-```mermaid
-flowchart TD
-    subgraph Sources["Data Sources"]
-        SVC[Microservices]
-        K8S[Kubernetes]
-        AWS[AWS Services]
-        INFRA[Infrastructure]
-    end
+> Poster-style architecture (PNG). Detail flows inside chapters still use Mermaid where logic/sequence matters. More posters: [`docs/assets/diagrams/`](docs/assets/diagrams/).
 
-    subgraph Collection["Collection Layer"]
-        OTC[OpenTelemetry Collector]
-        PROM[Prometheus]
-        LOKI[Loki]
-        TEMPO[Tempo]
-    end
+![AIOps Platform Pipeline](docs/assets/diagrams/01-aiops-pipeline.png)
 
-    subgraph Transport["Transport Layer"]
-        KAFKA[Apache Kafka / AWS MSK]
-    end
-
-    subgraph Intelligence["AIOps Intelligence Layer"]
-        AD[Anomaly Detection Engine]
-        AC[Alert Correlation Engine]
-        RCA[Root Cause Analysis]
-        LLM[LLM Investigation Agent]
-    end
-
-    subgraph Action["Action Layer"]
-        DE[Decision Engine]
-        REM[Remediation Engine]
-        KB[Knowledge Base]
-    end
-
-    subgraph Observe["Observability"]
-        GRF[Grafana]
-        AM[Alertmanager]
-        PD[PagerDuty / Slack]
-    end
-
-    Sources --> Collection
-    Collection --> Transport
-    Transport --> Intelligence
-    Intelligence --> Action
-    Action --> Observe
-    Action --> Sources
-
-    style Sources fill:#1a1a2e,color:#e0e0e0
-    style Collection fill:#16213e,color:#e0e0e0
-    style Transport fill:#0f3460,color:#e0e0e0
-    style Intelligence fill:#533483,color:#e0e0e0
-    style Action fill:#e94560,color:#fff
-    style Observe fill:#1a1a2e,color:#e0e0e0
-```
+**Layers:** Collection (OTel / Prometheus / logs) → Transport (Kafka / MSK) → Storage (S3 backends) → Intelligence (anomaly → correlation → RCA → LLM) → Action (decision, remediation, notify) → Grafana.
 
 ---
 

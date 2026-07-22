@@ -59,6 +59,10 @@ Sau chương này, hãy chuyển sang [08 — Alert Correlation](../08-alert-cor
 
 ## 1. Anomaly Detection Overview
 
+![AIOps Intelligence Layer](../../assets/diagrams/04-intelligence-layer.png)
+
+*Poster: ensemble detect → correlation → RCA → LLM agent → một incident card.*
+
 > [!NOTE]
 > **Ý TƯỞNG**
 > Anomaly detection không phải là "càng nhạy càng tốt". Nhiệm vụ thật sự là **tối đa hóa tín hiệu có thể hành động** (actionable signal) trong khi **giữ alert fatigue dưới ngưỡng tin cậy của on-call**. Một detector recall 99% nhưng precision 40% sẽ bị mute trong 2 tuần. Hãy tối ưu theo **precision-at-page** trước, rồi mới mở rộng recall.

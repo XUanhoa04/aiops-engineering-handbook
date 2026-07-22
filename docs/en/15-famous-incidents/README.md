@@ -4,6 +4,13 @@
 
 ---
 
+### Architecture poster — control plane vs data plane
+
+![Control plane vs data plane](../../assets/diagrams/07-control-vs-data-plane.png)
+
+*Poster: S3/DynamoDB/Meta lesson — recovery tooling must not depend only on the impaired plane.*
+
+
 ## Prerequisites
 
 - [00 — Introduction to AIOps](../00-introduction.md) — pipeline philosophy and when AIOps fails

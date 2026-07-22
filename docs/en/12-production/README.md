@@ -48,6 +48,14 @@ After this chapter, continue to [13 — Big Tech AIOps](../13-bigtech-aiops/READ
 
 ## 1. Platform Architecture Summary
 
+![AIOps on Kubernetes](../../assets/diagrams/06-k8s-production.png)
+
+*Poster: workload + observability + AIOps namespaces on Kubernetes / MSK / S3.*
+
+![Control plane vs data plane](../../assets/diagrams/07-control-vs-data-plane.png)
+
+*Poster: separate data plane / control plane and out-of-band break-glass.*
+
 > [!NOTE]
 > **KEY IDEA**
 > The AIOps platform **is also a production system**. If Kafka/AD/Correlation go down, you go blind when applications fail — a double outage. Operating standards for AIOps must not be lower than those for payment-service.

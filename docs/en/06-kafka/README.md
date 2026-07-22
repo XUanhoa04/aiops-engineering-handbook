@@ -59,6 +59,10 @@ After this chapter, continue to [07 — Anomaly Detection](../07-anomaly-detecti
 
 ## 1. Why Event Streaming for AIOps?
 
+![Kafka Transport for AIOps](../../assets/diagrams/03-kafka-aiops-topics.png)
+
+*Poster: producers → AIOps topics → consumers (detect / correlate / remediate / audit replay).*
+
 > [!NOTE]
 > **KEY IDEA**
 > Kafka is not a classical "message queue" (RabbitMQ/SQS). It is a **distributed commit log** — a journal you can replay. In AIOps this matters more than raw throughput: you need to **replay 7 days of telemetry** to retrain anomaly detection models, debug false positives, and keep an audit trail. If you treat Kafka as only a fire-and-forget queue, you will misconfigure retention and offsets and lose training data.

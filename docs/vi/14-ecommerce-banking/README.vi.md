@@ -52,6 +52,10 @@ Sau chương này, chuyển sang [15 — Famous Incidents](../15-famous-incident
 
 ## 1. Domain constraints khác nhau
 
+![Payment critical path](../../assets/diagrams/08-payment-critical-path.png)
+
+*Poster: shopper → checkout → risk → PSP → issuer, với RED + business SLI + money-path traces.*
+
 > [!NOTE]
 > **Ý TƯỞNG**
 > AIOps không “một size fits all”. Cùng một pipeline correlation/RCA, nhưng **ràng buộc domain** quyết định: SLI nào là hard, remediation nào bị cấm, baseline nào phải calendar-aware, và audit trail phải giữ bao lâu. E-commerce chịu peak; banking chịu always-on + compliance; pure SaaS chịu tenant isolation. Nhầm domain constraint = thiết kế safety gate sai.

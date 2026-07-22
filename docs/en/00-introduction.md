@@ -2,6 +2,12 @@
 
 > **This chapter establishes the philosophical and architectural foundation of AIOps: why it exists, which problems it solves, where it fails, and how to measure success.**
 
+### Architecture poster — end-to-end AIOps pipeline
+
+![AIOps Platform Pipeline](../assets/diagrams/01-aiops-pipeline.png)
+
+*Architecture poster (PNG): Collection → Kafka → Storage → Intelligence → Action. Narrative flowcharts below still use Mermaid.*
+
 ---
 
 ## Prerequisites

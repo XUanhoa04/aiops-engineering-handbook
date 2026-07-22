@@ -4,6 +4,13 @@
 
 ---
 
+### Architecture poster — control plane vs data plane
+
+![Control plane vs data plane](../../assets/diagrams/07-control-vs-data-plane.png)
+
+*Poster: bài học S3/DynamoDB/Meta — recovery tools không được phụ thuộc mặt phẳng đang gãy.*
+
+
 ## Prerequisites
 
 - [00 — Giới thiệu AIOps](../00-introduction.vi.md) — triết lý pipeline và khi nào AIOps thất bại

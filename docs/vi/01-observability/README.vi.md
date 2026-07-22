@@ -57,6 +57,10 @@ Sau chương này, hãy chuyển sang [02 — OpenTelemetry](../02-opentelemetry
 
 ## 1. The Three Pillars of Observability
 
+![Observability Three Pillars + Correlation](../../assets/diagrams/02-observability-pillars.png)
+
+*Poster: Metrics / Logs / Traces hội tụ qua `trace_id` và labels → Grafana Explore.*
+
 > [!NOTE]
 > **Ý TƯỞNG**
 > **Monitoring** giống như đèn báo trên bảng điều khiển xe — nó nói "có lỗi". **Observability** giống như hộp đen máy bay — nó cho phép bạn tái dựng lại chính xác điều gì đã xảy ra và tại sao. AIOps cần Observability, không chỉ Monitoring, vì nó cần tự động **hiểu nguyên nhân**, không chỉ **phát hiện triệu chứng**.

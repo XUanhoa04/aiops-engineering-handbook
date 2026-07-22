@@ -59,6 +59,10 @@ Sau chương này, hãy chuyển sang [07 — Anomaly Detection](../07-anomaly-d
 
 ## 1. Why Event Streaming for AIOps?
 
+![Kafka Transport for AIOps](../../assets/diagrams/03-kafka-aiops-topics.png)
+
+*Poster: producers → topic AIOps → consumers (detect / correlate / remediate / audit replay).*
+
 > [!NOTE]
 > **Ý TƯỞNG**
 > Kafka không phải "hàng đợi tin nhắn" theo nghĩa cổ điển (RabbitMQ/SQS). Nó là **distributed commit log** — một journal có thể replay. Trong AIOps, điều này quan trọng hơn throughput: bạn cần **phát lại 7 ngày telemetry** để train lại mô hình anomaly detection, debug false positive, và audit trail. Nếu chỉ nghĩ Kafka = queue đẩy tin nhắn đi, bạn sẽ cấu hình sai retention, sai offset, và mất dữ liệu train.

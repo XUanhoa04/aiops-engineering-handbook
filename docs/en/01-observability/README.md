@@ -57,6 +57,10 @@ After this chapter, continue to [02 — OpenTelemetry](../02-opentelemetry/READM
 
 ## 1. The Three Pillars of Observability
 
+![Observability Three Pillars + Correlation](../../assets/diagrams/02-observability-pillars.png)
+
+*Poster: Metrics / Logs / Traces join on `trace_id` and labels → Grafana Explore.*
+
 > [!NOTE]
 > **KEY IDEA**
 > **Monitoring** is like the warning lights on a car dashboard — it says "something is wrong." **Observability** is like the flight data recorder — it lets you reconstruct exactly what happened and why. AIOps needs Observability, not only Monitoring, because it must automatically **understand causes**, not only **detect symptoms**.

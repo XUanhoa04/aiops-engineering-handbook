@@ -48,6 +48,14 @@ Sau chương này, hãy chuyển sang [13 — Big Tech AIOps](../13-bigtech-aiop
 
 ## 1. Platform Architecture Summary
 
+![AIOps on Kubernetes](../../assets/diagrams/06-k8s-production.png)
+
+*Poster: workload + observability + AIOps namespaces trên Kubernetes / MSK / S3.*
+
+![Control plane vs data plane](../../assets/diagrams/07-control-vs-data-plane.png)
+
+*Poster: tách data plane / control plane và break-glass out-of-band.*
+
 > [!NOTE]
 > **Ý TƯỞNG**
 > Nền tảng AIOps **cũng là production system**. Nếu Kafka/AD/Correlation sập, bạn mù khi ứng dụng sập — double outage. Chuẩn vận hành cho AIOps không được thấp hơn chuẩn của payment-service.

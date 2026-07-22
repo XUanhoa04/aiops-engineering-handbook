@@ -59,6 +59,10 @@ After this chapter, continue to [08 — Alert Correlation](../08-alert-correlati
 
 ## 1. Anomaly Detection Overview
 
+![AIOps Intelligence Layer](../../assets/diagrams/04-intelligence-layer.png)
+
+*Poster: ensemble detect → correlation → RCA → LLM agent → one incident card.*
+
 > [!NOTE]
 > **KEY IDEA**
 > Anomaly detection is not "more sensitive is better". The real job is to **maximize actionable signal** while **keeping alert fatigue below the on-call trust threshold**. A detector with 99% recall but 40% precision will be muted in two weeks. Optimize **precision-at-page** first, then expand recall.
