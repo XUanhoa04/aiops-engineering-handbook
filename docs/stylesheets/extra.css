@@ -73,3 +73,186 @@
 .md-typeset blockquote > p:first-child {
   margin-top: 0;
 }
+
+/* ---------- Mermaid: readable size + scroll + click-to-zoom ---------- */
+
+/* Don't shrink huge graphs into a postage stamp */
+.md-typeset pre.mermaid,
+.md-typeset div.mermaid,
+.md-typeset .mermaid {
+  overflow: visible;
+  text-align: center;
+}
+
+.md-typeset .mermaid svg,
+.md-typeset pre.mermaid svg {
+  max-width: none !important;
+  height: auto !important;
+}
+
+/* Scroll shell when diagram is wider than article column */
+.mermaid-scroll {
+  position: relative;
+  margin: 1.25em 0;
+  padding: 0.5rem 0.5rem 0.75rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 10px;
+  background: var(--md-code-bg-color);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mermaid-scroll .mermaid,
+.mermaid-scroll pre.mermaid {
+  margin: 0;
+  min-width: min-content;
+  display: inline-block;
+  vertical-align: top;
+}
+
+.mermaid-expand-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.15rem 0 0.5rem 0.15rem;
+  padding: 0.28rem 0.7rem;
+  border: 1px solid var(--md-primary-fg-color);
+  border-radius: 999px;
+  background: var(--md-primary-fg-color);
+  color: var(--md-primary-bg-color);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.mermaid-expand-hint:hover {
+  filter: brightness(1.05);
+}
+
+.mermaid--zoomable {
+  cursor: zoom-in;
+}
+
+/* Lightbox */
+html.mermaid-lightbox-open,
+html.mermaid-lightbox-open body {
+  overflow: hidden;
+}
+
+.mermaid-lightbox[hidden] {
+  display: none !important;
+}
+
+.mermaid-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.mermaid-lightbox__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+.mermaid-lightbox__panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(96vw, 1400px);
+  height: min(92vh, 900px);
+  margin: auto;
+  border-radius: 12px;
+  background: var(--md-default-bg-color);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.mermaid-lightbox__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  background: var(--md-default-bg-color);
+}
+
+.mermaid-lightbox__title {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.mermaid-lightbox__actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.mermaid-lightbox__btn {
+  min-width: 2.2rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--md-default-fg-color--lighter);
+  border-radius: 6px;
+  background: var(--md-code-bg-color);
+  color: var(--md-typeset-color);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mermaid-lightbox__btn:hover {
+  border-color: var(--md-primary-fg-color);
+}
+
+.mermaid-lightbox__btn--close {
+  background: var(--md-primary-fg-color);
+  color: var(--md-primary-bg-color);
+  border-color: transparent;
+}
+
+.mermaid-lightbox__stage {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+  background:
+    linear-gradient(90deg, rgba(127, 127, 127, 0.06) 1px, transparent 1px) 0 0 / 20px 20px,
+    linear-gradient(rgba(127, 127, 127, 0.06) 1px, transparent 1px) 0 0 / 20px 20px,
+    var(--md-default-bg-color);
+}
+
+.mermaid-lightbox__canvas {
+  display: inline-block;
+  min-width: 100%;
+}
+
+.mermaid-lightbox__canvas svg {
+  max-width: none !important;
+  height: auto !important;
+  display: block;
+}
+
+.mermaid-lightbox__hint {
+  margin: 0;
+  padding: 0.45rem 0.85rem 0.65rem;
+  font-size: 0.75rem;
+  color: var(--md-default-fg-color--light);
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+}
+
+@media (max-width: 600px) {
+  .mermaid-lightbox__panel {
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    border-radius: 0;
+  }
+}

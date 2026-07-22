@@ -85,6 +85,9 @@ extra:
 extra_css:
   - stylesheets/extra.css
 
+extra_javascript:
+  - javascripts/mermaid-zoom.js
+
 # Explicit nav — keeps dual-language tabs clear
 nav:
   - Home: index.md
