@@ -74,6 +74,42 @@
   margin-top: 0;
 }
 
+/* ---------- Collapsible implementation code ---------- */
+
+.md-typeset details {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  padding: 0.35rem 0.85rem 0.5rem;
+  margin: 1rem 0 1.25rem;
+  background: var(--md-code-bg-color);
+}
+
+.md-typeset details > summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--md-primary-fg-color);
+  padding: 0.45rem 0;
+  list-style: none;
+}
+
+.md-typeset details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.md-typeset details > summary::before {
+  content: "▸ ";
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.md-typeset details[open] > summary::before {
+  content: "▾ ";
+}
+
+.md-typeset details > summary:hover {
+  text-decoration: underline;
+}
+
 /* ---------- Mermaid: readable size + scroll + click-to-zoom ---------- */
 
 /* Don't shrink huge graphs into a postage stamp */

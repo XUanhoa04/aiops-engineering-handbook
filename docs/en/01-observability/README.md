@@ -91,8 +91,8 @@ graph TD
         O6 --> O7[Root cause identified]
     end
 
-    style Monitoring fill:#4a1942,color:#fff
-    style Observability fill:#0d4f8b,color:#fff
+    style Monitoring fill:#fae8ff,color:#1e293b
+    style Observability fill:#dbeafe,color:#1e293b
 ```
 
 ### The Three Pillars
@@ -115,9 +115,9 @@ graph LR
     Logs <-->|TraceID in log\nlog → trace| Traces
     Metrics <-->|Metric label\nlog query correlation| Logs
 
-    style Metrics fill:#1565c0,color:#fff
-    style Logs fill:#1b5e20,color:#fff
-    style Traces fill:#4a148c,color:#fff
+    style Metrics fill:#dbeafe,color:#1e293b
+    style Logs fill:#dcfce7,color:#1e293b
+    style Traces fill:#f3e8ff,color:#1e293b
 ```
 
 > [!NOTE]
@@ -799,10 +799,10 @@ flowchart TD
     PROM -->|AlertingRules| AM
     AM -->|route| AIOPS
 
-    style Apps fill:#1565c0,color:#fff
-    style Agents fill:#2e7d32,color:#fff
-    style Storage fill:#4a148c,color:#fff
-    style AIOps fill:#b71c1c,color:#fff
+    style Apps fill:#dbeafe,color:#1e293b
+    style Agents fill:#dcfce7,color:#1e293b
+    style Storage fill:#f3e8ff,color:#1e293b
+    style AIOps fill:#fecaca,color:#1e293b
 ```
 
 ### Network Flow and Ports

@@ -72,6 +72,25 @@ Sau chương này, quay lại vận hành production ([13](../13-production/READ
 
 ---
 
+
+## Cách đọc chapter này (concept-first)
+
+> [!IMPORTANT]
+> **Đọc concept trước — code để sau**
+> Từ chapter 08 trở đi, handbook ưu tiên: **vấn đề → ý tưởng → input data → thuật toán/model → output → ưu/nhược → khi nào dùng**. Phần implementation nằm trong khối **See the code below** (bấm mới mở). Mục tiêu: bạn hiểu *tại sao và hoạt động ra sao trên telemetry AIOps*, không chỉ copy-paste.
+
+| Bước đọc | Câu hỏi |
+|----------|---------|
+| 1. Vấn đề | Detector/engine này giải quyết pain gì (false positive, cascade, MTTR…)? |
+| 2. Ý tưởng | Trực giác 2–3 câu, không công thức |
+| 3. Data in | Metric/log/trace/event nào, window nào, feature nào? |
+| 4. Thuật toán | Các bước tính toán / model flow |
+| 5. Output | Schema sự kiện, score, rank, action proposal? |
+| 6. Trade-off | Ưu / nhược / chi phí / giải thích được không? |
+| 7. When | Dùng khi nào — và khi nào **đừng** dùng |
+
+---
+
 ## 1. Vì sao topology + change là data product first-class
 
 > [!NOTE]
@@ -458,6 +477,9 @@ Tier phải **human-owned** — không suy ra chỉ từ QPS (batch fraud model 
 
 ### 4.6 Ownership model
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```yaml
 # WHY: ownership là routing + approval surface, không chỉ metadata đẹp
 service_id: payment-service
@@ -471,6 +493,8 @@ approvers_for_tier0_actions:
 data_classification: confidential
 pci_scope: true
 ```
+
+</details>
 
 ### 4.7 Identity mapping — nơi AIOps chết thầm
 
@@ -489,6 +513,9 @@ pci_scope: true
 > Canonical `service_id`: lowercase kebab, ổn định qua rename display. Rename = alias cũ giữ ≥90 ngày.
 
 ### 4.8 Schema gọn (minh họa — WHY từng nhóm field)
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```json
 {
@@ -510,6 +537,8 @@ pci_scope: true
   }
 }
 ```
+
+</details>
 
 WHY `provenance`: khi edge conflict, biết ai thắng và có rollback semantic.
 
@@ -796,6 +825,9 @@ Page khi tier-0 source lag vượt SLO — không đợi human notice correlatio
 
 ### 7.2 Health model
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```yaml
 topology_health:
   status: green|yellow|red
@@ -808,6 +840,8 @@ topology_health:
   conflict_rate_1h: 0.01
   tier0_coverage: 0.99
 ```
+
+</details>
 
 | Status | Ý nghĩa | Policy |
 |--------|---------|--------|
@@ -879,6 +913,9 @@ Burn error budget topology → **freeze** feature flags bật topo-auto-remediat
 
 ### 8.2 Schema tối thiểu (JSON minh họa)
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```json
 {
   "change_id": "chg_01J5...",
@@ -915,6 +952,8 @@ Burn error budget topology → **freeze** feature flags bật topo-auto-remediat
   "idempotency_key": "gh-run-998877"
 }
 ```
+
+</details>
 
 | Field group | WHY |
 |-------------|-----|
@@ -1030,6 +1069,9 @@ Flag systems: LaunchDarkly, Unleash, Flagsmith, home-grown — adapter thống n
 
 ### 9.5 Manual changes — break-glass
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```json
 {
   "change_kind": "manual",
@@ -1039,9 +1081,14 @@ Flag systems: LaunchDarkly, Unleash, Flagsmith, home-grown — adapter thống n
 }
 ```
 
+</details>
+
 Nguồn: session recording (Teleport), `kubectl` audit, AWS Console — normalize best-effort; **missing manual change** là blind spot lớn (xem [16](../16-famous-incidents/README.vi.md)).
 
 ### 9.6 Freeze windows
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```yaml
 freeze_id: freeze_black_friday_2026
@@ -1059,6 +1106,8 @@ policy:
   allow_break_glass: true
   dual_control_required: true
 ```
+
+</details>
 
 Publish lên `change.freeze` + evaluate API cho CI **và** remediation.
 
@@ -1229,6 +1278,9 @@ POST /v1/policy/evaluate-action
 
 Response:
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```json
 {
   "allow": false,
@@ -1237,6 +1289,8 @@ Response:
   "risk_score": 0.91
 }
 ```
+
+</details>
 
 ### 11.4 Change calendar vs CI
 
@@ -1428,6 +1482,9 @@ Safety poster: [diagram](../../assets/diagrams/05-remediation-safety.png).
 
 ### 14.3 Audit record schema (minh họa)
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```json
 {
   "audit_id": "aud_...",
@@ -1442,6 +1499,8 @@ Safety poster: [diagram](../../assets/diagrams/05-remediation-safety.png).
   "reason": "service deprecated from money path"
 }
 ```
+
+</details>
 
 ### 14.4 Separation of duties
 

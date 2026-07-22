@@ -50,6 +50,25 @@ Sau chương này, chuyển sang [15 — Famous Incidents](../16-famous-incident
 
 ---
 
+
+## Cách đọc chapter này (concept-first)
+
+> [!IMPORTANT]
+> **Đọc concept trước — code để sau**
+> Từ chapter 08 trở đi, handbook ưu tiên: **vấn đề → ý tưởng → input data → thuật toán/model → output → ưu/nhược → khi nào dùng**. Phần implementation nằm trong khối **See the code below** (bấm mới mở). Mục tiêu: bạn hiểu *tại sao và hoạt động ra sao trên telemetry AIOps*, không chỉ copy-paste.
+
+| Bước đọc | Câu hỏi |
+|----------|---------|
+| 1. Vấn đề | Detector/engine này giải quyết pain gì (false positive, cascade, MTTR…)? |
+| 2. Ý tưởng | Trực giác 2–3 câu, không công thức |
+| 3. Data in | Metric/log/trace/event nào, window nào, feature nào? |
+| 4. Thuật toán | Các bước tính toán / model flow |
+| 5. Output | Schema sự kiện, score, rank, action proposal? |
+| 6. Trade-off | Ưu / nhược / chi phí / giải thích được không? |
+| 7. When | Dùng khi nào — và khi nào **đừng** dùng |
+
+---
+
 ## 1. Domain constraints khác nhau
 
 ![Payment critical path](../../assets/diagrams/08-payment-critical-path.png)

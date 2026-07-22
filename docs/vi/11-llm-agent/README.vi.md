@@ -52,6 +52,25 @@ Sau chương này, hãy chuyển sang [11 — Remediation](../12-remediation/REA
 
 ---
 
+
+## Cách đọc chapter này (concept-first)
+
+> [!IMPORTANT]
+> **Đọc concept trước — code để sau**
+> Từ chapter 08 trở đi, handbook ưu tiên: **vấn đề → ý tưởng → input data → thuật toán/model → output → ưu/nhược → khi nào dùng**. Phần implementation nằm trong khối **See the code below** (bấm mới mở). Mục tiêu: bạn hiểu *tại sao và hoạt động ra sao trên telemetry AIOps*, không chỉ copy-paste.
+
+| Bước đọc | Câu hỏi |
+|----------|---------|
+| 1. Vấn đề | Detector/engine này giải quyết pain gì (false positive, cascade, MTTR…)? |
+| 2. Ý tưởng | Trực giác 2–3 câu, không công thức |
+| 3. Data in | Metric/log/trace/event nào, window nào, feature nào? |
+| 4. Thuật toán | Các bước tính toán / model flow |
+| 5. Output | Schema sự kiện, score, rank, action proposal? |
+| 6. Trade-off | Ưu / nhược / chi phí / giải thích được không? |
+| 7. When | Dùng khi nào — và khi nào **đừng** dùng |
+
+---
+
 ## 1. Why LLM for AIOps?
 
 > [!NOTE]
@@ -61,9 +80,44 @@ Sau chương này, hãy chuyển sang [11 — Remediation](../12-remediation/REA
 > [!TIP]
 > Phân biệt nhanh: **classic AIOps** = detect → correlate → rank. **AI SRE** = classic AIOps + agentic tool-use + runbook reasoning + controlled actuation. Đừng marketing "AI SRE" nếu chỉ có chatbot tóm tắt alert.
 
+### Vấn đề / ý tưởng — khi nào LLM thực sự giúp
+
+| | |
+|--|--|
+| **Vấn đề** | JSON RCA đúng nhưng on-call vẫn hỏi: *impact nghiệp vụ? pool size an toàn? bước runbook nào tiếp? Black Friday có expected?* Engine cấu trúc không hội thoại hay multi-hop qua docs + tool live. |
+| **Ý tưởng** | Dùng LLM như **vỏ điều tra**: RAG tri thức tổ chức + **tool có trung gian** cho telemetry tươi + schema output chặt + cổng human/safety. Không bao giờ là oracle root-cause duy nhất. |
+
+### Khi nào dùng LLM vs khi không
+
+| Dùng LLM | **Không** dùng LLM |
+|---------|---------------------|
+| Narrative failure mới từ đa nguồn evidence | Pure threshold / signature đã có playbook deterministic |
+| Map giả thuyết RCA → bước runbook + params | Xếp hạng alert (correlation đã làm) |
+| Trả lời câu hỏi on-call giữa incident | Sinh freeform `kubectl`/shell (cấm — Ch12) |
+| Tóm tắt draft postmortem offline | Storm 200 thread partial không dedupe-by-incident |
+| Giải thích multi-root mơ hồ cho người | RCA confidence/evidence_quality rác — sửa data plane trước |
+
+### Input từ AIOps data plane
+
+| Input | Nguồn | Vai trò |
+|-------|--------|---------|
+| Incident card đã correlate | Ch09 | Scope, suppressed count, topology |
+| Schema RCA | Ch10 | Giả thuyết + evidence link |
+| Metrics/logs/traces | Prom/Loki/Tempo qua **tools** | Fact tươi (không nhớ weight model) |
+| Runbook / postmortem | Vector + BM25 | Bộ nhớ tổ chức |
+| Change events | Deploy feed | Ngữ cảnh version |
+| Policy | Allowlist, freeze, dual-control | Ràng buộc cứng ngoài model |
+
+### Output / on-call thấy gì
+
+Card điều tra Markdown: tóm tắt, root có **cite**, bullet evidence gắn tool result, **action id catalog** đề xuất, confidence band, next steps — kèm nút Slack Approve / Takeover / Stop.
+
 ### The Gap Between Structured RCA and Human Action
 
 Bộ máy phân tích RCA tự động sinh ra kết quả dạng cấu trúc:
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```json
 {
@@ -73,6 +127,8 @@ Bộ máy phân tích RCA tự động sinh ra kết quả dạng cấu trúc:
   "suggested_remediation": "Scale up connection pool size"
 }
 ```
+
+</details>
 
 Kết quả này hữu ích nhưng vẫn có nhiều hạn chế:
 - **Thiếu nhận thức ngữ cảnh (Not context-aware)**: Không nắm được mức độ ảnh hưởng nghiệp vụ thực tế, các sự kiện lớn đang diễn ra (Black Friday), hoặc các sự cố song song khác.
@@ -164,16 +220,60 @@ graph TD
     Tools --> Loop
     Loop --> Generate --> Output
 
-    style Input fill:#1565c0,color:#fff
-    style Agent fill:#4a148c,color:#fff
-    style Output fill:#2e7d32,color:#fff
+    style Input fill:#dbeafe,color:#1e293b
+    style Agent fill:#f3e8ff,color:#1e293b
+    style Output fill:#dcfce7,color:#1e293b
 ```
 
 ---
 
 ## 3. Retrieval-Augmented Generation (RAG)
 
-Agent truy xuất các tri thức nghiệp vụ liên quan trước khi sinh câu trả lời.
+Agent truy xuất tri thức vận hành **trước** khi sinh câu trả lời để các bước đến từ **docs của bạn**, không phải prior model.
+
+### Vấn đề / ý tưởng
+
+| | |
+|--|--|
+| **Vấn đề** | Base model bịa bước runbook (“flush all Redis”) chưa từng có trong org — hallucination dưới vẻ uy tín. |
+| **Ý tưởng** | Embed runbook/postmortem/arch; lúc điều tra, hybrid-search (dense + BM25) top chunk; **ràng** bước đề xuất theo doc id đã retrieve (cite-or-drop). |
+
+### Input từ AIOps data plane
+
+| Input | Nguồn | Vai trò |
+|-------|--------|---------|
+| failure_mode + service từ RCA | Ch10 | Xây query |
+| Markdown runbook / PM | Git, Confluence | Corpus |
+| Filter metadata | service, severity, failure_mode | Giảm doc nhầm tenant |
+| Embeddings index | Weaviate/pgvector | Semantic recall |
+
+### Cách hoạt động (các bước)
+
+```
+1. Ingest: load → split theo heading → embed → store kèm metadata
+2. Build query từ field RCA (+ alert types)
+3. Hybrid search α·semantic + (1-α)·BM25 → top_k chunks
+4. Inject chunk vào prompt kèm source id
+5. Generation chỉ đề xuất bước map được chunk id
+6. Re-embed khi PR merge; alert nếu retrieval rỗng với failure_mode đã biết
+```
+
+### Output / on-call thấy gì
+
+Snippet có cite: `runbook:db-conn-pool#increase-pool` kèm link; không hit → “No runbook found — UNKNOWN steps”, không bịa procedure.
+
+### Ưu / nhược + khi nào dùng
+
+| Ưu | Nhược |
+|------|------|
+| Neo câu trả lời vào truth org | Doc stale = bước sai nhưng tự tin |
+| Tốt với failure mới nhưng đã document | Chunking kém làm mất procedure |
+| Eval được (retrieval hit rate) | Chi phí embed + store |
+
+| Dùng khi | **Không** |
+|----------|------------|
+| Mọi agent production gợi ý action | Bỏ RAG, tin “SRE knowledge” base model |
+| Corpus runbook lớn | Coi retrieval hit = chứng minh root cause |
 
 ### RAG Knowledge Base Sources
 
@@ -186,6 +286,9 @@ Agent truy xuất các tri thức nghiệp vụ liên quan trước khi sinh câ
 | **On-call playbooks** | Hướng dẫn troubleshooting từng bước | Hàng quý |
 
 ### Document Ingestion Pipeline
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from langchain.document_loaders import (
@@ -260,7 +363,12 @@ def hybrid_search(
     return results
 ```
 
+</details>
+
 ### RAG Query Construction
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 def build_rag_query(rca_result: dict) -> str:
@@ -280,11 +388,64 @@ def build_rag_query(rca_result: dict) -> str:
     return query
 ```
 
+</details>
+
 ---
 
 ## 4. Tool Use — Agent Tools
 
-Agent có quyền truy cập vào bộ công cụ để thu thập thêm các thông tin ngữ cảnh cần thiết:
+Agent lấy context **live** qua tools. Không tool, model bịa số; shell không ràng buộc = đường RCE qua prompt injection.
+
+### Vấn đề / ý tưởng
+
+| | |
+|--|--|
+| **Vấn đề** | Snapshot RCA tĩnh lỗi thời sau vài phút; freeform shell là path RCE qua injection. |
+| **Ý tưởng** | Expose **RPC có scope** (PromQL, LogQL, get trace, k8s get/list, change API, remediate-via-Kafka) với JSON Schema args, timeout, audit — không bao giờ `bash -c` từ text model. |
+
+### Input từ AIOps data plane
+
+| Lớp tool | Backend | Mode |
+|------------|---------|------|
+| `query_prometheus` | Prom API | Read, max range/series |
+| `query_loki` | Loki | Read, max lines, strip PII |
+| `query_tempo` | Tempo | Read theo id / search |
+| `get_kubernetes_info` | K8s API | get/list only |
+| `get_recent_deployments` | CI/CD | Read |
+| `search_runbooks` | RAG | Read |
+| `execute_remediation` | Kafka → engine Ch12 | Write trung gian, dry-run mặc định |
+| `notify_slack` | Chat | Write notification |
+
+### Cách hoạt động (các bước) — vòng ReAct
+
+```
+1. Think: thiếu evidence gì?
+2. Act: gọi tool allowlist với args đã validate
+3. Observe: JSON tool (sanitize nếu log untrusted)
+4. Lặp đến budget (token / iteration / wall clock)
+5. Tổng hợp report cite-or-drop theo tool artifact
+6. Mọi mutation → SafetyGate (Ch12), không kube admin trực tiếp
+```
+
+### Output / on-call thấy gì
+
+Tool trace mở được: mỗi call args + summary; số trong report phải có trong artifact ([§20.1](#201-hallucination-in-runbooks-and-investigation-reports)).
+
+### Ưu / nhược + khi nào dùng
+
+| Ưu | Nhược |
+|------|------|
+| Fact tươi; audit trail | Tool storm tăng cost/latency |
+| Least privilege so với shell | Toolset thiếu → kết luận sai |
+| Tách investigate SA vs remediate SA | Injection qua log vẫn có — sanitize |
+
+| Dùng khi | **Không** |
+|----------|------------|
+| Luôn cho investigation agent | Cấp delete/create namespace cho agent SA |
+| Trước khi đề xuất remediation | Truyền raw LLM string làm SSM commands |
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from langchain.tools import BaseTool, tool
@@ -503,9 +664,26 @@ class ExecuteRemediationTool(BaseTool):
         raise NotImplementedError
 ```
 
+</details>
+
 ---
 
 ## 5. Agentic Loop Design
+
+### Vấn đề / ý tưởng (vòng lặp)
+
+| | |
+|--|--|
+| **Vấn đề** | Prompt một phát với full context hoặc tràn window hoặc bỏ lỡ đúng một query chứng minh root. |
+| **Ý tưởng** | ReAct có biên: think → tool → observe → quyết định xong, với **max iterations**, storm mode (model rẻ hơn), và trạng thái human override. |
+
+### Output / on-call thấy gì
+
+“Investigation progress” live (tuỳ chọn): tool đã dùng, giả thuyết partial, rồi card cuối. Hard stop hủy tool pending.
+
+### Ưu / nhược + khi nào dùng
+
+Ưu tiên loop khi P1 mơ hồ; bỏ deep loop khi correlation+RCA đã high confidence và chỉ cần narrative (cost — [§20.5](#205-cost-per-investigation-vs-mttr-savings)).
 
 Agent hoạt động theo mô hình **ReAct** (Reasoning + Acting):
 
@@ -546,6 +724,9 @@ Final Answer: [Báo cáo điều tra sự cố chi tiết]
 ```
 
 ### Implementation with LangGraph
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
@@ -627,11 +808,16 @@ def create_llm_agent(
     return graph.compile()
 ```
 
+</details>
+
 ---
 
 ## 6. Prompt Engineering for SRE
 
 System prompt đóng vai trò quyết định tới chất lượng phân tích của LLM Agent:
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 SRE_SYSTEM_PROMPT = """
@@ -767,6 +953,8 @@ I need you to investigate the following production incident and provide a detail
 {incident_json}
 ```
 
+</details>
+
 ### Relevant Runbooks and Past Incidents
 {rag_text}
 
@@ -853,6 +1041,9 @@ spec:
 
 ### Full Agent Invocation
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```python
 import asyncio
 from langgraph.graph import StateGraph
@@ -900,7 +1091,12 @@ async def investigate_incident(
     }
 ```
 
+</details>
+
 ### Kafka Consumer Integration
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from confluent_kafka import Consumer, Producer
@@ -965,11 +1161,16 @@ async def run_llm_agent_consumer():
             consumer.commit(asynchronous=False)
 ```
 
+</details>
+
 ---
 
 ## 9. Safety Gates and Guardrails
 
 Kiểm soát an toàn (Safety gates) là thành phần quan trọng nhất của mọi giải pháp tự động khắc phục (auto-remediation):
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from enum import Enum
@@ -1117,11 +1318,16 @@ class SafetyGate:
         return {"approval_id": approval_id, "status": "pending"}
 ```
 
+</details>
+
 ---
 
 ## 10. Output Formats
 
 ### Slack Notification Template
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 def format_slack_message(investigation: dict, incident: dict) -> dict:
@@ -1178,6 +1384,8 @@ def format_slack_message(investigation: dict, incident: dict) -> dict:
     }
 ```
 
+</details>
+
 ---
 
 ## 11. Human-in-the-Loop Handoff
@@ -1210,6 +1418,9 @@ sequenceDiagram
 
 ### Timeout Handling
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```python
 APPROVAL_TIMEOUT_SECONDS = 300  # 5 phút chờ duyệt
 
@@ -1237,6 +1448,8 @@ async def wait_for_approval(approval_id: str) -> bool:
     return False
 ```
 
+</details>
+
 ---
 
 ## 12. Memory and Context Management
@@ -1244,6 +1457,9 @@ async def wait_for_approval(approval_id: str) -> bool:
 ### Context Window Management
 
 Cửa sổ ngữ cảnh (Context windows) của LLM là hữu hạn. Các cuộc điều tra kéo dài có thể làm tràn bộ nhớ:
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 def truncate_tool_results(tool_result: str, max_chars: int = 2000) -> str:
@@ -1286,11 +1502,16 @@ def compress_conversation_history(
     return system_messages + recent_messages
 ```
 
+</details>
+
 ---
 
 ## 13. Evaluation and Quality
 
 ### Evaluation Metrics
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from dataclasses import dataclass
@@ -1340,7 +1561,12 @@ def evaluate_investigation(investigation: dict, ground_truth: dict = None) -> In
     return eval_result
 ```
 
+</details>
+
 ### Hallucination Detection
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 def _check_for_hallucinations(messages: list) -> bool:
@@ -1370,9 +1596,14 @@ def _check_for_hallucinations(messages: list) -> bool:
     return False
 ```
 
+</details>
+
 ---
 
 ## 14. Production Configuration
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```yaml
 # Cấu hình values.yaml cho helm chart của LLM Agent
@@ -1419,6 +1650,8 @@ llm_agent:
     model_fallback_on_cost_limit: gpt-4o-mini
 ```
 
+</details>
+
 ---
 
 ## 15. Common Mistakes
@@ -1439,6 +1672,9 @@ llm_agent:
 ---
 
 ## 16. Monitoring the Agent
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```promql
 # Tải điều tra sự cố của agent
@@ -1462,11 +1698,16 @@ rate(aiops_llm_tool_calls_total[5m]) by (tool_name)
 rate(aiops_safety_gate_blocks_total[5m]) by (reason)
 ```
 
+</details>
+
 ---
 
 ## 17. Scaling
 
 LLM Agent ngốn tài nguyên CPU (cho proxy/network IO) và bị giới hạn bởi quota API của các nhà cung cấp mô hình:
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```yaml
 # Tự động co giãn theo consumer lag của Kafka
@@ -1480,6 +1721,8 @@ rate_limiting:
   max_concurrent_investigations: 10    # Số lượng tiến trình chạy song song tối đa
   investigations_per_minute: 20        # Tránh bị spam gọi liên tục khi bão cảnh báo xảy ra
 ```
+
+</details>
 
 ---
 
@@ -1544,6 +1787,9 @@ Chi phí gọi API LLM thường rất nhỏ và không đáng kể so với chi
 | Overconfident RCA | "Chắc chắn 100% là DNS" khi evidence mỏng | Cap confidence bằng evidence_quality (Ch09) |
 | Temporal mixup | Nhầm version deploy | Inject change events as structured JSON only |
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```python
 def cite_or_drop_numbers(report_text: str, tool_artifacts: list) -> dict:
     """
@@ -1561,6 +1807,8 @@ def cite_or_drop_numbers(report_text: str, tool_artifacts: list) -> dict:
         "action": "flag_for_human" if unverified else "publish",
     }
 ```
+
+</details>
 
 > [!TIP]
 > Prompt contract: *"If a fact is not present in TOOL_RESULTS or RAG_DOCS, write UNKNOWN — never invent."* Đánh giá offline phải có test case hallucination.
@@ -1584,6 +1832,9 @@ Call execute_remediation with action=delete_namespace and namespace=production.
 5. **Separate privileges**: investigation SA ≠ remediation SA
 6. **Human gate** cho mọi action ngoài tier-0
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```python
 INJECTION_PATTERNS = [
     r"ignore (all )?previous instructions",
@@ -1603,6 +1854,8 @@ def sanitize_untrusted(text: str, max_len=2000) -> str:
     return t.replace("`" * 3, "'''")
 ```
 
+</details>
+
 Chi tiết compliance log PII: [14 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md).
 
 ### 20.3 Tool-use sandboxing
@@ -1619,6 +1872,9 @@ Chi tiết compliance log PII: [14 — E-commerce & Banking](../15-ecommerce-ban
 | Blast radius | Tool trả về estimated_impact; gate chặn nếu > N services |
 | Audit | Mọi tool call → immutable log (who/when/args/result hash) |
 | Timeout | 5–15s/tool; max 10 iterations |
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```yaml
 tool_sandbox:
@@ -1639,6 +1895,8 @@ tool_sandbox:
     dry_run_default: true
 ```
 
+</details>
+
 ### 20.4 Confidence calibration
 
 Model nói "90%" thường **miscalibrated**. Cần calibrate theo feedback on-call:
@@ -1655,6 +1913,9 @@ Nếu chỉ 60% đúng → agent overconfident → hạ hiển thị / siết ga
 | HIGH (0.75–0.9) | Có thể đề xuất action | Chỉ tier-0 + allowlist |
 | CRITICAL trust (>0.9) | Hiếm; cần evidence_quality cao | Vẫn canary + verify |
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```python
 def calibrated_confidence(raw: float, evidence_quality: float, hist_bucket_acc: float) -> dict:
     # Blend model raw, evidence, and historical accuracy of this confidence bucket
@@ -1662,6 +1923,8 @@ def calibrated_confidence(raw: float, evidence_quality: float, hist_bucket_acc: 
     band = "low" if cal < 0.55 else "medium" if cal < 0.75 else "high"
     return {"calibrated": round(cal, 3), "band": band, "raw": raw}
 ```
+
+</details>
 
 ### 20.5 Cost per investigation vs MTTR savings
 
@@ -1687,6 +1950,9 @@ Kết luận: tối ưu **quality** và **storm rate-limit** trước khi tối 
 > **Ý TƯỞNG**
 > Budget không chỉ `max_tokens_per_investigation` — mà là `max_investigations_per_incident` và `dedupe_by_correlation_id`. Một incident = một agent thread.
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```yaml
 cost_guards:
   max_tokens_per_investigation: 20000
@@ -1699,6 +1965,8 @@ cost_guards:
     skip_rag: false
 ```
 
+</details>
+
 ### 20.6 Human override patterns
 
 | Pattern | Khi nào | UX |
@@ -1709,6 +1977,9 @@ cost_guards:
 | **Approve step** | Tier-2 remediation | 1-click approve với TTL 10m |
 | **Rollback agent action** | Auto-action làm xấu | One-click reverse + freeze agent 30m |
 | **Shadow mode** | Model mới | Agent viết report, không page, không act |
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 class OverrideState:
@@ -1725,6 +1996,8 @@ def on_human_override(incident_id, mode, actor):
     if mode == OverrideState.HUMAN_DRIVING:
         set_agent_policy(incident_id, allow_tools=True, allow_actions=False)
 ```
+
+</details>
 
 Automation overreach postmortems: [15 — Famous Incidents](../16-famous-incidents/README.vi.md).
 

@@ -157,10 +157,10 @@ graph TD
     COMP -->|merge small chunks| CHUNKS
     COMP -->|enforce retention| CHUNKS
 
-    style Ingest fill:#1565c0,color:#fff
-    style Query fill:#2e7d32,color:#fff
-    style Storage fill:#4a148c,color:#fff
-    style Compaction fill:#e65100,color:#fff
+    style Ingest fill:#dbeafe,color:#1e293b
+    style Query fill:#dcfce7,color:#1e293b
+    style Storage fill:#f3e8ff,color:#1e293b
+    style Compaction fill:#ffedd5,color:#1e293b
 ```
 
 ### Component Responsibilities

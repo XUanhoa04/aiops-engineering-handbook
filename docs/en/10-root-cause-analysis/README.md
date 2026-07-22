@@ -52,6 +52,25 @@ After this chapter, continue to [10 — LLM Agent](../11-llm-agent/README.md).
 
 ---
 
+
+## How to read this chapter (concept-first)
+
+> [!IMPORTANT]
+> **Concepts first — code second**
+> From chapter 08 onward, prefer: **problem → idea → input data → algorithm/model → output → pros/cons → when to use**. Implementation lives under **See the code below** (click to expand). Goal: understand *why it works on AIOps telemetry*, not only copy-paste snippets.
+
+| Step | Question |
+|------|----------|
+| 1. Problem | What pain does this solve (noise, cascade, MTTR…)? |
+| 2. Idea | 2–3 sentence intuition, no formulas |
+| 3. Data in | Which metrics/logs/traces/events, windows, features? |
+| 4. Algorithm | Computation steps / model flow |
+| 5. Output | Event schema, score, rank, action proposal? |
+| 6. Trade-offs | Pros / cons / cost / explainability |
+| 7. When | When to use — and when **not** to |
+
+---
+
 ## 1. Why Automated RCA?
 
 > [!NOTE]
@@ -154,9 +173,9 @@ flowchart TD
     SCORE --> HYPO --> RCA_RESULT --> PUB
     RCA_RESULT --> HUMAN
 
-    style Input fill:#1565c0,color:#fff
-    style RCA fill:#4a148c,color:#fff
-    style Output fill:#2e7d32,color:#fff
+    style Input fill:#dbeafe,color:#1e293b
+    style RCA fill:#f3e8ff,color:#1e293b
+    style Output fill:#dcfce7,color:#1e293b
 ```
 
 ---
@@ -164,6 +183,9 @@ flowchart TD
 ## 3. Signal Collection for RCA
 
 ### Signal Collection Schema
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from dataclasses import dataclass, field
@@ -245,13 +267,89 @@ async def collect_rca_context(
     )
 ```
 
+</details>
+
 ---
 
 ## 4. Topology-Based RCA
 
-The simplest and most reliable RCA approach for well-monitored microservices systems. The algorithm walks the service dependency graph backward from failure symptoms.
+The simplest and most reliable RCA approach for well-monitored microservices systems. The algorithm walks the service dependency graph **backward from failure symptoms** toward nodes that look like origins.
+
+### Problem / idea
+
+| | |
+|--|--|
+| **Problem** | Correlation says “payment + order + gateway are one incident,” but not **which node to fix first**. Humans still spend 15–30 minutes reading dashboards. |
+| **Idea** | A strong root candidate is anomalous **and** has healthy callees (fault starts here) **and** affected callers (impact cascades out). Walk the graph; score leaves of the red subgraph. |
+
+> [!IMPORTANT]
+> Topology RCA finds **where in the mesh** the failure concentrates. It does **not** prove causation vs shared AZ/DNS confounders — see [§20.1](#201-correlation--causation--the-classic-rca-trap).
+
+### Inputs from the AIOps data plane
+
+| Input | Source | Role |
+|-------|--------|------|
+| Incident group + services_affected | Correlation engine | Red set to walk |
+| Dependency graph (directed) | Traces / mesh / catalog | Caller → callee edges |
+| Per-service metric snapshots | Prometheus via data plane | error_rate, latency vs baseline |
+| Anomaly flags (optional) | Ch08 detectors | Faster “is red?” signal |
+
+### How it works (steps)
+
+```
+1. For each service in affected set:
+2.   callees = successors; callers = predecessors
+3.   If service anomalous:
+4.     +0.5 if all callees healthy (origin-like leaf of red region)
+5.     +0.3 if callers also in affected (cascade signature)
+6.     +small bonus for fan-in (wider blast)
+7. Sort candidates by score → topology hypothesis list
+```
+
+```mermaid
+flowchart TB
+    GW[api-gateway · red] --> ORD[order · red]
+    ORD --> PAY[payment · red · ROOT?]
+    PAY --> DB[(payment-db · green)]
+    ORD --> INV[inventory · green]
+
+    style GW fill:#fecaca,color:#1e293b
+    style ORD fill:#fecaca,color:#1e293b
+    style PAY fill:#ffedd5,color:#1e293b
+    style DB fill:#dcfce7,color:#1e293b
+    style INV fill:#dcfce7,color:#1e293b
+```
+
+*payment is anomalous, callees healthy, callers red → high topology score.*
+
+### Output / what on-call sees
+
+```
+candidates:
+  - service: payment-service  score: 0.85
+    evidence: [all_dependencies_healthy, cascading_to_2_callers]
+    algorithm: topology_traversal
+  - service: order-service    score: 0.35
+    evidence: [cascading_to_1_callers]  # callees not all healthy
+```
+
+### Pros / cons + when
+
+| Pros | Cons |
+|------|------|
+| Explainable; no training labels | Blind to code bugs without metric anomaly |
+| Fast (graph walk ms–seconds) | Wrong if graph inverted/stale |
+| Great first algorithm in ensemble | Shared infra (AZ) looks like multi-root noise |
+
+| Use when | Do **not** use alone when |
+|----------|---------------------------|
+| Traced microservices, clear SLIs | First weeks with empty/sparse graph |
+| Always as cheap ensemble member | Change/deploy is likely — add change RCA |
 
 ### Algorithm: Backward Traversal
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import networkx as nx
@@ -347,13 +445,60 @@ def _is_service_anomalous(
     )
 ```
 
+</details>
+
 ---
 
 ## 5. Causal Graph RCA
 
-Causal graphs go beyond correlation to directly model **cause-and-effect relationships** between metrics.
+Causal graphs go beyond correlation to model **cause-and-effect structure** between metrics (and sometimes services). Use when topology alone cannot separate reverse causation (retry storm: errors → CPU).
+
+### Problem / idea
+
+| | |
+|--|--|
+| **Problem** | High correlation between error_rate and CPU does not say which is root — or both are driven by a hidden third variable. |
+| **Idea** | From multivariate time series, recover a DAG of conditional independence (e.g. PC algorithm) and score nodes that **explain** downstream anomalies. |
+
+### Inputs from the AIOps data plane
+
+| Input | Source | Role |
+|-------|--------|------|
+| Aligned metric matrix | Feature store / Prom range | Columns = signals in incident window |
+| Prior edges (optional) | Topology | Soft constraints on search |
+| Sampling interval | Pipeline config | Enough points for CI tests |
+
+### How it works (steps) — PC sketch
+
+```
+1. Start with complete undirected graph on variables
+2. Remove edges that are conditionally independent (Fisher-Z / kernel CI)
+3. Orient remaining edges with collider / Meek rules → CPDAG/DAG
+4. Map anomalous variables; rank parents that d-separate symptoms
+5. Emit causal hypotheses with edge confidence
+```
+
+### Output / what on-call sees
+
+Ranked edges like `db_pool_wait → payment_error_rate → order_latency` with algorithm=`pc_causal`, not just “correlated 0.9”.
+
+### Pros / cons + when
+
+| Pros | Cons |
+|------|------|
+| Attacks correlation≠causation head-on | Needs clean, stationary-ish windows; sensitive to sampling |
+| Can find reverse-causation patterns | Compute heavy; hard to explain to non-ML SRE |
+| Complements topology | Fails under strong confounders without latent vars |
+
+| Use when | Do **not** use when |
+|----------|---------------------|
+| Ambiguous multi-metric incidents | P1 fast-path already has strong change+log evidence |
+| Offline / async deep RCA | Sparse metrics or < few dozen points |
 
 ### PC Algorithm (Constraint-Based Causal Discovery)
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from causallearn.search.ConstraintBased.PC import pc
@@ -446,6 +591,8 @@ class CausalGraphRCA:
         return sorted(root_causes, key=lambda x: x["score"], reverse=True)
 ```
 
+</details>
+
 ### When Causal Graph RCA Works Best
 
 ```
@@ -469,6 +616,9 @@ Unsuitable cases:
 Bayesian Networks model **probabilistic dependencies** between components. This approach works especially well when you already have domain knowledge about system failure scenarios.
 
 ### Structure Learning from Data + Domain Knowledge
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from pgmpy.models import BayesianNetwork
@@ -579,7 +729,12 @@ class BayesianNetworkRCA:
         }
 ```
 
+</details>
+
 **Example of declaring known causal edges**:
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 KNOWN_CAUSAL_EDGES = [
@@ -602,6 +757,8 @@ KNOWN_CAUSAL_EDGES = [
 ]
 ```
 
+</details>
+
 ---
 
 ## 7. Graph Neural Network (GNN) RCA
@@ -609,6 +766,9 @@ KNOWN_CAUSAL_EDGES = [
 For large-scale microservices systems with hundreds of services, Graph Neural Networks can learn complex RCA patterns beyond static rules or ordinary statistics.
 
 ### Architecture: Spatial-Temporal GNN
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import torch
@@ -734,7 +894,12 @@ def build_graph_from_incident(
     return Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr)
 ```
 
+</details>
+
 ### GNN Training Pipeline
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 def train_rca_gnn(
@@ -781,6 +946,8 @@ def train_rca_gnn(
     return model
 ```
 
+</details>
+
 ### GNN Trade-offs
 
 | Characteristic | Detail |
@@ -802,6 +969,9 @@ def train_rca_gnn(
 Log analysis provides the most expressive and human-understandable RCA evidence.
 
 ### Structured Log Analysis
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import re
@@ -914,11 +1084,16 @@ class LogRCAAnalyzer:
         return traces[:5]  # Keep at most 5 unique stack traces
 ```
 
+</details>
+
 ---
 
 ## 9. Trace-Based RCA — Span Analysis
 
 Distributed traces provide the clearest evidence of WHERE the fault first arose in the service call chain.
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from typing import List, Optional
@@ -1045,11 +1220,68 @@ class TraceRCAAnalyzer:
         )
 ```
 
+</details>
+
 ---
 
 ## 10. Change Correlation (Deployment-Driven RCA)
 
-Most serious incidents originate from system changes. Change correlation yields extremely high accuracy for these incidents.
+Most serious production incidents are **change-adjacent**. Temporal proximity of deploy/config/flag to symptom onset is one of the highest-precision RCA signals — and one of the most misused (monocausal rollback).
+
+### Problem / idea
+
+| | |
+|--|--|
+| **Problem** | Without change context, topology may blame a healthy dependency; with **only** change context, teams rollback when the true root is traffic × capacity. |
+| **Idea** | Score changes in a pre-incident window by **time delta × service overlap × change type**, then **require** supporting evidence (new error signature, canary delta) before “blame deploy 100%”. |
+
+> [!WARNING]
+> **Confounders**: deploy + marketing spike at once. Rank **both** candidates and the interaction — see [§20.2](#202-confounding-deploy--traffic-spike-at-the-same-time).
+
+### Inputs from the AIOps data plane
+
+| Input | Source | Role |
+|-------|--------|------|
+| Incident start + affected services | Correlation | Anchor time and scope |
+| Change events | CI/CD, GitOps, feature flags, infra tickets ([17](../17-topology-change/README.md)) | Candidate causes |
+| Impact window (e.g. 30m) | Policy | Max lookback before incident |
+| Optional: version error signatures | Loki / canary metrics | Confirm or refute deploy blame |
+
+### How it works (steps)
+
+```
+1. Filter changes with timestamp < incident_start and delta ≤ window
+2. temporal_score = 1 - (minutes_before / window)
+3. service_score = 1 if changed service in affected else low
+4. type_weight: deploy/migration > infra > config > flag (org-tuned)
+5. combined = weighted sum; sort
+6. If traffic_z high AND change present → multi-hypothesis mode (not single winner)
+```
+
+### Output / what on-call sees
+
+```
+change_correlations:
+  - deployment payment@2.15  score 0.91  t-12m  can_rollback: true
+  - flag promo_checkout      score 0.55  t-20m  can_rollback: true
+ui_banner: "Possible confound: deploy AND traffic spike — verify both"
+```
+
+### Pros / cons + when
+
+| Pros | Cons |
+|------|------|
+| Highest precision when deploy truly regresses | False blame on coincident deploys |
+| Actionable (rollback path clear) | Misses pure capacity / dependency outages |
+| Cheap to implement | Needs reliable change feed completeness |
+
+| Use when | Do **not** auto-rollback when |
+|----------|------------------------------|
+| Always in ensemble for prod | Only temporal proximity, no error signature delta |
+| Freeze windows / change audits | Confidence high but evidence_quality low |
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from datetime import datetime, timedelta
@@ -1125,11 +1357,66 @@ class ChangeCorrelationRCA:
         return sorted(correlations, key=lambda x: x["score"], reverse=True)
 ```
 
+</details>
+
 ---
 
 ## 11. RCA Evidence Scoring and Ranking
 
-Merge evidence results from all RCA algorithms to build the final hypothesis list:
+Merge algorithm outputs into a **ranked hypothesis list**. Separately track **model confidence** vs **evidence quality** so publishable confidence never exceeds what the data plane actually supports.
+
+### Problem / idea
+
+| | |
+|--|--|
+| **Problem** | Five algorithms disagree; UI shows one “root” at 0.99 from a single weak metric correlation → wrong auto-remediation. |
+| **Idea** | Weighted vote by historical algorithm accuracy + **cap** by evidence quality (trace/log/change/topology agreement, freshness, coverage). Allow **multi-root** when #1≈#2 in different domains. |
+
+### Inputs from the AIOps data plane
+
+| Input | Source | Role |
+|-------|--------|------|
+| Topology / causal / log / trace / change results | RCA modules | Per-algorithm candidates |
+| Algorithm weights | Config + feedback loop | Historical accuracy |
+| Evidence artifacts | Query ids, ages, coverage flags | Quality dimensions |
+| On-call feedback (async) | Postmortem TP/FP | Recalibrate weights |
+
+### How it works (steps)
+
+```
+1. Normalize each algorithm’s top-k to (service, score, evidence[])
+2. Aggregate service_scores += score × algorithm_weight
+3. Attach evidence_quality from source fidelity / freshness / agreement
+4. publishable_confidence = f(model_conf, evidence_quality)
+5. finalize: single | multi_root | uncertain (see §20.3)
+6. Attach remediation suggestion only if failure_mode known + allowlisted
+```
+
+### Output / what on-call sees
+
+| Field | Purpose |
+|-------|---------|
+| `rank`, `root_cause_service`, `failure_mode` | Primary story |
+| `confidence` + `evidence_quality` | Two numbers, not one lie |
+| `evidence[]` with algorithm tags | Cite-or-doubt |
+| `mode`: single / multi_root / uncertain | Prevents false monocausality |
+| `suggested_remediation` | Hint only — gate in Ch12 |
+
+### Pros / cons + when
+
+| Pros | Cons |
+|------|------|
+| Ensemble robustness | Weights wrong without feedback |
+| Transparent multi-signal | Can look “indecisive” when uncertain (good!) |
+| Safety for auto-act gates | Over-weighting change causes rollback monoculture |
+
+| Use when | Do **not** |
+|----------|------------|
+| Always before page / remediate | Hide alternatives when mode=uncertain |
+| Feeding LLM agent context | Treat rank-1 as absolute truth |
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from dataclasses import dataclass
@@ -1229,9 +1516,40 @@ REMEDIATION_SUGGESTIONS = {
 }
 ```
 
+</details>
+
 ---
 
 ## 12. RCA Output Schema
+
+Structured output is the **contract** between RCA, the LLM agent, remediation, and humans. Prose reports are derived views; machines must consume schema.
+
+### Problem / idea
+
+If each team invents ad-hoc JSON, auto-remediation cannot safely gate on confidence, and postmortems cannot score accuracy. One Avro/JSON schema → Kafka `aiops-rca-results` → all consumers.
+
+### What on-call sees (human view of the same schema)
+
+```
+RCA · 47s · mode=single · publishable_conf=0.82 (model 0.91 · evidence_q 0.74)
+#1 payment-service · database_connection_exhaustion
+   evidence: topology ✓  logs ✓  change ~  trace ✓
+   suggest: increase DB_POOL_SIZE (Tier1 allowlist) — not auto without gate
+#2 payment-db · discarded (healthy metrics)
+partial=false  warnings[]=empty
+```
+
+### Pros / cons + when
+
+| Pros | Cons |
+|------|------|
+| Enables safe automation & eval | Schema evolution needs compatibility |
+| Forces evidence links | Over-strict schema may drop useful free text |
+
+**Always** publish schema to Kafka; Markdown is optional enrichment for Slack.
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```json
 {
@@ -1311,11 +1629,16 @@ REMEDIATION_SUGGESTIONS = {
 }
 ```
 
+</details>
+
 ---
 
 ## 13. Historical Pattern Matching (Case-Based RCA)
 
 Use vector similarity search to find similar past incidents:
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from sentence_transformers import SentenceTransformer
@@ -1411,9 +1734,14 @@ class IncidentHistoryMatcher:
         ]
 ```
 
+</details>
+
 ---
 
 ## 14. Production Architecture
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 # Deploy rca-engine
@@ -1451,6 +1779,8 @@ spec:
               memory: "8Gi"
 ```
 
+</details>
+
 ---
 
 ## 15. Common Mistakes
@@ -1469,6 +1799,9 @@ spec:
 ---
 
 ## 16. Monitoring RCA Quality
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```promql
 # RCA analysis load
@@ -1489,7 +1822,12 @@ sum by (algorithm) (rate(aiops_rca_evidence_used_total[5m]))
 kafka_consumer_group_lag_sum{group="rca-engine-group"}
 ```
 
+</details>
+
 ### Critical Alerts
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 - alert: RCAEngineDown
@@ -1516,11 +1854,16 @@ kafka_consumer_group_lag_sum{group="rca-engine-group"}
     severity: warning
 ```
 
+</details>
+
 ---
 
 ## 17. Scaling
 
 RCA is CPU/RAM intensive. Prefer vertical scaling first (more CPU/RAM for large parallel collection), then horizontal scaling:
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 # Horizontal: autoscale on Kafka consumer lag
@@ -1538,6 +1881,8 @@ resources:
     cpu: "4"
     memory: "8Gi"
 ```
+
+</details>
 
 ---
 
@@ -1576,6 +1921,9 @@ resources:
 | Selection bias | Only trace error paths | Span X always "root" | Sampling bias |
 | Proxy metric | Queue depth ↑ with latency | Queue is root | Upstream slow producer |
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```python
 def causation_sanity_checks(hypothesis: dict, evidence: list) -> list:
     """
@@ -1594,6 +1942,8 @@ def causation_sanity_checks(hypothesis: dict, evidence: list) -> list:
             warnings.append("temporal_reverse: symptom predates root by >30s")
     return warnings
 ```
+
+</details>
 
 > [!TIP]
 > **Minimum causation checklist before trusting rank #1**:
@@ -1619,6 +1969,9 @@ RCA that only looks at change → **blames deploy 100%** (easy rollback).
 RCA that only looks at traffic → **scales blindly** (pool still 20, still dies).  
 **True root**: interaction effect — pool size did not track traffic; deploy was the trigger that exposed a pre-existing defect.
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```yaml
 confounder_policy:
   if:
@@ -1636,6 +1989,8 @@ confounder_policy:
       show: "Possible confound: deploy AND traffic spike — verify both before rollback"
 ```
 
+</details>
+
 > [!IMPORTANT]
 > Rolling back a deploy when the root is pure traffic will **not** save the system and may discard a fix currently rolling out. Always compare: *version N vs N-1 under the same load* (canary metrics / shadow).
 
@@ -1649,6 +2004,9 @@ Not every incident has one root. Multi-root classes:
 | **Independent dual** | 2 outages overlapping in time | 2 RCA results; do not force 1 winner |
 | **Cascading secondary** | Root A causes B, B becomes a local root | Primary + secondary roots with timeline |
 | **Partial mitigation residual** | Fix A done, residual B remains | Re-run RCA after mitigate; do not close incident early |
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 def finalize_hypotheses(ranked: list, max_roots=2) -> dict:
@@ -1677,6 +2035,8 @@ def finalize_hypotheses(ranked: list, max_roots=2) -> dict:
     }
 ```
 
+</details>
+
 ### 20.4 Evidence quality scoring (not just algorithm confidence)
 
 Model `confidence` easily creates **illusions**. Separate **evidence quality**:
@@ -1689,6 +2049,9 @@ Model `confidence` easily creates **illusions**. Separate **evidence quality**:
 | **Consistency** | Topology + log + change agree | 3 algorithms contradict |
 | **Counter-evidence** | Searched and ruled out | Counter not searched |
 | **Provenance** | Reproducible query ids | "LLM said so" with no cite |
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 def evidence_quality(ev: dict) -> float:
@@ -1718,6 +2081,8 @@ def publishable_confidence(model_conf: float, eq: float) -> float:
     return round(min(model_conf, eq + 0.1) * (0.5 + 0.5 * eq), 3)
 ```
 
+</details>
+
 > [!NOTE]
 > **KEY IDEA**
 > The UI should show **2 numbers**: `model_confidence=0.91` and `evidence_quality=0.54` → system displays **0.58 publishable**. On-call understands: "model is sure but evidence is thin".
@@ -1725,6 +2090,9 @@ def publishable_confidence(model_conf: float, eq: float) -> float:
 ### 20.5 When to stop searching (time budget)
 
 RCA must not become a CPU black hole. On-call needs a **hypothesis at t+45s**, not an essay at t+10m.
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 rca_time_budget:
@@ -1743,6 +2111,11 @@ rca_time_budget:
     - evidence_links: true
     - partial_flag: true   # if budget cuts mid-run
 ```
+
+</details>
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import time
@@ -1770,6 +2143,8 @@ def run_rca_with_budget(incident, collectors, algorithms, budget_s=45.0):
         "algorithms_run": [r["name"] for r in results],
     }
 ```
+
+</details>
 
 | Situation | Stop when | Next action |
 |------------|----------|----------------|

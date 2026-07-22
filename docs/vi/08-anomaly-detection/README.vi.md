@@ -8,21 +8,21 @@
 
 - [01 — Observability](../01-observability/README.vi.md) — các loại metric, cấu trúc log
 - [03 — Prometheus](../03-prometheus/README.vi.md) — sử dụng PromQL để trích xuất đặc trưng (feature extraction)
-- [06 — Kafka](../07-kafka/README.vi.md) — tiêu thụ telemetry, đẩy các sự kiện bất thường (anomaly events)
+- [07 — Kafka](../07-kafka/README.vi.md) — tiêu thụ telemetry, đẩy các sự kiện bất thường (anomaly events)
 
 ## Related Documents
 
-- [08 — Alert Correlation](../09-alert-correlation/README.vi.md) — nhận các sự kiện bất thường
-- [09 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — sử dụng ngữ cảnh bất thường
-- [10 — LLM Agent](../11-llm-agent/README.vi.md) — sử dụng tín hiệu bất thường phục vụ điều tra sự cố
-- [12 — Production Operations](../13-production/README.vi.md) — vận hành detector trên production, SLO platform
-- [13 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md) — cách Google/Meta/Netflix vận hành detection ở quy mô lớn
-- [14 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md) — seasonality Black Friday, compliance, latency-critical detection
-- [15 — Famous Incidents](../16-famous-incidents/README.vi.md) — case study drift/deploy-induced false alarms trong sự cố thực
+- [09 — Alert Correlation](../09-alert-correlation/README.vi.md) — nhận các sự kiện bất thường
+- [10 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — sử dụng ngữ cảnh bất thường
+- [11 — LLM Agent](../11-llm-agent/README.vi.md) — sử dụng tín hiệu bất thường phục vụ điều tra sự cố
+- [13 — Production Operations](../13-production/README.vi.md) — vận hành detector trên production, SLO platform
+- [14 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md) — cách Google/Meta/Netflix vận hành detection ở quy mô lớn
+- [15 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md) — seasonality Black Friday, compliance, latency-critical detection
+- [16 — Famous Incidents](../16-famous-incidents/README.vi.md) — case study drift/deploy-induced false alarms trong sự cố thực
 
 ## Next Reading
 
-Sau chương này, hãy chuyển sang [08 — Alert Correlation](../09-alert-correlation/README.vi.md).
+Sau chương này, hãy chuyển sang [09 — Alert Correlation](../09-alert-correlation/README.vi.md).
 
 ---
 
@@ -54,6 +54,25 @@ Sau chương này, hãy chuyển sang [08 — Alert Correlation](../09-alert-cor
 24. [Cost](#24-cost)
 25. [Tư duy sâu: Drift, Ensemble, Feedback Loop & Khi nào KHÔNG dùng ML](#25-tư-duy-sâu-drift-ensemble-feedback-loop--khi-nào-không-dùng-ml)
 26. [Production Review](#26-production-review)
+
+---
+
+
+## Cách đọc chapter này (concept-first)
+
+> [!IMPORTANT]
+> **Đọc concept trước — code để sau**
+> Từ chapter 08 trở đi, handbook ưu tiên: **vấn đề → ý tưởng → input data → thuật toán/model → output → ưu/nhược → khi nào dùng**. Phần implementation nằm trong khối **See the code below** (bấm mới mở). Mục tiêu: bạn hiểu *tại sao và hoạt động ra sao trên telemetry AIOps*, không chỉ copy-paste.
+
+| Bước đọc | Câu hỏi |
+|----------|---------|
+| 1. Vấn đề | Detector/engine này giải quyết pain gì (false positive, cascade, MTTR…)? |
+| 2. Ý tưởng | Trực giác 2–3 câu, không công thức |
+| 3. Data in | Metric/log/trace/event nào, window nào, feature nào? |
+| 4. Thuật toán | Các bước tính toán / model flow |
+| 5. Output | Schema sự kiện, score, rank, action proposal? |
+| 6. Trade-off | Ưu / nhược / chi phí / giải thích được không? |
+| 7. When | Dùng khi nào — và khi nào **đừng** dùng |
 
 ---
 
@@ -92,9 +111,9 @@ graph TD
         COL2[Nhóm các điểm dữ liệu\nbiểu hiện bất thường]
     end
 
-    style Point fill:#1565c0,color:#fff
-    style Context fill:#2e7d32,color:#fff
-    style Collective fill:#e65100,color:#fff
+    style Point fill:#dbeafe,color:#1e293b
+    style Context fill:#dcfce7,color:#1e293b
+    style Collective fill:#ffedd5,color:#1e293b
 ```
 
 ### Why Static Thresholds Fail
@@ -183,11 +202,11 @@ flowchart TD
     DEDUP --> EVT --> KF2
     Detect --> METRIC
 
-    style Input fill:#1565c0,color:#fff
-    style FE fill:#2e7d32,color:#fff
-    style Detect fill:#4a148c,color:#fff
-    style Score fill:#e65100,color:#fff
-    style Output fill:#b71c1c,color:#fff
+    style Input fill:#dbeafe,color:#1e293b
+    style FE fill:#dcfce7,color:#1e293b
+    style Detect fill:#f3e8ff,color:#1e293b
+    style Score fill:#ffedd5,color:#1e293b
+    style Output fill:#fecaca,color:#1e293b
 ```
 
 ### Pipeline Step Details
@@ -207,11 +226,43 @@ flowchart TD
 
 ## 3. EWMA — Exponentially Weighted Moving Average
 
-### Intuition
+> [!NOTE]
+> **Ý TƯỞNG**
+> EWMA trả lời một câu hỏi cho mỗi metric: *điểm này có lệch xa so với kỳ vọng vừa có không?* Đây là baseline thích ứng online — không phải mô hình seasonality, cũng không phải detector đa biến.
+
+### Vấn đề giải quyết
+
+Ngưỡng tĩnh không bám theo baseline thay đổi dần (tăng trưởng, deploy, mở rộng capacity). EWMA cho **baseline rẻ, luôn bật, không cần train**, bắt spike/drop ngay trên luồng.
+
+### Ý tưởng cốt lõi (intuition)
 
 EWMA là một bộ lọc đơn giản theo dõi **trung bình trượt (moving average)**, trong đó các quan sát gần đây có sức ảnh hưởng lớn hơn các quan sát cũ hơn. Đây là nền tảng của tất cả các thuật toán ngưỡng thích ứng (adaptive threshold).
 
-Có thể hiểu đơn giản là: "Ước lượng tốt nhất của tôi về giá trị hiện tại là sự kết hợp có trọng số giữa ước lượng trước đó và quan sát mới nhất."
+Có thể hiểu đơn giản là: "Ước lượng tốt nhất của tôi về giá trị hiện tại là sự kết hợp có trọng số giữa ước lượng trước đó và quan sát mới nhất." Đồng thời theo dõi phương sai phần dư theo cách tương tự, rồi gắn cờ khi phần dư vượt *k* độ lệch chuẩn thích ứng.
+
+### Input data trên pipeline AIOps
+
+| Khía cạnh | Lựa chọn điển hình |
+|-----------|-------------------|
+| Loại tín hiệu | Metric số univariate (CPU, error rate, latency p99, RPS, độ dài queue) |
+| Nguồn | Kafka `aiops-raw-metrics` hoặc Prometheus scrape / query |
+| Nhịp | Mẫu 5s–1m; detector cập nhật **từng điểm** (streaming) |
+| Window / state | **Không buffer lịch sử** — chỉ `S_t` và `variance_t` (O(1) mỗi metric) |
+| Feature | Giá trị thô; có thể pre-smooth hoặc rate (`rate()`, `irate()`) |
+| Warm-up | Bỏ qua alert ~`min_periods` quan sát đầu (ví dụ 30) |
+
+> [!TIP]
+> Một instance EWMA **cho mỗi khóa (service, metric, labels quan trọng)**. Chia sẻ state giữa tenant sẽ trộn baseline và tăng false positive.
+
+### Thuật toán hoạt động từng bước
+
+1. Điểm đầu: `S = X`, variance `= 0`, trả "initializing".
+2. Phần dư: `r_t = X_t − S_{t−1}`.
+3. Cập nhật variance: `v_t = α r_t² + (1−α) v_{t−1}`.
+4. Cập nhật baseline: `S_t = α X_t + (1−α) S_{t−1}`.
+5. Nếu còn warm-up → không alert.
+6. `z = |r_t| / √v_t`; bất thường nếu `z > k` (thường `k = 3`).
+7. Score ≈ `min(z / k, 1)`; ghi `direction` spike/drop.
 
 ### Formula
 
@@ -257,6 +308,9 @@ Các giá trị phổ biến:
 
 **Tự động tinh chỉnh α** dựa trên độ biến động tự nhiên của metric:
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```python
 # Tự động điều chỉnh α dựa trên hệ số biến thiên
 def auto_tune_alpha(historical_data: np.ndarray) -> float:
@@ -276,7 +330,12 @@ def auto_tune_alpha(historical_data: np.ndarray) -> float:
         return 0.05
 ```
 
+</details>
+
 ### Python Implementation
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 import numpy as np
@@ -350,7 +409,19 @@ for timestamp, cpu_value in metric_stream:
         )
 ```
 
-### EWMA Advantages and Disadvantages
+</details>
+
+### Output
+
+| Trường | Ý nghĩa |
+|--------|---------|
+| `anomaly` | bool — `z > k` sau warm-up |
+| `score` | 0–1 — mức nghiêm trọng chuẩn hóa (`z / k` có cap) |
+| `z_score`, `residual`, `ewma`, `std_dev` | Giải thích cho on-call / RCA |
+| `direction` | `spike` hoặc `drop` |
+| Sự kiện | Publish `AnomalyEvent` với `algorithm=ewma`, metric, service, timestamp, baseline vs current |
+
+### Ưu / nhược
 
 | Ưu điểm/Nhược điểm | Chi tiết |
 |--------|---------|
@@ -362,11 +433,63 @@ for timestamp, cpu_value in metric_stream:
 | ❌ Không hỗ trợ phát hiện đa biến | Mỗi metric được đánh giá độc lập |
 | ❌ Phản ứng chậm với các sai lệch trung bình kéo dài | Đòi hỏi sai lệch phải đạt k-sigma |
 
+### Khi nào dùng / khi nào KHÔNG dùng
+
+| Dùng khi | **Không** dùng khi |
+|----------|---------------------|
+| Cần first-pass trên hàng nghìn metric | Seasonality ngày/tuần mạnh (dùng STL/SHESD) |
+| Spike/drop rõ, path streaming, budget latency chặt | Lỗi kết hợp đa metric (dùng Isolation Forest) |
+| Cold-start / service mới không có train set | Rò rỉ chậm nằm mãi trong dải thích ứng |
+| Cần page P1 giải thích được trên tín hiệu univariate | Cần p-value / kiểm soát multi-anomaly (dùng SHESD) |
+
+> [!WARNING]
+> Sau sự cố thật, EWMA **hấp thụ** baseline cao. Không có hysteresis, cooldown hay freeze-on-alert thì độ nhạy sụt trong incident và giai đoạn recovery dễ bị coi là "bình thường" quá sớm.
+
 **Vận hành trong thực tế**: EWMA là lựa chọn lý tưởng làm **bộ lọc vòng đầu (first-pass filter)** cho toàn bộ metrics. Nhanh, rẻ, không cần huấn luyện. Sử dụng cho các cảnh báo P1 đối với các đột biến rõ ràng. Kết hợp với STL để hiệu chỉnh các yếu tố chu kỳ theo mùa.
 
 ---
 
 ## 4. Z-Score and Modified Z-Score
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> Z-score hỏi: *điểm này lệch bao nhiêu "độ rộng" so với tâm cửa sổ?* Mean/std cổ điển dễ hỏng vì outlier cũ; **modified Z (median + MAD)** là mặc định an toàn cho sliding window trên production.
+
+### Vấn đề giải quyết
+
+Cần rule đơn giản, audit được: "giá trị này cực đoan so với lịch sử gần đây." Không train, dễ giải thích postmortem; multi-window bắt cả spike nhanh lẫn drift chậm.
+
+### Ý tưởng cốt lõi (intuition)
+
+So sánh giá trị hiện tại với **phân phối tham chiếu ước lượng từ cửa sổ thời gian**. Z chuẩn dùng mean và std. Modified Z dùng **median** và **MAD** để vài spike cũ không phình scale và che incident kế tiếp.
+
+### Input data trên pipeline AIOps
+
+| Khía cạnh | Lựa chọn điển hình |
+|-----------|-------------------|
+| Loại tín hiệu | Metric univariate (cùng họ EWMA) |
+| Nguồn | Rolling buffer từ Prometheus `query_range` hoặc Kafka + ring buffer |
+| Window | Thường: 5m (nhanh), 1h (mặc định), 24h / 7d (drift / tuần) |
+| Feature | Giá trị thô hoặc transform cùng thang; thống nhất đơn vị trong window |
+| State | Toàn bộ mẫu trong window (O(window) memory mỗi khóa metric) |
+| Labels | Đánh giá theo series; không trộn pod/tenant trừ khi cố ý |
+
+### Thuật toán hoạt động từng bước
+
+**Standard Z-Score**
+
+1. Lấy lịch sử cửa sổ `H = {x₁…xₙ}`.
+2. μ = mean(H), σ = std(H).
+3. `Z = (X − μ) / σ`.
+4. Bất thường nếu `|Z| > ngưỡng` (thường 2.5–4.0).
+
+**Modified Z-Score (robust)**
+
+1. `median = median(H)`, `MAD = median(|xᵢ − median|)`.
+2. Nếu MAD = 0: mọi lệch khỏi hằng số lịch sử là bất thường.
+3. `M = 0.6745 × |X − median| / MAD`.
+4. Bất thường nếu `|M| > 3.5` (mặc định phổ biến).
+5. Score ≈ `min(|M| / 3.5, 1)`; giữ direction so với median.
 
 ### Standard Z-Score
 
@@ -394,6 +517,9 @@ Trong đó:
 ```
 
 **Bất thường nếu |M| > 3.5**
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 import numpy as np
@@ -428,6 +554,8 @@ def modified_z_score(
     }
 ```
 
+</details>
+
 ### Z-Score Window Selection
 
 | Kích thước cửa sổ | Độ trễ phát hiện | Rủi ro dương tính giả | Trường hợp sử dụng |
@@ -438,6 +566,9 @@ def modified_z_score(
 | 7 ngày | Rất chậm | Rất thấp | Xác định baseline chu kỳ hàng tuần |
 
 **Mẫu thiết kế trong production**: Sử dụng đồng thời nhiều cửa sổ thời gian khác nhau:
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```python
 # Cấu hình đa cửa sổ cho Z-Score
 scores = {}
@@ -450,11 +581,56 @@ for window in [5, 60, 1440]:  # 5 phút, 1 giờ, 24 giờ
 # Cửa sổ dài = cảnh báo chậm hơn (tỷ lệ FP thấp hơn, độ tin cậy cao hơn)
 ```
 
+</details>
+
+### Output
+
+| Trường | Ý nghĩa |
+|--------|---------|
+| `anomaly` | bool từ ngưỡng trên `|Z|` hoặc `|M|` |
+| `score` | 0–1 mức nghiêm trọng chuẩn hóa |
+| `modified_z` / `z`, `median` hoặc `μ`, `mad` hoặc `σ` | Baseline để giải thích |
+| `direction` | spike nếu trên tâm, drop nếu dưới |
+| Sự kiện | `algorithm=zscore` hoặc `modified_zscore`, độ dài window, định danh metric |
+
+### Ưu / nhược
+
+| Ưu/Nhược | Chi tiết |
+|----------|---------|
+| ✅ Toán học minh bạch | Dễ audit và dạy on-call |
+| ✅ Không cần train | Chỉ cần sliding window |
+| ✅ Multi-window | Góc nhìn nhanh + chậm cùng series |
+| ✅ Modified Z robust | Sống sót khi history bị nhiễm outlier |
+| ❌ Yếu với seasonality | Peak giờ làm việc trông "cực đoan" |
+| ❌ Chỉ univariate | Không thấy lỗi kết hợp CPU+error |
+| ❌ Chọn window then chốt | Quá ngắn → ồn; quá dài → trễ và pha loãng |
+| ❌ Giả định spread gần dừng | Đổi regime cần re-baseline |
+
+### Khi nào dùng / khi nào KHÔNG dùng
+
+| Dùng khi | **Không** dùng khi |
+|----------|---------------------|
+| Cần detection first-line giải thích được | Seasonality đa thang mạnh (ưu tiên STL/SHESD) |
+| History có thể chứa spike cũ (→ modified Z) | Vector feature chiều cao (IF / OC-SVM) |
+| Ensemble multi-window với EWMA | Bất thường sequence log (Drain/DeepLog) |
+| Cần rule thống kê đơn giản cho compliance | Số mẫu trong window quá ít (σ không ổn định) |
+
+> [!TIP]
+> Công thức production mặc định: **modified Z 1h** để page, **5m** chỉ shadow/urgency cao, **24h** tăng confidence — page khi window ngắn cực đoan *và* window trung bình đồng thuận, hoặc severity rất cao.
+
 ---
 
 ## 5. STL Decomposition
 
-### Intuition
+> [!NOTE]
+> **Ý TƯỞNG**
+> STL không "detect" một mình — nó **gỡ cấu trúc kỳ vọng** (trend + season) để detector phần dư (MAD, Z, ESD) chỉ thấy phần bất ngờ. Peak ban ngày không còn trông như bug khi đó là seasonal.
+
+### Vấn đề giải quyết
+
+Chu kỳ giờ làm việc / ngày / tuần khiến EWMA/Z-score bắn mỗi sáng peak và bỏ lỡ giá trị "trung bình" ban đêm vốn đã nghiêm trọng. STL tách **nhịp điệu kỳ vọng** khỏi **bất thường phần dư thật**.
+
+### Ý tưởng cốt lõi (intuition)
 
 Nhiều metrics mang **tính chu kỳ theo mùa (seasonal patterns)**: cao hơn trong giờ làm việc, thấp hơn vào ban đêm. Đột biến vào các giờ cao điểm ngày trong tuần. Thuật toán Z-score tĩnh không tính đến điều này — nó sẽ gắn cờ hoạt động traffic cao điểm ban ngày là bất thường khi so sánh với giá trị trung bình 24 giờ.
 
@@ -478,7 +654,33 @@ Seasonal:  [-5, -10, -15, +20, +30, +35, +25, -5, -10, -15, -15, ...]
 Residual:  [5, 5, 5, 0, 0, 0, 0, 4, 4, 4, 164, ...]  ← 164 rõ ràng là bất thường!
 ```
 
+### Input data trên pipeline AIOps
+
+| Khía cạnh | Lựa chọn điển hình |
+|-----------|-------------------|
+| Loại tín hiệu | Metric seasonal: RPS, volume checkout, CPU theo traffic, duration job batch |
+| Nguồn | Series đều từ Prometheus (ưu tiên scrape interval cố định) |
+| Độ dài history | Tối thiểu ≥ **2× period**; production thường **7 ngày** |
+| Period | Ví dụ 288 điểm cho 24h @ 5m; 7×288 nếu cần weekly |
+| Nhịp | Re-fit mỗi 15–60 phút; chấm điểm điểm mới trên component đã cache |
+| Feature | Một series (có thể log1p nếu đuôi nặng) |
+
+> [!WARNING]
+> Lỗ hổng scrape làm lệch pha seasonality. Nội suy hoặc đánh dấu gap; đừng nối im lặng timestamp lệch nhịp vào STL.
+
+### Thuật toán hoạt động từng bước
+
+1. Ghép window đều (ví dụ 7 ngày @ 5m).
+2. Fit STL (thường `robust=True`) → `trend`, `seasonal`, `residual`.
+3. Ước lượng scale residual bằng MAD (robust với spike còn sót).
+4. Ngưỡng ≈ `k × MAD × 1.4826` (MAD → đơn vị gần σ).
+5. Score = `|residual| / threshold`; bất thường nếu score > 1.
+6. Cache seasonal+trend; điểm streaming: residual ≈ `x − trend_est − seasonal_tại_pha` đến lần re-fit sau.
+
 ### STL Implementation
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from statsmodels.tsa.seasonal import STL
@@ -557,6 +759,8 @@ def detect_streaming(metric_name: str, current_window: pd.Series) -> dict:
     }
 ```
 
+</details>
+
 ### STL Latency and Compute
 
 | Kích thước cửa sổ | Số điểm dữ liệu (khoảng cách 5 phút) | Thời gian STL Fit | Bộ nhớ tiêu thụ |
@@ -567,11 +771,76 @@ def detect_streaming(metric_name: str, current_window: pd.Series) -> dict:
 
 **Mẹo vận hành**: Thực hiện tính toán STL trên cửa sổ dữ liệu 7 ngày, re-fit định kỳ mỗi 1 giờ (không chạy trên mỗi điểm dữ liệu mới nhận được). Cache kết quả phân tách và chỉ áp dụng tính toán phần dư cho các điểm dữ liệu mới.
 
+### Output
+
+| Trường | Ý nghĩa |
+|--------|---------|
+| `anomaly` | bool — residual vượt ngưỡng robust |
+| `score` | `|residual| / threshold` (thường clip cho ensemble) |
+| `trend`, `seasonal_component`, `residual` | Series phân rã cho dashboard / RCA |
+| Sự kiện | `algorithm=stl`, period, fit window, định danh metric |
+
+### Ưu / nhược
+
+| Ưu/Nhược | Chi tiết |
+|----------|---------|
+| ✅ Xử lý seasonality ngày/tuần | Peak giờ cao điểm hết vĩnh viễn FP |
+| ✅ Tách drift chậm (trend) khỏi shock | Detection tập trung residual |
+| ✅ Có robust fit | Ít bị vài spike cướp mô hình |
+| ❌ Cần history dày đều | Gap và cold start gây hại |
+| ❌ Nặng hơn EWMA/Z | Chi phí fit tăng theo window |
+| ❌ Period phải đúng/ổn định | Sai period → residual rác |
+| ❌ Univariate | Vẫn từng series một |
+
+### Khi nào dùng / khi nào KHÔNG dùng
+
+| Dùng khi | **Không** dùng khi |
+|----------|---------------------|
+| Metric gắn traffic có chu kỳ rõ | Metric phẳng/ngẫu nhiên (EWMA đủ) |
+| Cần chấm residual dưới seasonality | Budget realtime < vài ms mỗi series |
+| Re-fit batch/near-realtime mỗi giờ được | Log stream không đều mà không resample |
+| Giải thích "kỳ vọng giờ này" cho người | Chỉ cần joint multi-metric |
+
 ---
 
 ## 6. Seasonal Hybrid ESD (SHESD)
 
-SHESD là thuật toán được sử dụng bởi **thư viện phát hiện bất thường của Twitter**. Nó mở rộng STL bằng cách sử dụng kiểm định Extreme Studentized Deviate (ESD) sau khi thực hiện phân tách.
+> [!NOTE]
+> **Ý TƯỞNG**
+> SHESD = **phân rã seasonal + kiểm định multi-outlier (ESD)**. Sau khi gỡ season/trend, ESD lần lượt bóc residual cực đoan nhất với ngưỡng ý nghĩa — tốt hơn một threshold residual đơn khi nhiều anomaly nằm cùng window.
+
+### Vấn đề giải quyết
+
+Threshold residual STL thuần có thể (a) miss nhiều outlier đồng thời (chúng phình scale residual) hoặc (b) thiếu trần có nguyên tắc cho số điểm được gọi bất thường. SHESD thêm **ESD** để phát hiện multi-anomaly có kiểm soát trên series seasonal — cách tiếp cận nổi tiếng từ thư viện anomaly detection của Twitter.
+
+### Ý tưởng cốt lõi (intuition)
+
+1. Gỡ cấu trúc seasonal/trend (kiểu STL / seasonal hybrid median).
+2. Trên residual, chạy **Extreme Studentized Deviate**: lặp kiểm định điểm xa nhất, loại, ước lượng lại, dừng khi không còn significant hoặc hết ngân sách max anomaly.
+3. Kết quả: tập **chỉ mục** bất thường có nền thống kê, không chỉ score liên tục.
+
+### Input data trên pipeline AIOps
+
+| Khía cạnh | Lựa chọn điển hình |
+|-----------|-------------------|
+| Loại tín hiệu | KPI seasonal (RPS, orders, error count, latency) |
+| Nguồn | History dày (giờ–tuần) từ Prometheus |
+| Window | Thường nhiều ngày; đủ period cho seasonality |
+| Tham số | `max_anomalies` (vd 5%), `alpha` (vd 0.05), direction both/pos/neg |
+| Mode | Thường **batch / rolling batch**, không path micro-latency mỗi mẫu |
+| Feature | Series univariate; longterm mode khi drift chậm |
+
+### Thuật toán hoạt động từng bước
+
+1. Nạp series đều `x₁…xₙ`.
+2. Phân rã seasonal hybrid → residual `r_i`.
+3. Giới hạn ứng viên bởi `max_anoms × n`.
+4. Với k = 1…max: tìm index max `|r|`, tính thống kê ESD so với mean/std residual (hoặc scale robust).
+5. So critical value ở mức `alpha`; significant thì đánh dấu và loại; không thì dừng.
+6. Trả danh sách index bất thường (và có thể thứ hạng).
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 # SHESD khả dụng thông qua pyod hoặc thư viện anomalydetection
@@ -599,6 +868,39 @@ def shesd_detect(values: list, max_anomalies: float = 0.05, alpha: float = 0.05)
     return detector.detect(values)
 ```
 
+</details>
+
+### Output
+
+| Trường | Ý nghĩa |
+|--------|---------|
+| Chỉ mục bất thường | Vị trí trong window được gắn nhãn outlier |
+| Nhãn ẩn | Point anomaly trên series seasonal |
+| Tuỳ chọn | Direction (spike/drop), thứ tự loại bỏ |
+| Sự kiện | Map index → timestamp; `algorithm=shesd`, `alpha`, `max_anoms` |
+
+### Ưu / nhược
+
+| Ưu/Nhược | Chi tiết |
+|----------|---------|
+| ✅ Kiểm soát ý nghĩa qua `alpha` | Có nguyên tắc hơn cut residual thuần |
+| ✅ Multi-outlier aware | ESD bóc cực đoan lặp |
+| ✅ Ngân sách `max_anomalies` | Giới hạn độ ồn nhãn trong window |
+| ✅ Mạnh trên KPI seasonal | Giám sát KPI kiểu Twitter |
+| ❌ Nặng hơn EWMA/Z | Hướng batch |
+| ❌ Nhạy tham số | Sai period / max_anoms → under/over detect |
+| ❌ Score liên tục yếu hơn | Tập index tự nhiên hơn stream 0–1 |
+| ❌ Vẫn univariate | Không joint multi-metric |
+
+### Khi nào dùng / khi nào KHÔNG dùng
+
+| Dùng khi | **Không** dùng khi |
+|----------|---------------------|
+| KPI seasonal, window có thể nhiều spike | First-pass siêu thấp latency trên triệu series |
+| Cần kiểm soát multi-anomaly thống kê | Sampling thưa không fill |
+| Review batch/hourly series quan trọng | Phát hiện "tổ hợp lạ" đa biến |
+| Mở rộng STL với multi-outlier tốt hơn | Bất thường template/sequence log |
+
 **Ưu điểm so với STL thuần túy**:
 - Cung cấp mức ý nghĩa thống kê (p-value) cho các quyết định bất thường
 - Kiểm soát tỷ lệ phát hiện sai thông qua tham số `max_anomalies`
@@ -608,7 +910,15 @@ def shesd_detect(values: list, max_anomalies: float = 0.05, alpha: float = 0.05)
 
 ## 7. Isolation Forest
 
-### Intuition
+> [!NOTE]
+> **Ý TƯỞNG**
+> Isolation Forest không mô hình "mật độ bình thường" — nó đo **điểm dễ bị cô lập đến mức nào** bằng phân hoạch ngẫu nhiên. Tổ hợp feature hiếm/cực đoan cần ít nhát cắt → score bất thường cao.
+
+### Vấn đề giải quyết
+
+Sự cố thật thường là **điều kiện kết hợp**: CPU 70% ổn, error 2% ổn, nhưng cùng latency tăng thì là sự cố. EWMA/Z univariate bỏ lỡ. Isolation Forest là detector **đa biến, nhẹ train** mặc định cho vector feature metric.
+
+### Ý tưởng cốt lõi (intuition)
 
 Isolation Forest cô lập các điểm bất thường bằng cách phân chia không gian đặc trưng. Ý tưởng cốt lõi: **các điểm bất thường dễ bị cô lập hơn các điểm bình thường** vì chúng số lượng ít và có giá trị khác biệt với số đông.
 
@@ -637,11 +947,34 @@ graph TD
         ROOT --> R1 --> ANOMALY
     end
 
-    style ANOMALY fill:#e94560,color:#fff
-    style NORMAL1 fill:#2e7d32,color:#fff
+    style ANOMALY fill:#dbeafe,color:#1e293b
+    style NORMAL1 fill:#dcfce7,color:#1e293b
 ```
 
+### Input data trên pipeline AIOps
+
+| Khía cạnh | Lựa chọn điển hình |
+|-----------|-------------------|
+| Loại tín hiệu | **Vector feature đa biến theo entity** (service/pod) |
+| Feature | CPU, memory, error_rate, RPS, latency_p99, delta 5m, hour-of-day, weekday |
+| Window | Train trên ngày "gần như bình thường"; infer snapshot hiện tại hoặc rolling stats ngắn |
+| Nguồn | Join metric Prometheus/Kafka thành một hàng mỗi entity/timestep |
+| Scale | Chuẩn hóa feature nhất quán (đơn vị trộn kém ảnh hưởng split) |
+| Nhãn | Unsupervised — `contamination` là prior tỷ lệ anomaly, không phải ground truth |
+
+### Thuật toán hoạt động từng bước
+
+1. Xây ma trận train `(n_samples, n_features)` từ vector lịch sử.
+2. Fit forest `n_estimators` isolation tree (subsample `max_samples`).
+3. Vector mới: path length `h(x)` trung bình qua các cây.
+4. Đổi sang score bất thường (sklearn: `score_samples` âm hơn → bất thường hơn; chuẩn hóa 0–1).
+5. Tuỳ chọn: nhãn cứng qua `predict` theo contamination.
+6. Emit event kèm top feature đóng góp nếu có lớp explainability.
+
 ### Implementation
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from sklearn.ensemble import IsolationForest
@@ -720,7 +1053,18 @@ def build_feature_matrix(
     return np.array(features).reshape(1, -1)
 ```
 
-### Isolation Forest Trade-offs
+</details>
+
+### Output
+
+| Trường | Ý nghĩa |
+|--------|---------|
+| `score` | Score bất thường 0–1 (cao hơn = bất thường hơn) |
+| Nhãn tuỳ chọn | −1 / 1 từ `predict` nếu dùng contamination |
+| Snapshot feature | Giá trị sinh ra score (cho RCA) |
+| Sự kiện | `algorithm=isolation_forest`, entity id, score, model version |
+
+### Ưu / nhược
 
 | Đặc điểm | Chi tiết |
 |--------|---------|
@@ -732,6 +1076,15 @@ def build_feature_matrix(
 | ❌ Tinh chỉnh tham số contamination | Phải ước lượng tỷ lệ % bất thường trong tập dữ liệu |
 | ❌ Không nhận biết tính tuần tự thời gian | Đánh giá mỗi điểm dữ liệu độc lập, bỏ qua liên kết thời gian trước sau |
 | ❌ Dữ liệu số chiều quá lớn | Hiệu năng suy giảm khi số lượng đặc trưng quá nhiều |
+
+### Khi nào dùng / khi nào KHÔNG dùng
+
+| Dùng khi | **Không** dùng khi |
+|----------|---------------------|
+| Health multi-metric joint của service | Spike univariate quy mô cực lớn (EWMA rẻ hơn) |
+| Cần infer CPU nhanh, không GPU | Pattern tuần tự quan trọng (LSTM/Transformer) |
+| Số feature trung bình (≈5–30) sau engineering | Feature cực cao chiều thưa mà không giảm chiều |
+| Retrain tháng + sau deploy lớn chấp nhận được | Chưa có history normal (bắt đầu EWMA/Z) |
 
 **Vận hành**: Phù hợp nhất cho **phát hiện bất thường đa biến trên metrics** (kết hợp đồng thời CPU + memory + error rate). Huấn luyện lại hàng tháng. Huấn luyện lại sau mỗi đợt deploy lớn của hệ thống.
 
@@ -752,6 +1105,9 @@ Core point (Điểm lõi): có ≥ min_samples điểm lân cận trong khoảng
 Border point (Điểm biên): nằm trong khoảng cách ε của một core point → bình thường
 Noise point (Điểm nhiễu): không phải điểm lõi cũng không gần điểm lõi nào → BẤT THƯỜNG
 ```
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from sklearn.cluster import DBSCAN
@@ -806,6 +1162,8 @@ def suggest_epsilon(features: np.ndarray, k: int = 5) -> float:
     return k_distances[elbow_idx]
 ```
 
+</details>
+
 **DBSCAN Trade-offs**:
 - ✅ Không yêu cầu định nghĩa trước số lượng cụm
 - ✅ Tìm kiếm được các cụm có hình dạng bất kỳ
@@ -820,12 +1178,47 @@ def suggest_epsilon(features: np.ndarray, k: int = 5) -> float:
 
 ## 9. Local Outlier Factor (LOF)
 
+> [!NOTE]
+> **Ý TƯỞNG**
+> LOF là **mật độ tương đối**: điểm bất thường nếu thưa hơn nhiều so với *hàng xóm của nó* — kể cả khi mật độ tuyệt đối cao. Xử lý case "cụm bận vs cụm yên" nơi phương pháp global thất bại.
+
+### Vấn đề giải quyết
+
+DBSCAN và khoảng cách global khó khi vùng normal có **mật độ khác nhau** (service high-traffic vs worker batch yên trong cùng feature space). LOF chấm mỗi điểm so với mật độ lân cận cục bộ.
+
+### Ý tưởng cốt lõi (intuition)
+
 LOF giải quyết điểm hạn chế của DBSCAN đối với các cụm có mật độ biến thiên. Nó tính toán tỷ lệ mật độ lân cận của một điểm dữ liệu so với mật độ lân cận của chính các điểm hàng xóm của nó.
 
 ```
 LOF ≈ 1.0: mật độ tương đương với các điểm lân cận → bình thường
 LOF >> 1.0: mật độ thưa thớt hơn nhiều so với các điểm lân cận → bất thường
 ```
+
+Trực giác: nếu 20 láng giềng gần nhất tụ chặt với nhau nhưng xa bạn, bạn là local outlier — kể cả khi bạn nằm trong vùng "bận" của không gian global.
+
+### Input data trên pipeline AIOps
+
+| Khía cạnh | Lựa chọn điển hình |
+|-----------|-------------------|
+| Loại tín hiệu | Vector feature đa biến (health service, thuộc tính trace) |
+| Feature | Cùng engineering Isolation Forest; **phải chuẩn hóa** |
+| Hàng xóm `k` | Thường 10–30; quá nhỏ → ồn, quá lớn → thành global |
+| Mode | `novelty=True` sau fit trên normal để predict streaming |
+| Nguồn | Fit batch history; chấm vector mới online |
+| Chi phí | Neighbor search — nặng hơn Isolation Forest khi n lớn |
+
+### Thuật toán hoạt động từng bước
+
+1. Với mỗi điểm, tìm k láng giềng gần nhất (sau scale).
+2. Tính reachability distance và local reachability density (LRD).
+3. LOF(x) = trung bình LRD(neighbors) / LRD(x).
+4. LOF ≈ 1 → normal; LOF ≫ 1 → outlier.
+5. Map LOF (hoặc `score_samples` sklearn) về 0–1 cho ensemble.
+6. Với `novelty=True`, fit history normal rồi chấm điểm mới.
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from sklearn.neighbors import LocalOutlierFactor
@@ -851,11 +1244,74 @@ class LOFDetector:
         return scores
 ```
 
+</details>
+
+### Output
+
+| Trường | Ý nghĩa |
+|--------|---------|
+| Giá trị LOF / score | Liên tục; cao hơn → local-outlier hơn |
+| Nhãn tuỳ chọn | Qua contamination threshold |
+| Sự kiện | `algorithm=lof`, entity, k, score, snapshot feature |
+
+### Ưu / nhược
+
+| Ưu/Nhược | Chi tiết |
+|----------|---------|
+| ✅ Xử lý normal mật độ biến thiên | Tốt hơn DBSCAN khi regime traffic trộn |
+| ✅ Score liên tục | Thân thiện ensemble |
+| ✅ Ngữ cảnh cục bộ | Bắt outlier cạnh cụm dày |
+| ❌ Nặng tính toán | Neighbor query scale kém nếu naively |
+| ❌ Nhạy k và scaling | Preprocess xấu → rác |
+| ❌ Yếu mô hình thuần temporal | Không nhớ sequence trừ khi feature mã hóa |
+| ❌ Sắc thái novelty mode | Cần fit cẩn cho production scoring |
+
+### Khi nào dùng / khi nào KHÔNG dùng
+
+| Dùng khi | **Không** dùng khi |
+|----------|---------------------|
+| Nhiều regime mật độ trong feature space | Triệu điểm + latency chặt (ưu tiên IF) |
+| Fleet entity cỡ vừa | KPI seasonal univariate (STL/SHESD) |
+| Bổ sung Isolation Forest trong ensemble | Detection sequence log |
+| Điểm lạ cục bộ trên trace/attribute | Chiều rất cao không giảm chiều |
+
 ---
 
 ## 10. One-Class SVM
 
-One-Class SVM học một **biên giới hạn bao quanh dữ liệu bình thường** trong không gian nhiều chiều. Bất kỳ điểm nào nằm ngoài biên này đều được coi là bất thường.
+> [!NOTE]
+> **Ý TƯỞNG**
+> One-Class SVM học **biên mềm quanh dữ liệu "chỉ normal"** trong không gian kernel. Điểm ngoài biên là novel — không train trên anomaly có nhãn.
+
+### Vấn đề giải quyết
+
+Khi có tập vừa phải ví dụ normal chiều cao (thuộc tính trace, fingerprint request) và muốn biên quyết định novelty — không phải isolation bằng cắt ngẫu nhiên — OC-SVM là công cụ kinh điển. Trong vài chế độ small-n high-d với RBF, tốt hơn Isolation Forest.
+
+### Ý tưởng cốt lõi (intuition)
+
+One-Class SVM học một **biên giới hạn bao quanh dữ liệu bình thường** trong không gian nhiều chiều. Bất kỳ điểm nào nằm ngoài biên này đều được coi là bất thường. Tham số `nu` chặn trên tỷ lệ điểm train được phép ngoài biên / soft-margin; kernel (thường RBF) tạo bao phi tuyến.
+
+### Input data trên pipeline AIOps
+
+| Khía cạnh | Lựa chọn điển hình |
+|-----------|-------------------|
+| Loại tín hiệu | Vector feature vận hành normal (trace, meta request, snapshot metric) |
+| Quy mô | Ưu tiên **n nhỏ–vừa**; n lớn → train/infer chậm |
+| Feature | Numeric đã scale; RBF nhạy scale |
+| Nhãn | Tập train chỉ-normal (loại window incident đã biết) |
+| Tham số | `nu` (~tỷ lệ outlier kỳ vọng), `gamma` (độ rộng kernel) |
+| Nguồn | Fit offline; online `decision_function` / `score_samples` |
+
+### Thuật toán hoạt động từng bước
+
+1. Thu thập ma trận chỉ-normal; chuẩn hóa feature.
+2. Fit One-Class SVM kernel RBF (hoặc linear) → support vectors định nghĩa biên.
+3. Điểm mới: khoảng cách có dấu / score tới biên.
+4. Score thấp/âm → ngoài biên → bất thường; chuẩn hóa 0–1 cho ensemble.
+5. Tune `nu` theo FP holdout; retrain sau shift hành vi lớn.
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from sklearn.svm import OneClassSVM
@@ -880,7 +1336,17 @@ class OneClassSVMDetector:
         return scores
 ```
 
-**So sánh sự đánh đổi với Isolation Forest**:
+</details>
+
+### Output
+
+| Trường | Ý nghĩa |
+|--------|---------|
+| score | Score bất thường suy từ khoảng cách (0–1 sau norm) |
+| nhãn | Tuỳ chọn ±1 từ `predict` |
+| Sự kiện | `algorithm=one_class_svm`, `nu`, model version, entity |
+
+### Ưu / nhược (so Isolation Forest)
 
 | Tiêu chí | One-Class SVM | Isolation Forest |
 |--------|---------------|-----------------|
@@ -889,6 +1355,16 @@ class OneClassSVMDetector:
 | Dữ liệu nhiều chiều | ✅ Hoạt động tốt với RBF kernel | ❌ Hiệu năng suy giảm |
 | Tập dữ liệu lớn | ❌ Chậm | ✅ Nhanh |
 | Bộ nhớ tiêu thụ | Cao (ma trận kernel) | Thấp |
+| Giải thích | Biên khó giải thích | Cũng hạn chế, nhưng có path stats |
+
+### Khi nào dùng / khi nào KHÔNG dùng
+
+| Dùng khi | **Không** dùng khi |
+|----------|---------------------|
+| Dataset nhỏ, chiều cao (trace attributes) | Fleet metric streaming lớn (dùng IF) |
+| Train chỉ-normal sạch, curated | Cần memory O(1) / gần hằng online |
+| Biên RBF khớp manifold normal | Cấu trúc sequence mạnh (dùng LSTM) |
+| Scoring offline / QPS thấp | Cần toán on-call đơn giản |
 
 **Vận hành**: One-Class SVM phù hợp hơn cho **tập dữ liệu nhỏ có số chiều lớn** (ví dụ: phát hiện bất thường trên thuộc tính trace). Isolation Forest tối ưu hơn cho **tập dữ liệu streaming có quy mô lớn**.
 
@@ -896,7 +1372,15 @@ class OneClassSVMDetector:
 
 ## 11. LSTM for Time-Series Anomaly Detection
 
-### Intuition
+> [!NOTE]
+> **Ý TƯỞNG**
+> LSTM anomaly detection dùng **sai số dự báo làm cảm biến**: mô hình học "bước tiếp theo" khi ops bình thường; `|thực tế − dự đoán|` lớn nghĩa là quỹ đạo gần đây rời manifold đã học.
+
+### Vấn đề giải quyết
+
+Detector thống kê xem điểm (hoặc window ngắn) thiếu bộ nhớ sequence sâu. Nhiều sự cố là bài toán **hình dạng**: rò rỉ bậc thang, latency dao động, recovery chậm. LSTM bắt phụ thuộc thời gian mà EWMA/Z/IF bỏ lỡ khi feature chỉ là snapshot.
+
+### Ý tưởng cốt lõi (intuition)
 
 LSTM (Long Short-Term Memory) là mạng neural hồi quy (recurrent neural network) có khả năng học các **mô hình tuần tự theo thời gian (temporal patterns)**. Ứng dụng để phát hiện bất thường:
 
@@ -926,10 +1410,36 @@ graph LR
     PRED --> ERR
     ERR --> THRESH
 
-    style LSTM fill:#4a148c,color:#fff
+    style Input fill:#dbeafe,color:#1e293b
+    style LSTM fill:#f3e8ff,color:#1e293b
+    style Compare fill:#dcfce7,color:#1e293b
 ```
 
+### Input data trên pipeline AIOps
+
+| Khía cạnh | Lựa chọn điển hình |
+|-----------|-------------------|
+| Loại tín hiệu | Chuỗi metric univariate hoặc multivariate |
+| History train | **2–4+ tuần** dữ liệu gần như normal |
+| Độ dài sequence | Ví dụ 60 điểm (5 phút @ 5s, hoặc 5h @ 5m — chọn khớp động lực) |
+| Feature | Series đã scale; multi-metric khi `input_size > 1` |
+| Buffer infer | Deque lăn `seq_len` điểm gần nhất mỗi series |
+| Ngưỡng | Hiệu chuẩn mean/std error trên validation sạch; k-σ hoặc quantile |
+| Runtime | Ưu tiên GPU/batch hoặc service giá trị cao chọn lọc |
+
+### Thuật toán hoạt động từng bước
+
+1. Trượt window trên history normal: input `x[t−L:t]`, target `x[t]` (hoặc multi-step).
+2. Train LSTM + head linear bằng MSE/MAE; clip gradient.
+3. Trên validation, thu error → mean/std hoặc ngưỡng quantile cao.
+4. Online: append điểm vào buffer; đủ dài thì predict; so với actual.
+5. `z = (error − μ_err) / σ_err`; bất thường nếu `z > k`.
+6. Score cho ensemble; kèm prediction và error trong context event.
+
 ### Implementation
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 import torch
@@ -1022,7 +1532,12 @@ class LSTMDetectionService:
         }
 ```
 
+</details>
+
 ### LSTM Training Pipeline
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 import torch.optim as optim
@@ -1075,7 +1590,18 @@ def train_lstm(
     return model
 ```
 
-### LSTM Trade-offs
+</details>
+
+### Output
+
+| Trường | Ý nghĩa |
+|--------|---------|
+| `anomaly` | bool từ z-score / threshold của error |
+| `score` | 0–1 từ severity error chuẩn hóa |
+| `error`, `prediction`, `z_score` | Cho dashboard và validation người |
+| Sự kiện | `algorithm=lstm`, model version, seq_len, service/metric |
+
+### Ưu / nhược
 
 | Đặc điểm | Chi tiết |
 |--------|---------|
@@ -1088,15 +1614,65 @@ def train_lstm(
 | ❌ Nhạy cảm với hiện tượng trôi phân phối | Cần phải huấn luyện lại khi hệ thống có thay đổi lớn |
 | ❌ Hộp đen (Black box) | Khó giải thích cặn kẽ tại sao mô hình gắn cờ bất thường |
 
+### Khi nào dùng / khi nào KHÔNG dùng
+
+| Dùng khi | **Không** dùng khi |
+|----------|---------------------|
+| Bất thường hình dạng/quỹ đạo quan trọng | Service cold-start chỉ vài ngày data |
+| Service critical đủ chi phí MLOps | Cần chấm sub-ms trên mọi series |
+| Score tin cậy thứ cấp sau stats | Threshold/SLO burn đã đủ hoàn hảo |
+| Sequence multivariate ngắn vừa memory | Không có GPU/batch và scale quá lớn |
+
+> [!WARNING]
+> Nếu incident **nằm trong tập train**, mô hình học outage như "normal" và fail im lặng. Curate window train; freeze hoặc retrain sau đổi kiến trúc lớn.
+
 **Vận hành**: Triển khai LSTM như một **bộ phát hiện thứ cấp** chạy song song cùng các phương pháp thống kê. Sử dụng thống kê (EWMA/Z-score) để phát hiện và cảnh báo nhanh vòng đầu. Sử dụng LSTM để chấm điểm bất thường có độ tin cậy cao hơn làm đầu vào cho correlation engine.
 
 ---
 
 ## 12. Transformer-Based Detection
 
-Transformers sử dụng cơ chế **tự chú ý (self-attention)** để khai thác các liên kết thời gian tầm xa — mang lại hiệu năng vượt trội hơn LSTM đối với các chuỗi thời gian đa chiều phức tạp.
+> [!NOTE]
+> **Ý TƯỞNG**
+> Transformer thay recurrence bằng **self-attention**: mỗi timestep có thể attend mọi timestep khác trong window. Detection thường dùng reconstruction error hoặc association discrepancy — bắt ngữ cảnh tầm xa (sáng vs hiện tại, spike deploy vs cuối tuần) không bị nút cổ chai tuần tự của LSTM.
+
+### Vấn đề giải quyết
+
+LSTM khó với phụ thuộc rất dài và coupling multivariate trên window dài. Transformer mạnh khi anomaly phụ thuộc **cấu trúc toàn cục** trong context dài (multi-metric, multi-hour) và bạn chấp nhận compute cao hơn để đổi lấy accuracy.
+
+### Ý tưởng cốt lõi (intuition)
+
+Transformers sử dụng cơ chế **tự chú ý (self-attention)** để khai thác các liên kết thời gian tầm xa — mang lại hiệu năng vượt trội hơn LSTM đối với các chuỗi thời gian đa chiều phức tạp. Setup AIOps phổ biến:
+
+1. Encode window điểm multivariate.
+2. Tái cấu trúc window (kiểu autoencoder) **hoặc** mô hình association (Anomaly Transformer).
+3. Sai số tái cấu trúc (hoặc discrepancy) lớn → anomaly.
+4. Thường lấy **max** hoặc mean error trên window làm score.
+
+### Input data trên pipeline AIOps
+
+| Khía cạnh | Lựa chọn điển hình |
+|-----------|-------------------|
+| Loại tín hiệu | Window metric multivariate (ma trận service-level) |
+| Window `seq_len` | Ví dụ 100 bước × 5–15 feature |
+| Data train | Nhiều tuần history gần normal; train GPU |
+| Infer | Batch hoặc near-realtime trên service ưu tiên |
+| Feature | Kênh multi-metric chuẩn hóa + tuỳ chọn time encoding |
+| Mode | Ưu tiên offline/batch; online chọn lọc |
+
+### Thuật toán hoạt động từng bước
+
+1. Chiếu input lên `d_model`; cộng positional encoding.
+2. Xếp chồng encoder Transformer (multi-head self-attention + FFN).
+3. Chiếu về không gian feature (reconstruction) hoặc head association discrepancy.
+4. Error mỗi timestep = MSE(input, reconstruction); gộp max/mean.
+5. Ngưỡng từ phân phối error validation.
+6. Emit score + timestep/feature đóng góp error lớn nhất.
 
 ### Key Architecture: Anomaly Transformer
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 import torch
@@ -1167,13 +1743,53 @@ def compute_anomaly_score(
     return float(error.max().item())
 ```
 
+</details>
+
+### Output
+
+| Trường | Ý nghĩa |
+|--------|---------|
+| `score` | Error reconstruction / discrepancy đã gộp |
+| Mask tuỳ chọn | Timestep vượt ngưỡng |
+| Context | Đóng góp error theo feature nếu có |
+| Sự kiện | `algorithm=transformer`, model version, window, service |
+
+### Ưu / nhược
+
+| Ưu/Nhược | Chi tiết |
+|----------|---------|
+| ✅ Ngữ cảnh multivariate tầm xa | Accuracy mạnh trên series phức tạp |
+| ✅ Attention song song hóa được | Tận dụng GPU tốt hơn RNN thuần |
+| ✅ Head linh hoạt | Reconstruct, forecast, hoặc association discrepancy |
+| ❌ Nặng compute & memory | Không cho mọi metric nhịp 5s |
+| ❌ Đói data | Cần vệ sinh train/val cẩn |
+| ❌ Ops khó hơn | Serving, versioning, giám sát drift |
+| ❌ Giải thích kém hơn stats | Cần tool feature-error cho người |
+
+### Khi nào dùng / khi nào KHÔNG dùng
+
+| Dùng khi | **Không** dùng khi |
+|----------|---------------------|
+| Series multivariate critical, batch hoặc vài stream online | First-pass toàn fleet |
+| Window dài mà LSTM yếu | Dataset nhỏ / không budget GPU |
+| Research→prod KPI giá trị cao | Chỉ cần toán audit đơn giản |
+| Backfill offline incident lịch sử | Detection edge sub-ms |
+
 **Vận hành**: Transformers mang lại độ chính xác cao nhất hiện nay nhưng đòi hỏi tài nguyên tính toán lớn hơn LSTM. Nên ưu tiên sử dụng cho **huấn luyện mô hình offline** và **phân tích theo lô**. Đối với pipeline AIOps thời gian thực, LSTM là giải pháp thực tế và cân bằng hơn.
 
 ---
 
 ## 13. Log Anomaly Detection — Drain Algorithm
 
-### Intuition
+> [!NOTE]
+> **Ý TƯỞNG**
+> Drain biến log free-text thành **catalog template**. Anomaly lúc này đơn giản: **template chưa từng thấy** (error shape mới / deploy) hoặc **rate spike template đã biết** — không cần NLP từng dòng.
+
+### Vấn đề giải quyết
+
+Log thô cardinality cao, ồn; match chuỗi không scale. Cần **loại sự kiện ổn định** để đếm, alert, và làm từ vựng cho mô hình sequence (DeepLog). Drain là workhorse parse log online trong industry.
+
+### Ý tưởng cốt lõi (intuition)
 
 Logs được ghi nhận từ nhiều dịch vụ khác nhau và chứa cả **văn bản tĩnh** (log template) và **các giá trị động** (các phần biến đổi như IDs, timestamps, values):
 
@@ -1183,14 +1799,39 @@ Template (tĩnh):    "User <*> logged in from <*>"
 Các biến động:      ["john@example.com", "192.168.1.1"]
 ```
 
-**Drain** (một thuật toán phân tích log) thực hiện phân nhóm các dòng log vào các **templates** một cách hiệu quả sử dụng cấu trúc cây tiền tố (prefix tree).
+**Drain** nhóm dòng log vào **templates** hiệu quả bằng prefix tree độ sâu cố định và similarity token. Lớp detection phía trên:
 
-**Phát hiện bất thường**:
-1. Phân tích logs thành các templates sử dụng Drain
-2. Phát hiện các templates mới xuất hiện lần đầu (chưa từng thấy trước đây = nguy cơ bất thường)
-3. Phát hiện tần suất xuất hiện bất thường của các templates đã biết
+1. Parse log thành template bằng Drain  
+2. Phát hiện template mới (chưa từng thấy = rủi ro anomaly)  
+3. Phát hiện tần suất bất thường của template đã biết (EWMA/Z trên rate)
+
+### Input data trên pipeline AIOps
+
+| Khía cạnh | Lựa chọn điển hình |
+|-----------|-------------------|
+| Loại tín hiệu | Dòng log application / platform |
+| Nguồn | Kafka log topic, Loki stream, Fluent Bit |
+| Field | Ưu tiên `message` + `service` + `level` + `trace_id` |
+| State | Miner Drain per-service (hoặc global) + đếm template |
+| Window | Rate 1–5 phút mỗi `template_id` |
+| Tham số | `sim_threshold`, `depth` cây, max children |
+
+> [!TIP]
+> Chạy Drain **theo service** (hoặc domain). Cây global trộn từ vựng không liên quan và template giòn.
+
+### Thuật toán hoạt động từng bước
+
+1. Tokenize dòng log (khoảng trắng / custom).
+2. Đi/cập nhật prefix tree Drain theo độ dài và nội dung token.
+3. Khớp hoặc tạo template; thay biến bằng `<*>`.
+4. Nếu `change_type == created` (template mới) và còn hiếm → score anomaly cao.
+5. Không thì tăng count template; đưa rate vào EWMA/Z cho anomaly tần suất.
+6. Publish event kèm template string, id, snippet thô, `trace_id` nếu có.
 
 ### Drain Implementation
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from drain3 import TemplateMiner
@@ -1264,9 +1905,14 @@ def process_log_stream(kafka_consumer, drain_detector: DrainLogDetector):
             )
 ```
 
+</details>
+
 ### Log Frequency Anomaly
 
 Bên cạnh các templates mới, tần suất thay đổi đột biến của các templates đã biết cũng phản ánh bất thường:
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from collections import defaultdict, deque
@@ -1297,15 +1943,109 @@ class LogFrequencyDetector:
         return {"template_id": template_id, "rate": current_rate}
 ```
 
+</details>
+
+### Output
+
+| Trường | Ý nghĩa |
+|--------|---------|
+| `anomaly` | bool — template mới và/hoặc rate bất thường |
+| `score` | Score cố định cao cho template mới; score theo rate cho tần suất |
+| `template`, `template_id` | Loại sự kiện ổn định cho correlation / DeepLog |
+| `reason` | Ví dụ `new_log_template`, `template_rate_spike` |
+| Sự kiện | `signal_type=LOG`, service, snippet thô, `trace_id` |
+
+### Ưu / nhược
+
+| Ưu/Nhược | Chi tiết |
+|----------|---------|
+| ✅ Online, thân thiện streaming | Chi phí gần hằng mỗi dòng log |
+| ✅ Sinh từ vựng sự kiện ổn định | Bật đếm và DeepLog |
+| ✅ Tín hiệu template mới | Bắt error shape mới và deploy xấu sớm |
+| ✅ Giải thích được | Người đọc được chuỗi template |
+| ❌ Chất lượng parse nhạy | Sai threshold/depth → nổ hoặc gộp template |
+| ❌ Không semantic | Cùng nghĩa khác wording có thể tách template |
+| ❌ Tần suất cần model riêng | Drain một mình không chấm rate |
+| ❌ Log multi-line / JSON cần preprocess | |
+
+### Khi nào dùng / khi nào KHÔNG dùng
+
+| Dùng khi | **Không** dùng khi |
+|----------|---------------------|
+| Log application free-text volume cao | Đã có event có cấu trúc enum ổn định |
+| Cần catalog template cho pipeline AIOps | Chỉ quan tâm spike metric |
+| Bắt error shape mới sau deploy | Log thuần blob PII không khung tĩnh |
+| Cung cấp event ID cho DeepLog | Cần semantic sequence sâu mà không qua parse |
+
 ---
 
 ## 14. Log Anomaly Detection — DeepLog
 
-DeepLog (phát triển bởi Min Du et al., 2017) sử dụng mạng **LSTM để mô hình hóa chuỗi các sự kiện log** trong một luồng công việc (workflow):
+> [!NOTE]
+> **Ý TƯỞNG**
+> DeepLog không đọc tiếng Anh — nó mô hình **workflow như chuỗi template ID**. Nếu sự kiện kế tiếp nằm ngoài top-k dự đoán theo history gần đây, execution path đã rời "kịch bản" bình thường.
 
-1. Phân tích logs thành các **event keys** (các template IDs thu được từ Drain)
-2. Huấn luyện LSTM để dự đoán **event key tiếp theo** dựa trên chuỗi lịch sử gần đây
-3. Phát hiện bất thường: sự kiện quan sát thực tế khác biệt với sự kiện dự đoán của mô hình
+### Vấn đề giải quyết
+
+Đếm template bỏ lỡ **thứ tự**. Nhiều sự cố là sequence sai: storm retry, thiếu "success sau start", đảo auth/request. DeepLog (Min Du et al., 2017) học thứ tự sự kiện normal theo hệ thống và gắn cờ path lệch.
+
+### Ý tưởng cốt lõi (intuition)
+
+DeepLog dùng **LSTM trên event key log**:
+
+1. Parse log thành **event keys** (template ID từ Drain)  
+2. Train LSTM dự đoán **event key tiếp theo** từ history gần  
+3. Anomaly: sự kiện quan sát **không nằm trong top-k** ứng viên  
+
+```mermaid
+graph LR
+    subgraph Parse["Drain"]
+        L[Log lines] --> T[Template IDs]
+    end
+    subgraph Seq["Recent window"]
+        E1[e_{t-10}] --> E2[e_{t-9}] --> E3[...] --> E4[e_{t-1}]
+    end
+    subgraph Model["DeepLog LSTM"]
+        PRED[Top-k next events]
+    end
+    subgraph Decision["Decision"]
+        OBS[Observed e_t]
+        CMP{e_t in top-k?}
+    end
+    T --> Seq --> PRED --> CMP
+    OBS --> CMP
+
+    style Parse fill:#dbeafe,color:#1e293b
+    style Model fill:#f3e8ff,color:#1e293b
+    style Decision fill:#dcfce7,color:#1e293b
+```
+
+### Input data trên pipeline AIOps
+
+| Khía cạnh | Lựa chọn điển hình |
+|-----------|-------------------|
+| Loại tín hiệu | Chuỗi Drain `template_id` **theo session / request / service** |
+| Tiên quyết | Từ vựng Drain (hoặc tương đương) ổn định |
+| Window | `seq_len` sự kiện gần nhất (vd 10) làm context |
+| Train | Sequence giai đoạn normal; vocab size = số template |
+| Khóa nhóm | Quan trọng: group theo `trace_id` / session để order có nghĩa |
+| Tham số | `top_k` (vd 9), embedding size, số lớp LSTM |
+
+> [!WARNING]
+> Trộn service không liên quan trong một sequence phá mô hình workflow. Luôn khóa sequence theo identity execution mạch lạc.
+
+### Thuật toán hoạt động từng bước
+
+1. Map mỗi dòng log → template id qua Drain.  
+2. Giữ context trượt `[e_{t−L}, …, e_{t−1}]` cho entity.  
+3. Embed ID → LSTM → logits trên vocabulary.  
+4. Lấy top-k ID kế tiếp dự đoán.  
+5. Nếu `e_t` thực ∉ top-k → sequence anomaly.  
+6. Score tuỳ chọn: rank sự kiện thật hoặc 1 − softmax probability.  
+7. Emit event kèm window context, top-k, id quan sát.
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 import torch
@@ -1358,6 +2098,38 @@ class DeepLog(nn.Module):
         return next_event not in top_k_events
 ```
 
+</details>
+
+### Output
+
+| Trường | Ý nghĩa |
+|--------|---------|
+| `anomaly` | bool — sự kiện quan sát ngoài top-k |
+| `score` | Tuỳ chọn từ rank / probability |
+| Context | Window event id gần + top-k dự đoán |
+| Sự kiện | `algorithm=deeplog`, service/session, template id, model version |
+
+### Ưu / nhược
+
+| Ưu/Nhược | Chi tiết |
+|----------|---------|
+| ✅ Bắt thứ tự workflow | Template rate thuần bỏ lỡ |
+| ✅ Dựa từ vựng Drain | Tách pipeline parse → sequence rõ |
+| ✅ Rule top-k thực dụng | Cho phép hệ multi-path hợp lệ |
+| ❌ Cần parse ổn định | Template drift phá ID |
+| ❌ Cần cẩn train & grouping | Sai session key → vô nghĩa |
+| ❌ Template mới OOV | Cần unknown-token / chiến lược retrain |
+| ❌ Nặng hơn chỉ Drain | Inference + model ops |
+
+### Khi nào dùng / khi nào KHÔNG dùng
+
+| Dùng khi | **Không** dùng khi |
+|----------|---------------------|
+| Service có log workflow lặp lại được | Log hỗn loạn, template không ổn định |
+| Bắt lệch path, retry storm, thiếu bước | Chỉ quan tâm chuỗi lỗi mới (Drain đủ) |
+| Có sequence group theo trace/session | Không ghép được dòng thành session có order |
+| Sau khi Drain production ổn | Service brand-new vẫn nổ template |
+
 ---
 
 ## 15. Algorithm Selection Guide
@@ -1382,9 +2154,9 @@ graph TD
     STAT -.->|Sau 2+ tuần| STL_DET
     STL_DET -.->|Tổng hợp cùng| LSTM_DET
 
-    style STAT fill:#2e7d32,color:#fff
-    style LSTM_DET fill:#4a148c,color:#fff
-    style BATCH fill:#1565c0,color:#fff
+    style STAT fill:#dcfce7,color:#1e293b
+    style LSTM_DET fill:#f3e8ff,color:#1e293b
+    style BATCH fill:#dbeafe,color:#1e293b
 ```
 
 ### Production Recommendation Table
@@ -1402,6 +2174,9 @@ graph TD
 ---
 
 ## 16. Feature Engineering
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 import numpy as np
@@ -1473,6 +2248,8 @@ def extract_features(
     return features
 ```
 
+</details>
+
 ---
 
 ## 17. Production Architecture
@@ -1523,14 +2300,17 @@ flowchart TD
     StatLayer --> METRICS
     MLLayer --> METRICS
 
-    style Input fill:#1565c0,color:#fff
-    style StatLayer fill:#2e7d32,color:#fff
-    style MLLayer fill:#4a148c,color:#fff
-    style LogLayer fill:#e65100,color:#fff
-    style Ensemble fill:#b71c1c,color:#fff
+    style Input fill:#dbeafe,color:#1e293b
+    style StatLayer fill:#dcfce7,color:#1e293b
+    style MLLayer fill:#f3e8ff,color:#1e293b
+    style LogLayer fill:#ffedd5,color:#1e293b
+    style Ensemble fill:#fecaca,color:#1e293b
 ```
 
 ### Ensemble Weighting Strategy
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 def ensemble_score(
@@ -1577,6 +2357,8 @@ def ensemble_score(
     return total_score / total_weight
 ```
 
+</details>
+
 ---
 
 ## 18. Model Training and Retraining Pipeline
@@ -1616,12 +2398,15 @@ graph TD
     Eval -->|Pass threshold| CANARY --> PROMOTE
     PROMOTE -.->|FPR spike| ROLLBACK
 
-    style Collection fill:#1565c0,color:#fff
-    style Train fill:#4a148c,color:#fff
-    style Deploy fill:#2e7d32,color:#fff
+    style Collection fill:#dbeafe,color:#1e293b
+    style Train fill:#f3e8ff,color:#1e293b
+    style Deploy fill:#dcfce7,color:#1e293b
 ```
 
 ### Retraining Schedule
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```yaml
 retraining_schedule:
@@ -1650,6 +2435,8 @@ retraining_schedule:
     training_data: last_30_days_logs
 ```
 
+</details>
+
 ---
 
 ## 19. False Positive Management
@@ -1665,6 +2452,9 @@ Dương tính giả (False Positives - FPs) là nguyên nhân hàng đầu gây 
 | P3 (ghi nhận phân tích) | <20% | Sử dụng để phân tích xu hướng, không yêu cầu hành động ngay |
 
 ### FP Reduction Techniques
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 def apply_fp_reduction(
@@ -1718,6 +2508,8 @@ def apply_fp_reduction(
     return anomaly_event
 ```
 
+</details>
+
 ---
 
 ## 20. Common Mistakes
@@ -1738,6 +2530,9 @@ def apply_fp_reduction(
 ---
 
 ## 21. Monitoring the Detection System
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```promql
 # Throughput xử lý phát hiện bất thường
@@ -1760,7 +2555,12 @@ histogram_quantile(0.99,
 kafka_consumer_group_lag_sum{group="anomaly-detector-group"}
 ```
 
+</details>
+
 ### Critical Alerts
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```yaml
 - alert: AnomalyDetectionHighFPRate
@@ -1785,6 +2585,8 @@ kafka_consumer_group_lag_sum{group="anomaly-detector-group"}
     severity: critical
 ```
 
+</details>
+
 ---
 
 ## 22. Scaling
@@ -1792,6 +2594,9 @@ kafka_consumer_group_lag_sum{group="anomaly-detector-group"}
 ### Horizontal Scaling Strategy
 
 Mỗi dịch vụ detector được thiết kế **không trạng thái ở tầng suy luận** (trạng thái lịch sử được lưu trữ tại Redis):
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```yaml
 deployment:
@@ -1819,9 +2624,14 @@ deployment:
       node.kubernetes.io/instance-type: "g4dn.xlarge"  # Dòng EC2 hỗ trợ GPU của AWS
 ```
 
+</details>
+
 ### Partitioned Processing
 
 Để mở rộng quy mô, phân bổ các Kafka partitions cho các replicas detector tương ứng:
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 # Mỗi replica detector chỉ xử lý các partitions được gán cho nó
@@ -1833,6 +2643,8 @@ consumer_config = {
     "group.id": "lstm-detector-group",
 }
 ```
+
+</details>
 
 ---
 
@@ -1884,6 +2696,9 @@ Ba hiện tượng trông giống nhau trên dashboard nhưng đòi hỏi phản
 > [!WARNING]
 > **Anti-pattern**: Coi mọi shift là anomaly. Sau Black Friday hoặc sau migration, mô hình cũ sẽ "la hét" liên tục. Nếu không có **change-aware suppression + retrain**, on-call sẽ mute detector — và bạn mất cả lớp detection khi sự cố thật xảy ra.
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```python
 def classify_shift(
     metric_series,
@@ -1915,6 +2730,8 @@ def classify_shift(
     return "point_or_contextual_anomaly"
 ```
 
+</details>
+
 **Playbook quyết định**:
 
 ```
@@ -1925,7 +2742,7 @@ shift_type == regime_change         → reset baseline; require human "accept ne
 shift_type == point_or_contextual   → pipeline anomaly bình thường → Kafka aiops-anomalies
 ```
 
-Xem thêm kịch bản seasonality thương mại tại [14 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md) và các sự cố drift thực tế tại [15 — Famous Incidents](../16-famous-incidents/README.vi.md).
+Xem thêm kịch bản seasonality thương mại tại [15 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md) và các sự cố drift thực tế tại [16 — Famous Incidents](../16-famous-incidents/README.vi.md).
 
 ### 25.2 Alert Fatigue từ mô hình quá nhạy
 
@@ -1951,6 +2768,9 @@ Xem thêm kịch bản seasonality thương mại tại [14 — E-commerce & Ban
 | Service-tier policy (P1 chỉ cho checkout/payment) | Bảo vệ sleep | Blind spot service nội bộ |
 | Feedback-driven threshold | Học từ on-call | Bias nếu label kém |
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```yaml
 # Policy theo tier — tránh "mọi metric đều page được"
 detection_policy:
@@ -1966,6 +2786,8 @@ detection_policy:
     page_min_score: 0.85
     notify: slack_only  # không PagerDuty
 ```
+
+</details>
 
 ### 25.3 Ensemble disagreement — edge cases
 
@@ -1985,6 +2807,9 @@ Ensemble không phải lúc nào cũng "an toàn hơn một model". Các case kh
 > - **2/3 fire** → candidate page sau `min_duration`
 > - **3/3 fire ngay sau deploy** → **không** tin ngay; kiểm tra change window trước
 > - **Disagreement kéo dài > 1 giờ trên cùng metric** → ticket cho ML platform (model drift / feature bug)
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 def ensemble_decision(votes: dict, context: dict) -> dict:
@@ -2023,6 +2848,8 @@ def ensemble_decision(votes: dict, context: dict) -> dict:
     return {"action": "log_only", "score": max(votes.values())}
 ```
 
+</details>
+
 ### 25.4 Labeling feedback loop từ on-call
 
 Không có label sạch → không có retrain có ý nghĩa. Nhưng **label từ on-call bị bias**:
@@ -2048,6 +2875,9 @@ Sau resolve:
   - Postmortem root_cause_service → gán TP cho anomaly cùng service ± window
 ```
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```python
 def build_retrain_labels(feedback_rows: list, auto_signals: list) -> list:
     """
@@ -2072,6 +2902,8 @@ def build_retrain_labels(feedback_rows: list, auto_signals: list) -> list:
             })
     return [x for x in labels if x["label_confidence"] >= 0.55]
 ```
+
+</details>
 
 **Chống poisoning feedback**: rate-limit label per user; audit user có tỷ lệ FP > 90% liên tục; tách "mute for me" khỏi "global FP".
 
@@ -2116,7 +2948,7 @@ Metric có ngưỡng nghiệp vụ rõ?
 > [!NOTE]
 > **Câu hỏi kiểm tra**: Detector im ắng 48h trên production 100 service — bạn kiểm tra **3 tín hiệu nào trước** trước khi tin rằng "hệ thống khỏe"?
 
-Liên hệ vận hành platform-level: [12 — Production](../13-production/README.vi.md). Cách Big Tech tách detection theo tier: [13 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md).
+Liên hệ vận hành platform-level: [13 — Production](../13-production/README.vi.md). Cách Big Tech tách detection theo tier: [14 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md).
 
 ---
 

@@ -44,6 +44,25 @@ After this chapter, continue to [14 — E-commerce & Banking](../15-ecommerce-ba
 
 ---
 
+
+## How to read this chapter (concept-first)
+
+> [!IMPORTANT]
+> **Concepts first — code second**
+> From chapter 08 onward, prefer: **problem → idea → input data → algorithm/model → output → pros/cons → when to use**. Implementation lives under **See the code below** (click to expand). Goal: understand *why it works on AIOps telemetry*, not only copy-paste snippets.
+
+| Step | Question |
+|------|----------|
+| 1. Problem | What pain does this solve (noise, cascade, MTTR…)? |
+| 2. Idea | 2–3 sentence intuition, no formulas |
+| 3. Data in | Which metrics/logs/traces/events, windows, features? |
+| 4. Algorithm | Computation steps / model flow |
+| 5. Output | Event schema, score, rank, action proposal? |
+| 6. Trade-offs | Pros / cons / cost / explainability |
+| 7. When | When to use — and when **not** to |
+
+---
+
 ## 1. Why learn from Big Tech (and why NOT to copy blindly)
 
 ### 1.1 Scaling laws are not linear

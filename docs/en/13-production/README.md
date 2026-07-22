@@ -48,6 +48,25 @@ After this chapter, continue to [13 — Big Tech AIOps](../14-bigtech-aiops/READ
 
 ---
 
+
+## How to read this chapter (concept-first)
+
+> [!IMPORTANT]
+> **Concepts first — code second**
+> From chapter 08 onward, prefer: **problem → idea → input data → algorithm/model → output → pros/cons → when to use**. Implementation lives under **See the code below** (click to expand). Goal: understand *why it works on AIOps telemetry*, not only copy-paste snippets.
+
+| Step | Question |
+|------|----------|
+| 1. Problem | What pain does this solve (noise, cascade, MTTR…)? |
+| 2. Idea | 2–3 sentence intuition, no formulas |
+| 3. Data in | Which metrics/logs/traces/events, windows, features? |
+| 4. Algorithm | Computation steps / model flow |
+| 5. Output | Event schema, score, rank, action proposal? |
+| 6. Trade-offs | Pros / cons / cost / explainability |
+| 7. When | When to use — and when **not** to |
+
+---
+
 ## 1. Platform Architecture Summary
 
 ![AIOps on Kubernetes](../../assets/diagrams/06-k8s-production.png)
@@ -122,12 +141,12 @@ graph TD
     THANOS --> GRAFANA
     KAFKA --> GRAFANA
 
-    style Collection fill:#1565c0,color:#fff
-    style Transport fill:#4a148c,color:#fff
-    style Storage fill:#1b5e20,color:#fff
-    style Intelligence fill:#4a148c,color:#fff
-    style Action fill:#e65100,color:#fff
-    style Dashboards fill:#1565c0,color:#fff
+    style Collection fill:#dbeafe,color:#1e293b
+    style Transport fill:#f3e8ff,color:#1e293b
+    style Storage fill:#dcfce7,color:#1e293b
+    style Intelligence fill:#f3e8ff,color:#1e293b
+    style Action fill:#ffedd5,color:#1e293b
+    style Dashboards fill:#dbeafe,color:#1e293b
 ```
 
 ### Component Summary
@@ -166,6 +185,9 @@ graph TD
 
 ### Multi-AZ Architecture
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```yaml
 # All stateful components are spread across 3 AZs
 topologySpreadConstraints:
@@ -177,7 +199,12 @@ topologySpreadConstraints:
         app: loki-ingester   # Apply to each stateful component
 ```
 
+</details>
+
 ### AIOps Platform SLO
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 # SLO definitions for the AIOps platform itself
@@ -206,6 +233,8 @@ slo:
     target: "99.9%"
     description: "Availability of AIOps platform components"
 ```
+
+</details>
 
 ---
 
@@ -268,6 +297,9 @@ SLA targets: RTO = 30 minutes (diagnose + restart), RPO = replayability based on
 
 ### Backup Strategy
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```yaml
 backups:
   kafka_metadata:
@@ -305,6 +337,8 @@ backups:
     recovery: run terraform apply
 ```
 
+</details>
+
 ---
 
 ## 4. Chaos Engineering for AIOps
@@ -312,6 +346,9 @@ backups:
 The AIOps platform must be resilient. Use chaos engineering to validate:
 
 ### Chaos Test Suite
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 # chaos-test-suite.yaml (using Chaos Monkey / LitmusChaos)
@@ -381,7 +418,12 @@ experiments:
     hypothesis: "LLM Agent falls back to GPT-4o-mini or produces a shortened analysis report"
 ```
 
+</details>
+
 ### Running Chaos Tests
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```bash
 # Deploy LitmusChaos
@@ -393,6 +435,8 @@ kubectl apply -f kafka-broker-kill-experiment.yaml
 # Watch results
 kubectl get chaosresult kafka-broker-kill -n kafka -o jsonpath='{.status.experimentStatus}'
 ```
+
+</details>
 
 ---
 
@@ -429,6 +473,9 @@ Target: < 10 minutes at P95
 | LLM agent | 50 investigations/min | 5 investigations/min | API rate limits |
 
 ### Benchmark Script
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import asyncio
@@ -494,6 +541,8 @@ async def benchmark_loki_ingest(
         }
 ```
 
+</details>
+
 ---
 
 ## 6. Cost Governance
@@ -517,6 +566,9 @@ Most expensive components:
 ```
 
 ### Cost Optimization Strategies
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 COST_OPTIMIZATION_STRATEGIES = {
@@ -553,7 +605,12 @@ COST_OPTIMIZATION_STRATEGIES = {
 }
 ```
 
+</details>
+
 ### Cost Monitoring
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```promql
 # Estimate S3 storage cost
@@ -569,7 +626,12 @@ sum(aiops_llm_tokens_used_total{model="claude-3-5-sonnet"}) * 0.003 / 1000000
 sum(aiops_gpu_instance_hours_total) * 0.526  # g4dn.xlarge instance pricing
 ```
 
+</details>
+
 ### FinOps Alerts
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 - alert: AIOpsStorageCostExcessive
@@ -591,6 +653,8 @@ sum(aiops_gpu_instance_hours_total) * 0.526  # g4dn.xlarge instance pricing
   annotations:
     summary: "LLM API cost exceeded $100 in the last hour — suspected investigation loop"
 ```
+
+</details>
 
 ---
 
@@ -646,6 +710,9 @@ sum(aiops_gpu_instance_hours_total) * 0.526  # g4dn.xlarge instance pricing
 
 ### PII Scrubbing in Log Pipeline
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```python
 import re
 
@@ -676,6 +743,8 @@ class PIIScrubber:
         return log_line
 ```
 
+</details>
+
 ---
 
 ## 8. Observability of the Observability Platform
@@ -683,6 +752,9 @@ class PIIScrubber:
 Meta-observability: who watches the watchers?
 
 ### Dead Man's Switch Pattern
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 # Every pipeline component periodically emits a heartbeat metric
@@ -718,9 +790,14 @@ Meta-observability: who watches the watchers?
     severity: critical
 ```
 
+</details>
+
 ### Platform Health Dashboard
 
 Important panels on the AIOps health dashboard:
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 dashboard_panels:
@@ -757,6 +834,8 @@ dashboard_panels:
       rate(aiops_remediation_executions_total{status="verified_success"}[7d])
       / rate(aiops_remediation_executions_total[7d])
 ```
+
+</details>
 
 ---
 
@@ -795,6 +874,9 @@ aws kafka describe-cluster --cluster-arn $MSK_CLUSTER_ARN \
 
 ### Step 2: Fix Kafka-related issues first (Kafka is the backbone)
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```bash
 # If MSK is healthy but consumers cannot connect
 # Re-check Security Group configuration
@@ -810,7 +892,12 @@ kubectl rollout restart deployment/llm-agent -n aiops
 kubectl rollout status deployment/anomaly-detector -n aiops --timeout=5m
 ```
 
+</details>
+
 ### Step 3: Handle excessive consumer lag
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```bash
 # If lag is huge (>1 million messages) and reprocessing everything is not required,
@@ -832,7 +919,12 @@ kafka-consumer-groups.sh --bootstrap-server kafka-1:9092 \
   --execute
 ```
 
+</details>
+
 ### Step 4: Restore LLM Agent connectivity
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```bash
 # Confirm API key is present
@@ -849,7 +941,12 @@ kubectl exec -n aiops deploy/llm-agent -- \
 # Expected: HTTP 200
 ```
 
+</details>
+
 ### Step 5: Validate the full system after recovery
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```bash
 # End-to-end test: inject a synthetic incident
@@ -866,6 +963,8 @@ kubectl exec -n aiops deploy/llm-agent -- \
 kafka-console-consumer.sh --bootstrap-server kafka-1:9092 \
   --topic aiops-rca-results --max-messages 1 --from-beginning
 ```
+
+</details>
 
 ### Step 6: Post-recovery actions
 
@@ -955,6 +1054,9 @@ For maximum pipeline stability, always upgrade components in this order:
 
 ### Zero-Downtime Upgrade Pattern
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```bash
 # For each stateless component:
 # 1. Update the image tag in values.yaml
@@ -971,7 +1073,12 @@ kubectl get pods -n aiops -l app=anomaly-detector
 # Ensure consumer lag does not spike during the rolling update
 ```
 
+</details>
+
 ### Maintenance Windows
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 maintenance_windows:
@@ -998,6 +1105,8 @@ maintenance_windows:
     implementation: "Set maintenance_mode=true on Redis"
     effect: "Remediation engine stops automatic execution; Slack notifications only"
 ```
+
+</details>
 
 ---
 
@@ -1068,6 +1177,9 @@ What they do NOT need to do:
 
 ### L6 Preview: Predictive AIOps
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```python
 import pandas as pd
 
@@ -1117,6 +1229,8 @@ class CapacityPredictorService:
         
         return {"will_exceed_capacity": False}
 ```
+
+</details>
 
 ---
 
@@ -1177,6 +1291,9 @@ ROI calculation (conservative estimate):
 | Remediation failure rate | Verify pipeline | P1 |
 | Topology graph age | Static | P2 |
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```yaml
 # AIOps self-alerts — route to platform-oncall, NOT product teams
 groups:
@@ -1198,6 +1315,8 @@ groups:
         annotations:
           summary: "AIOps may be deaf: lag high AND no incidents formed"
 ```
+
+</details>
 
 > [!TIP]
 > **Shadow page**: every quarter, inject a synthetic failure (chaos) and require the detect→correlate→RCA→Slack card path to complete under SLO. Record results in the maturity scorecard §15.6.
@@ -1234,6 +1353,9 @@ Mode C — Full region loss:
 > [!WARNING]
 > **Anti-pattern**: DR runbooks only cover "restore payment-db" and not "restore aiops". In a major outage you need observability **before** app recovery to know whether the fix worked.
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```bash
 # Smoke DR control plane (post-restore)
 kubectl -n aiops get deploy
@@ -1241,6 +1363,8 @@ kubectl -n aiops get deploy
 # synthetic metric spike → expect anomaly event in Kafka within 2m
 # expect correlated incident card in Slack within 5m
 ```
+
+</details>
 
 See also public DR/outage scenarios to drill: [15 — Famous Incidents](../16-famous-incidents/README.md).
 
@@ -1256,6 +1380,9 @@ Two silent money furnaces:
 | Metric cardinality | unbounded labels | relabel drop; recording rules |
 | Retrain thrash | retrain on every FP spike | cooldown 7d; shadow first |
 | Vector reindex | full re-embed hourly | incremental; hash content |
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 finops_guards:
@@ -1273,6 +1400,8 @@ finops_guards:
     metrics_raw_days: 15
     metrics_downsampled_days: 365
 ```
+
+</details>
 
 > [!NOTE]
 > **KEY IDEA**
@@ -1313,6 +1442,9 @@ No game day = DR/chaos is only markdown.
 | Bi-annual | Full aiops namespace wipe (staging) | Restore order RTO | §15.2 Mode B |
 | Bi-annual | Famous incident replay | Organizational learning | [15 — Famous Incidents](../16-famous-incidents/README.md) |
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```yaml
 game_day_template:
   name: "correlation-storm-2026-q3"
@@ -1333,6 +1465,8 @@ game_day_template:
     - metrics_snapshot
     - action_items_owners_due
 ```
+
+</details>
 
 ### 15.6 Maturity scorecard (measurable, not slogans)
 
@@ -1385,6 +1519,9 @@ Big Tech patterns to benchmark against: [13 — Big Tech AIOps](../14-bigtech-ai
 | Quarterly | Security review of agent tools + IRSA/RBAC | Diff allowlist + pen findings |
 | Yearly | Full DR regional exercise (staging→prod-like) | RTO/RPO measured |
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```yaml
 # Feature flags — mandatory kill switches
 aiops_flags:
@@ -1397,6 +1534,8 @@ aiops_flags:
     disable_all_pages_except_platform: false
     force_classic_alertmanager_path: false
 ```
+
+</details>
 
 > [!WARNING]
 > Kill switches must **not** be buried in a 40-file PR. One `kubectl`/`redis-cli`/flag UI is enough. Game days must practice **toggling** flags, not only injecting faults.

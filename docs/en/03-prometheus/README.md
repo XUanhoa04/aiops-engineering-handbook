@@ -141,9 +141,9 @@ graph TD
     RULES -->|evaluate| QENG
     TSDB -->|remote_write| RW
 
-    style Targets fill:#1565c0,color:#fff
-    style Prometheus fill:#2e7d32,color:#fff
-    style Remote fill:#4a148c,color:#fff
+    style Targets fill:#dbeafe,color:#1e293b
+    style Prometheus fill:#dcfce7,color:#1e293b
+    style Remote fill:#f3e8ff,color:#1e293b
 ```
 
 ### Key Endpoints
@@ -686,8 +686,8 @@ graph TD
     P2 -->|alerts| AM1
     P2 -->|alerts| AM2
 
-    style HA fill:#2e7d32,color:#fff
-    style AM fill:#4a148c,color:#fff
+    style HA fill:#dcfce7,color:#1e293b
+    style AM fill:#f3e8ff,color:#1e293b
 ```
 
 ---
@@ -774,9 +774,9 @@ graph TD
     SCAR2 -->|StoreAPI gRPC| QUERY
     STORE -->|StoreAPI gRPC| QUERY
 
-    style Prom fill:#1565c0,color:#fff
-    style Thanos fill:#2e7d32,color:#fff
-    style S3 fill:#f57c00,color:#fff
+    style Prom fill:#dbeafe,color:#1e293b
+    style Thanos fill:#dcfce7,color:#1e293b
+    style S3 fill:#ffedd5,color:#1e293b
 ```
 
 ### Thanos Components

@@ -122,7 +122,7 @@ flowchart LR
 
     Collect --> Plane --> Next
 
-    style Plane fill:#0f766e,color:#fff
+    style Plane fill:#e2e8f0,color:#1e293b
 ```
 
 ### Why not fold this into the Collector or Kafka?
@@ -196,8 +196,8 @@ flowchart TD
     STORE --> FEAT[Feature materialize]
     FEAT --> SERVE[Online / offline serve]
 
-    style Q fill:#e65100,color:#fff
-    style DLQ fill:#b71c1c,color:#fff
+    style Q fill:#ffedd5,color:#1e293b
+    style DLQ fill:#fecaca,color:#1e293b
 ```
 
 ### 2.3 What “good” looks like operationally
@@ -1142,8 +1142,8 @@ Work a real example with *your* cardinality from [03 — Prometheus](../03-prome
 flowchart LR
     L0 --> L1 --> L2 --> L3 --> L4
     L1 -.->|skip| L3
-    style L0 fill:#616161,color:#fff
-    style L4 fill:#0f766e,color:#fff
+    style L0 fill:#e2e8f0,color:#1e293b
+    style L4 fill:#e2e8f0,color:#1e293b
 ```
 
 > [!WARNING]

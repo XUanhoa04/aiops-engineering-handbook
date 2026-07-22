@@ -184,6 +184,18 @@
         timeline: { useMaxWidth: false },
         themeVariables: {
           fontSize: "16px",
+          primaryColor: "#dbeafe",
+          primaryTextColor: "#1e293b",
+          primaryBorderColor: "#93c5fd",
+          secondaryColor: "#dcfce7",
+          tertiaryColor: "#f3e8ff",
+          lineColor: "#64748b",
+          background: "#ffffff",
+          mainBkg: "#f8fafc",
+          nodeBorder: "#94a3b8",
+          clusterBkg: "#f1f5f9",
+          titleColor: "#0f172a",
+          edgeLabelBackground: "#f8fafc",
         },
       });
     } catch (_) {

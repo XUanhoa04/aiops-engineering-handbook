@@ -84,7 +84,7 @@ graph LR
     RCA -->|direct call| LLM[LLM Agent]
     LLM -->|direct call| REM[Remediation]
 
-    style AD fill:#1565c0,color:#fff
+    style AD fill:#dbeafe,color:#1e293b
 ```
 
 **Các vấn đề**:
@@ -110,8 +110,8 @@ graph LR
     K2 -->|subscribe| RCA[RCA Engine]
     K2 -->|subscribe| GRAFANA[Grafana\nannotations]
 
-    style K1 fill:#4a148c,color:#fff
-    style K2 fill:#4a148c,color:#fff
+    style K1 fill:#f3e8ff,color:#1e293b
+    style K2 fill:#f3e8ff,color:#1e293b
 ```
 
 **Lợi ích**:
@@ -172,10 +172,10 @@ graph TD
     B2 -->|serve| CG2
     B3 -->|serve| CG3
 
-    style Producers fill:#1565c0,color:#fff
-    style Kafka fill:#2e7d32,color:#fff
-    style Topics fill:#4a148c,color:#fff
-    style Consumers fill:#e65100,color:#fff
+    style Producers fill:#dbeafe,color:#1e293b
+    style Kafka fill:#dcfce7,color:#1e293b
+    style Topics fill:#f3e8ff,color:#1e293b
+    style Consumers fill:#ffedd5,color:#1e293b
 ```
 
 ### Broker Internals
@@ -213,9 +213,9 @@ graph LR
     CONS2[Consumer 2] -->|reads| P1
     CONS3[Consumer 3] -->|reads| P2
 
-    style P0 fill:#1565c0,color:#fff
-    style P1 fill:#2e7d32,color:#fff
-    style P2 fill:#4a148c,color:#fff
+    style P0 fill:#dbeafe,color:#1e293b
+    style P1 fill:#dcfce7,color:#1e293b
+    style P2 fill:#f3e8ff,color:#1e293b
 ```
 
 **Đảm bảo thứ tự (Ordering guarantee)**: Kafka **chỉ đảm bảo thứ tự trong phạm vi từng partition**. Các tin nhắn có cùng key sẽ luôn đi vào cùng một partition → đảm bảo thứ tự cho từng key.
@@ -650,10 +650,10 @@ graph TD
     T7 -->|remediation executor| T8
     T7 -->|on failure| DLQ2
 
-    style Raw fill:#1565c0,color:#fff
-    style Processed fill:#2e7d32,color:#fff
-    style Action fill:#e65100,color:#fff
-    style DLQ fill:#b71c1c,color:#fff
+    style Raw fill:#dbeafe,color:#1e293b
+    style Processed fill:#dcfce7,color:#1e293b
+    style Action fill:#ffedd5,color:#1e293b
+    style DLQ fill:#fecaca,color:#1e293b
 ```
 
 ### Topic Naming Convention
@@ -776,7 +776,7 @@ graph LR
     DLQ -->|logic thử lại| RETRY[DLQ Processor\nretry với backoff]
     RETRY -->|xử lý lại| CONS
 
-    style DLQ fill:#b71c1c,color:#fff
+    style DLQ fill:#fecaca,color:#1e293b
 ```
 
 ```python
@@ -1368,8 +1368,8 @@ flowchart TD
     A --> B[Bypass path\nAlertmanager direct]
     K -->|retention elapsed| D[Data deleted\nUNPROCESSED LOSS]
 
-    style D fill:#b71c1c,color:#fff
-    style B fill:#e65100,color:#fff
+    style D fill:#fecaca,color:#1e293b
+    style B fill:#ffedd5,color:#1e293b
 ```
 
 > [!IMPORTANT]
@@ -1581,7 +1581,7 @@ graph TD
     G4 --> GRAF[Grafana annotations]
     G5 --> SIEM[SIEM / compliance]
 
-    style T fill:#4a148c,color:#fff
+    style T fill:#f3e8ff,color:#1e293b
 ```
 
 ### Quy tắc group.id
@@ -1642,8 +1642,8 @@ flowchart TB
     K -.->|down| X[AIOps path degraded]
     PROM --> AM
 
-    style Bypass fill:#2e7d32,color:#fff
-    style X fill:#b71c1c,color:#fff
+    style Bypass fill:#dcfce7,color:#1e293b
+    style X fill:#fecaca,color:#1e293b
 ```
 
 **Nguyên tắc**:

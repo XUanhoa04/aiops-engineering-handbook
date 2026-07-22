@@ -188,10 +188,10 @@ graph TD
     QUER -->|merge| QF
     QF -->|return trace| GRAFANA
 
-    style Write fill:#1565c0,color:#fff
-    style Read fill:#2e7d32,color:#fff
-    style Storage fill:#4a148c,color:#fff
-    style Compact fill:#e65100,color:#fff
+    style Write fill:#dbeafe,color:#1e293b
+    style Read fill:#dcfce7,color:#1e293b
+    style Storage fill:#f3e8ff,color:#1e293b
+    style Compact fill:#ffedd5,color:#1e293b
 ```
 
 ### Key Endpoints

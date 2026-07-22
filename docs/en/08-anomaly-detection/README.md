@@ -8,21 +8,21 @@
 
 - [01 — Observability](../01-observability/README.md) — metric types, log structure
 - [03 — Prometheus](../03-prometheus/README.md) — using PromQL for feature extraction
-- [06 — Kafka](../07-kafka/README.md) — consume telemetry, publish anomaly events
+- [07 — Kafka](../07-kafka/README.md) — consume telemetry, publish anomaly events
 
 ## Related Documents
 
-- [08 — Alert Correlation](../09-alert-correlation/README.md) — receives anomaly events
-- [09 — Root Cause Analysis](../10-root-cause-analysis/README.md) — uses anomaly context
-- [10 — LLM Agent](../11-llm-agent/README.md) — uses anomaly signals for incident investigation
-- [12 — Production Operations](../13-production/README.md) — running detectors in production, platform SLOs
-- [13 — Big Tech AIOps](../14-bigtech-aiops/README.md) — how Google/Meta/Netflix run detection at scale
-- [14 — E-commerce & Banking](../15-ecommerce-banking/README.md) — Black Friday seasonality, compliance, latency-critical detection
-- [15 — Famous Incidents](../16-famous-incidents/README.md) — case studies of drift/deploy-induced false alarms in real incidents
+- [09 — Alert Correlation](../09-alert-correlation/README.md) — receives anomaly events
+- [10 — Root Cause Analysis](../10-root-cause-analysis/README.md) — uses anomaly context
+- [11 — LLM Agent](../11-llm-agent/README.md) — uses anomaly signals for incident investigation
+- [13 — Production Operations](../13-production/README.md) — running detectors in production, platform SLOs
+- [14 — Big Tech AIOps](../14-bigtech-aiops/README.md) — how Google/Meta/Netflix run detection at scale
+- [15 — E-commerce & Banking](../15-ecommerce-banking/README.md) — Black Friday seasonality, compliance, latency-critical detection
+- [16 — Famous Incidents](../16-famous-incidents/README.md) — case studies of drift/deploy-induced false alarms in real incidents
 
 ## Next Reading
 
-After this chapter, continue to [08 — Alert Correlation](../09-alert-correlation/README.md).
+After this chapter, continue to [09 — Alert Correlation](../09-alert-correlation/README.md).
 
 ---
 
@@ -54,6 +54,25 @@ After this chapter, continue to [08 — Alert Correlation](../09-alert-correlati
 24. [Cost](#24-cost)
 25. [Deep Thinking: Drift, Ensemble, Feedback Loop & When NOT to Use ML](#25-deep-thinking-drift-ensemble-feedback-loop--when-not-to-use-ml)
 26. [Production Review](#26-production-review)
+
+---
+
+
+## How to read this chapter (concept-first)
+
+> [!IMPORTANT]
+> **Concepts first — code second**
+> From chapter 08 onward, prefer: **problem → idea → input data → algorithm/model → output → pros/cons → when to use**. Implementation lives under **See the code below** (click to expand). Goal: understand *why it works on AIOps telemetry*, not only copy-paste snippets.
+
+| Step | Question |
+|------|----------|
+| 1. Problem | What pain does this solve (noise, cascade, MTTR…)? |
+| 2. Idea | 2–3 sentence intuition, no formulas |
+| 3. Data in | Which metrics/logs/traces/events, windows, features? |
+| 4. Algorithm | Computation steps / model flow |
+| 5. Output | Event schema, score, rank, action proposal? |
+| 6. Trade-offs | Pros / cons / cost / explainability |
+| 7. When | When to use — and when **not** to |
 
 ---
 
@@ -92,9 +111,9 @@ graph TD
         COL2[A group of data points\nthat together are anomalous]
     end
 
-    style Point fill:#1565c0,color:#fff
-    style Context fill:#2e7d32,color:#fff
-    style Collective fill:#e65100,color:#fff
+    style Point fill:#dbeafe,color:#1e293b
+    style Context fill:#dcfce7,color:#1e293b
+    style Collective fill:#ffedd5,color:#1e293b
 ```
 
 ### Why Static Thresholds Fail
@@ -183,11 +202,11 @@ flowchart TD
     DEDUP --> EVT --> KF2
     Detect --> METRIC
 
-    style Input fill:#1565c0,color:#fff
-    style FE fill:#2e7d32,color:#fff
-    style Detect fill:#4a148c,color:#fff
-    style Score fill:#e65100,color:#fff
-    style Output fill:#b71c1c,color:#fff
+    style Input fill:#dbeafe,color:#1e293b
+    style FE fill:#dcfce7,color:#1e293b
+    style Detect fill:#f3e8ff,color:#1e293b
+    style Score fill:#ffedd5,color:#1e293b
+    style Output fill:#fecaca,color:#1e293b
 ```
 
 ### Pipeline Step Details
@@ -207,11 +226,43 @@ flowchart TD
 
 ## 3. EWMA — Exponentially Weighted Moving Average
 
-### Intuition
+> [!NOTE]
+> **KEY IDEA**
+> EWMA answers one question per metric: *is this point far from what I expected a moment ago?* It is an online adaptive baseline — not a seasonality model, not a multivariate detector.
+
+### Problem it solves
+
+Static thresholds cannot follow gradual baseline change (growth, deploys, capacity adds). EWMA gives a **cheap, always-on adaptive baseline** for spikes and drops without training data or historical bulk windows.
+
+### Core idea (intuition)
 
 EWMA is a simple filter that tracks a **moving average** where recent observations weigh more than older ones. It is the foundation of all adaptive-threshold algorithms.
 
-Simply: "My best estimate of the current value is a weighted mix of the previous estimate and the latest observation."
+Simply: "My best estimate of the current value is a weighted mix of the previous estimate and the latest observation." You also track residual variance the same way, then flag when the residual exceeds *k* adaptive standard deviations.
+
+### Input data on AIOps pipeline
+
+| Aspect | Typical AIOps choice |
+|--------|----------------------|
+| Signal type | Univariate numeric metrics (CPU, error rate, latency p99, RPS, queue depth) |
+| Source | Kafka `aiops-raw-metrics` or Prometheus scrape / query |
+| Cadence | 5s–1m samples; detector updates **per point** (streaming) |
+| Window / state | **No history buffer** — only `S_t` and `variance_t` (O(1) state per metric) |
+| Features | Raw value; optionally pre-smoothed or rate-transformed (`rate()`, `irate()`) |
+| Warm-up | Skip alerts for first ~`min_periods` (e.g. 30) observations |
+
+> [!TIP]
+> Prefer one EWMA instance **per (service, metric, labels-of-interest)** key. Sharing state across tenants mixes baselines and inflates false positives.
+
+### How the algorithm works (step-by-step)
+
+1. On first point: set baseline `S = X`, variance `= 0`, return "initializing".
+2. Residual: `r_t = X_t − S_{t−1}` (how far from previous expectation).
+3. Update variance: `v_t = α r_t² + (1−α) v_{t−1}`.
+4. Update baseline: `S_t = α X_t + (1−α) S_{t−1}`.
+5. If still warming up → no alert.
+6. `z = |r_t| / √v_t`; anomaly if `z > k` (often `k = 3`).
+7. Score ≈ `min(z / k, 1)`; record direction spike vs drop.
 
 ### Formula
 
@@ -257,6 +308,9 @@ Common values:
 
 **Auto-tune α** based on natural metric volatility:
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```python
 # Auto-adjust α based on coefficient of variation
 def auto_tune_alpha(historical_data: np.ndarray) -> float:
@@ -276,7 +330,12 @@ def auto_tune_alpha(historical_data: np.ndarray) -> float:
         return 0.05
 ```
 
+</details>
+
 ### Python Implementation
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import numpy as np
@@ -350,7 +409,19 @@ for timestamp, cpu_value in metric_stream:
         )
 ```
 
-### EWMA Advantages and Disadvantages
+</details>
+
+### Output
+
+| Field | Meaning |
+|-------|---------|
+| `anomaly` | bool — `z > k` after warm-up |
+| `score` | 0–1 — normalized severity (`z / k` capped) |
+| `z_score`, `residual`, `ewma`, `std_dev` | Explainability for on-call / RCA |
+| `direction` | `spike` or `drop` |
+| Event | Publish `AnomalyEvent` with `algorithm=ewma`, metric name, service, timestamp, baseline vs current |
+
+### Pros / cons
 
 | Pros/Cons | Detail |
 |-----------|--------|
@@ -362,11 +433,63 @@ for timestamp, cpu_value in metric_stream:
 | ❌ No multivariate support | Each metric evaluated independently |
 | ❌ Slow reaction to moderate sustained shifts | Requires k-sigma deviation |
 
+### When to use / when NOT to use
+
+| Use when | Do **not** use when |
+|----------|---------------------|
+| Need first-pass filter on thousands of metrics | Strong daily/weekly seasonality (use STL/SHESD) |
+| Clear spikes/drops, streaming path, tight latency budget | Multi-metric "combination" faults (use Isolation Forest) |
+| Cold-start / new services with no training set | Slow leaks that stay inside adaptive band for long periods |
+| Explainable P1 page on univariate signal | You need p-values or multi-anomaly control (use SHESD) |
+
+> [!WARNING]
+> After a real incident, EWMA **absorbs** the elevated baseline. Without hysteresis, cooldown, or freeze-on-alert, sensitivity collapses during the incident and post-incident recovery can look "normal" too early.
+
 **Production practice**: EWMA is ideal as a **first-pass filter** for all metrics. Fast, cheap, no training. Use for P1 alerts on clear spikes. Combine with STL to correct for seasonal factors.
 
 ---
 
 ## 4. Z-Score and Modified Z-Score
+
+> [!NOTE]
+> **KEY IDEA**
+> Z-score asks: *how many spreads away from the window center is this point?* Classic mean/std is fragile to past outliers; **modified Z (median + MAD)** is the production-safe default for sliding windows.
+
+### Problem it solves
+
+You need a simple, auditable rule: "this value is extreme relative to recent history." Works without training, easy to explain in postmortems, and multi-window designs catch both fast spikes and slower drift.
+
+### Core idea (intuition)
+
+Compare the current value to a **reference distribution estimated from a time window**. Standard Z uses mean and standard deviation. Modified Z uses **median** and **MAD** so a few past spikes do not inflate the scale and hide the next real incident.
+
+### Input data on AIOps pipeline
+
+| Aspect | Typical AIOps choice |
+|--------|----------------------|
+| Signal type | Univariate metrics (same family as EWMA) |
+| Source | Rolling buffer from Prometheus `query_range` or Kafka + ring buffer |
+| Windows | Common: 5m (fast), 1h (default), 24h / 7d (drift / weekly) |
+| Features | Raw value or same-scale transform; keep units consistent within a window |
+| State | Full window of samples (O(window) memory per metric key) |
+| Labels | Evaluate per series; do not mix pods/tenants in one window unless intentional |
+
+### How the algorithm works (step-by-step)
+
+**Standard Z-Score**
+
+1. Collect window history `H = {x₁…xₙ}`.
+2. Compute μ = mean(H), σ = std(H).
+3. `Z = (X − μ) / σ`.
+4. Anomaly if `|Z| > threshold` (often 2.5–4.0).
+
+**Modified Z-Score (robust)**
+
+1. `median = median(H)`, `MAD = median(|xᵢ − median|)`.
+2. If MAD = 0: any deviation from constant history is anomalous.
+3. `M = 0.6745 × |X − median| / MAD`.
+4. Anomaly if `|M| > 3.5` (common default).
+5. Score ≈ `min(|M| / 3.5, 1)`; keep direction vs median.
 
 ### Standard Z-Score
 
@@ -394,6 +517,9 @@ Where:
 ```
 
 **Anomaly if |M| > 3.5**
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import numpy as np
@@ -428,6 +554,8 @@ def modified_z_score(
     }
 ```
 
+</details>
+
 ### Z-Score Window Selection
 
 | Window size | Detection latency | False positive risk | Use case |
@@ -438,6 +566,9 @@ def modified_z_score(
 | 7 days | Very slow | Very low | Weekly seasonal baseline |
 
 **Production design pattern**: Use multiple windows simultaneously:
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```python
 # Multi-window Z-Score configuration
 scores = {}
@@ -450,11 +581,56 @@ for window in [5, 60, 1440]:  # 5 minutes, 1 hour, 24 hours
 # Long window = slower alert (lower FP, higher confidence)
 ```
 
+</details>
+
+### Output
+
+| Field | Meaning |
+|-------|---------|
+| `anomaly` | bool from threshold on `|Z|` or `|M|` |
+| `score` | 0–1 normalized severity |
+| `modified_z` / `z`, `median` or `μ`, `mad` or `σ` | Baseline for explainability |
+| `direction` | spike if above center, drop if below |
+| Event | `algorithm=zscore` or `modified_zscore`, window length, metric identity |
+
+### Pros / cons
+
+| Pros/Cons | Detail |
+|-----------|--------|
+| ✅ Transparent math | Easy to audit and teach on-call |
+| ✅ No training | Works with a pure sliding window |
+| ✅ Multi-window | Fast + slow views of the same series |
+| ✅ Modified Z robust | Survives contaminated history better than mean/std |
+| ❌ Weak on seasonality | Business-hour peaks look "extreme" vs mixed windows |
+| ❌ Univariate only | Cannot see CPU+error combination faults alone |
+| ❌ Window choice is critical | Too short → noisy; too long → lag and dilution |
+| ❌ Assumes roughly stationary spread | Regime changes need re-baseline |
+
+### When to use / when NOT to use
+
+| Use when | Do **not** use when |
+|----------|---------------------|
+| Need explainable first-line detection | Strong multi-scale seasonality (prefer STL/SHESD) |
+| History may contain old spikes (→ modified Z) | High-dimensional feature vectors (prefer IF / OC-SVM) |
+| Multi-window ensemble with EWMA | Sequence / workflow log anomalies (Drain/DeepLog) |
+| Regulatory need for simple statistical rules | Sample count in window is tiny (σ unstable) |
+
+> [!TIP]
+> Default production recipe: **modified Z on 1h** for pages, **5m** only for shadow/high-urgency, **24h** as confidence booster — fire page when short window is extreme *and* medium window agrees, or severity is very high.
+
 ---
 
 ## 5. STL Decomposition
 
-### Intuition
+> [!NOTE]
+> **KEY IDEA**
+> STL does not "detect" by itself — it **removes expected structure** (trend + season) so residual detectors (MAD, Z, ESD) only see the unexpected. Daytime peaks stop looking like bugs when they are seasonal.
+
+### Problem it solves
+
+Business-hour, daily, and weekly cycles make naive EWMA/Z-score fire every morning peak and miss night-time "medium" values that are actually severe. STL separates **expected rhythm** from **true residual anomalies**.
+
+### Core idea (intuition)
 
 Many metrics have **seasonal patterns**: higher during business hours, lower at night. Spikes at weekday peak hours. Static Z-score ignores this — it flags daytime peak traffic as anomalous vs a 24-hour mean.
 
@@ -478,7 +654,33 @@ Seasonal:  [-5, -10, -15, +20, +30, +35, +25, -5, -10, -15, -15, ...]
 Residual:  [5, 5, 5, 0, 0, 0, 0, 4, 4, 4, 164, ...]  ← 164 is clearly anomalous!
 ```
 
+### Input data on AIOps pipeline
+
+| Aspect | Typical AIOps choice |
+|--------|----------------------|
+| Signal type | Seasonal univariate metrics: RPS, checkout volume, CPU tied to traffic, batch job duration |
+| Source | Dense regular series from Prometheus (prefer fixed scrape interval) |
+| History length | ≥ **2× period** minimum; production often **7 days** |
+| Period | e.g. 288 points for 24h at 5m resolution; 7×288 for weekly if needed |
+| Cadence | Re-fit every 15–60 min; score new points against cached components |
+| Features | Single series (optionally after log1p for heavy tails) |
+
+> [!WARNING]
+> Missing scrape gaps break seasonality alignment. Interpolate or mark gaps; do not silently stitch irregular timestamps into STL.
+
+### How the algorithm works (step-by-step)
+
+1. Assemble a regularly spaced window (e.g. 7 days @ 5m).
+2. Fit STL (often `robust=True`) → `trend`, `seasonal`, `residual`.
+3. Estimate residual scale with MAD (robust to leftover spikes).
+4. Threshold ≈ `k × MAD × 1.4826` (MAD → σ-like units).
+5. Score = `|residual| / threshold`; anomaly if score > 1.
+6. Cache seasonal+trend; for streaming points, residual ≈ `x − trend_est − seasonal_at_phase` until next re-fit.
+
 ### STL Implementation
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from statsmodels.tsa.seasonal import STL
@@ -557,6 +759,8 @@ def detect_streaming(metric_name: str, current_window: pd.Series) -> dict:
     }
 ```
 
+</details>
+
 ### STL Latency and Compute
 
 | Window size | Data points (5-min spacing) | STL Fit time | Memory |
@@ -567,11 +771,76 @@ def detect_streaming(metric_name: str, current_window: pd.Series) -> dict:
 
 **Ops tip**: Compute STL on a 7-day window, re-fit hourly (not on every new data point). Cache the decomposition and apply residual scoring only to new points.
 
+### Output
+
+| Field | Meaning |
+|-------|---------|
+| `anomaly` | bool — residual exceeds robust threshold |
+| `score` | `|residual| / threshold` (often clipped for ensemble) |
+| `trend`, `seasonal_component`, `residual` | Decomposed series for dashboards / RCA |
+| Event | `algorithm=stl`, period, fit window, metric identity |
+
+### Pros / cons
+
+| Pros/Cons | Detail |
+|-----------|--------|
+| ✅ Handles daily/weekly seasonality | Peak hours stop being perpetual false positives |
+| ✅ Separates slow drift (trend) from shocks | Residual-focused detection |
+| ✅ Robust fit option | Less hijacked by a few spikes |
+| ❌ Needs regular dense history | Gaps and cold start hurt |
+| ❌ Heavier than EWMA/Z | Fit cost grows with window length |
+| ❌ Period must be known/stable | Wrong period → garbage residuals |
+| ❌ Univariate | Still one series at a time |
+
+### When to use / when NOT to use
+
+| Use when | Do **not** use when |
+|----------|---------------------|
+| Clear daily/weekly cycles in traffic-linked metrics | Flat or pure random metrics (EWMA enough) |
+| Need residual scoring under seasonality | Strict realtime < few ms per series budget |
+| Batch/near-realtime re-fit every hour is OK | Irregular event streams (logs) without resampling |
+| Explaining "expected for this hour" to humans | Multi-metric joint anomalies only |
+
 ---
 
 ## 6. Seasonal Hybrid ESD (SHESD)
 
-SHESD is the algorithm used by **Twitter's anomaly detection library**. It extends STL by applying the Extreme Studentized Deviate (ESD) test after decomposition.
+> [!NOTE]
+> **KEY IDEA**
+> SHESD = **seasonal decomposition + statistical multi-outlier test (ESD)**. After removing season/trend, ESD peels the most extreme residuals one by one with a significance guard — better than a single residual threshold when several anomalies sit in the same window.
+
+### Problem it solves
+
+Pure STL residual thresholding can either (a) miss multiple simultaneous outliers (they inflate residual scale) or (b) lack a principled cap on how many points can be called anomalous. SHESD adds **ESD** for controlled multi-anomaly detection on seasonal series — the approach popularized by Twitter's anomaly detection library.
+
+### Core idea (intuition)
+
+1. Remove seasonal/trend structure (STL-like / seasonal hybrid median).
+2. On residuals, run **Extreme Studentized Deviate**: repeatedly test the farthest point, remove it, re-estimate, stop when tests fail significance or max anomaly budget is hit.
+3. Result: a set of anomalous **indices** with statistical backing, not only a continuous score.
+
+### Input data on AIOps pipeline
+
+| Aspect | Typical AIOps choice |
+|--------|----------------------|
+| Signal type | Seasonal product/ops metrics (RPS, orders, error count, latency) |
+| Source | Dense history windows (hours–weeks) from Prometheus |
+| Window | Often multi-day; needs enough periods for seasonality |
+| Params | `max_anomalies` (e.g. 5%), `alpha` (e.g. 0.05), direction both/pos/neg |
+| Mode | Usually **batch / rolling batch**, not per-sample micro-latency path |
+| Features | Univariate series; longterm mode for slow drift |
+
+### How the algorithm works (step-by-step)
+
+1. Ingest a regular series `x₁…xₙ`.
+2. Seasonal hybrid decompose → residuals `r_i` (median-based seasonal component; optional piecewise median for drift).
+3. Cap candidates by `max_anoms × n`.
+4. For k = 1…max: find index of max `|r|` (or one-sided), compute ESD test statistic vs residual mean/std (or robust scale).
+5. Compare to critical value at level `alpha`; if significant, mark as anomaly and remove; else stop.
+6. Return list of anomalous indices (and optionally ranks).
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 # SHESD available via pyod or anomalydetection library
@@ -599,6 +868,39 @@ def shesd_detect(values: list, max_anomalies: float = 0.05, alpha: float = 0.05)
     return detector.detect(values)
 ```
 
+</details>
+
+### Output
+
+| Field | Meaning |
+|-------|---------|
+| Anomalous indices | Positions in the window labeled as outliers |
+| Implicit label | Point anomaly on a seasonal series |
+| Optional | Direction (spike/drop), rank order of removal |
+| Event | Map indices → timestamps; `algorithm=shesd`, `alpha`, `max_anoms` |
+
+### Pros / cons
+
+| Pros/Cons | Detail |
+|-----------|--------|
+| ✅ Significance control via `alpha` | More principled than pure residual cut |
+| ✅ Multi-outlier aware | ESD removes extremes iteratively |
+| ✅ Budget via `max_anomalies` | Caps how noisy a window can be labeled |
+| ✅ Strong on seasonal product metrics | Twitter-style KPI monitoring |
+| ❌ Heavier than EWMA/Z | Batch-oriented |
+| ❌ Param sensitive | Wrong period / max_anoms → under/over detect |
+| ❌ Weaker continuous scores | Index set more natural than 0–1 stream score |
+| ❌ Still univariate | No joint metric combinations |
+
+### When to use / when NOT to use
+
+| Use when | Do **not** use when |
+|----------|---------------------|
+| Seasonal KPIs with occasional multi-spike windows | Ultra-low-latency first-pass on millions of series |
+| You want statistical multi-anomaly control | Sparse irregular sampling without fill |
+| Offline / hourly batch reviews of critical series | Multivariate "strange combination" detection |
+| Extending STL with better multi-outlier handling | Log template / sequence anomalies |
+
 **Advantages over pure STL**:
 - Provides statistical significance (p-value) for anomaly decisions
 - Controls false detection rate via `max_anomalies`
@@ -608,7 +910,15 @@ def shesd_detect(values: list, max_anomalies: float = 0.05, alpha: float = 0.05)
 
 ## 7. Isolation Forest
 
-### Intuition
+> [!NOTE]
+> **KEY IDEA**
+> Isolation Forest does not model "normal density" — it measures **how easy a point is to isolate** with random partitions. Rare, extreme combinations of features need few cuts → high anomaly score.
+
+### Problem it solves
+
+Real incidents often look like **joint** conditions: CPU 70% alone is fine, error rate 2% alone is fine, but together with rising latency they mean trouble. Univariate EWMA/Z miss that. Isolation Forest is the default **multivariate, training-light** detector for metric feature vectors.
+
+### Core idea (intuition)
 
 Isolation Forest isolates anomalies by partitioning feature space. Core idea: **anomalies are easier to isolate than normal points** because they are few and different from the majority.
 
@@ -637,11 +947,34 @@ graph TD
         ROOT --> R1 --> ANOMALY
     end
 
-    style ANOMALY fill:#e94560,color:#fff
-    style NORMAL1 fill:#2e7d32,color:#fff
+    style ANOMALY fill:#dbeafe,color:#1e293b
+    style NORMAL1 fill:#dcfce7,color:#1e293b
 ```
 
+### Input data on AIOps pipeline
+
+| Aspect | Typical AIOps choice |
+|--------|----------------------|
+| Signal type | Multivariate **feature vector per entity** (service/pod) |
+| Features | CPU, memory, error_rate, RPS, latency_p99, 5m deltas, hour-of-day, weekday |
+| Window | Train on recent "mostly normal" days; infer on current snapshot or short rolling stats |
+| Source | Join metrics from Prometheus/Kafka into one row per entity per timestep |
+| Scale | Scale features consistently (tree splits are scale-sensitive across units if mixed poorly) |
+| Labels | Unsupervised — `contamination` is prior on anomaly fraction, not ground truth |
+
+### How the algorithm works (step-by-step)
+
+1. Build training matrix `(n_samples, n_features)` from historical vectors.
+2. Fit forest of `n_estimators` isolation trees (subsample `max_samples`).
+3. For a new vector, path length `h(x)` averaged across trees.
+4. Convert to anomaly score (sklearn: more negative `score_samples` → more anomalous; normalize to 0–1).
+5. Optional: hard label via `predict` using contamination threshold.
+6. Emit event with top contributing features if you track per-feature isolation (explainability layer).
+
 ### Implementation
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from sklearn.ensemble import IsolationForest
@@ -720,7 +1053,18 @@ def build_feature_matrix(
     return np.array(features).reshape(1, -1)
 ```
 
-### Isolation Forest Trade-offs
+</details>
+
+### Output
+
+| Field | Meaning |
+|-------|---------|
+| `score` | 0–1 anomaly score (higher = more anomalous) |
+| Optional label | −1 / 1 from `predict` if contamination threshold used |
+| Feature vector snapshot | Values that produced the score (for RCA) |
+| Event | `algorithm=isolation_forest`, entity id, score, model version |
+
+### Pros / cons
 
 | Trait | Detail |
 |-------|--------|
@@ -732,6 +1076,15 @@ def build_feature_matrix(
 | ❌ contamination tuning | Must estimate % anomalies in the dataset |
 | ❌ No temporal awareness | Scores each point independently, ignores sequence |
 | ❌ High dimensionality | Performance degrades with too many features |
+
+### When to use / when NOT to use
+
+| Use when | Do **not** use when |
+|----------|---------------------|
+| Joint multi-metric health of a service | Pure univariate spike detection at massive scale (EWMA cheaper) |
+| Need fast CPU inference without GPU | Strong sequential patterns matter (LSTM/Transformer) |
+| Medium feature count (≈5–30) after engineering | Extremely high-dim sparse features without reduction |
+| Monthly retrain + post-deploy retrain is acceptable | No historical normal data yet (start with EWMA/Z) |
 
 **Production**: Best for **multivariate metric anomaly detection** (CPU + memory + error rate together). Retrain monthly. Retrain after major system deploys.
 
@@ -752,6 +1105,9 @@ Core point: ≥ min_samples neighbors within ε → normal
 Border point: within ε of a core point → normal
 Noise point: neither core nor near a core → ANOMALOUS
 ```
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from sklearn.cluster import DBSCAN
@@ -806,6 +1162,8 @@ def suggest_epsilon(features: np.ndarray, k: int = 5) -> float:
     return k_distances[elbow_idx]
 ```
 
+</details>
+
 **DBSCAN Trade-offs**:
 - ✅ No need to predefine number of clusters
 - ✅ Finds arbitrary-shaped clusters
@@ -820,12 +1178,47 @@ def suggest_epsilon(features: np.ndarray, k: int = 5) -> float:
 
 ## 9. Local Outlier Factor (LOF)
 
+> [!NOTE]
+> **KEY IDEA**
+> LOF is **relative density**: a point is anomalous if it is much sparser than *its* neighbors — even if absolute density is high. That fixes "busy cluster vs quiet cluster" cases where global methods fail.
+
+### Problem it solves
+
+DBSCAN and global distance methods struggle when normal regions have **different densities** (e.g., high-traffic services vs quiet batch workers in the same feature space). LOF scores each point against local neighborhood density.
+
+### Core idea (intuition)
+
 LOF addresses DBSCAN's weakness with varying-density clusters. It computes the ratio of a point's local density to the density of its neighbors.
 
 ```
 LOF ≈ 1.0: density similar to neighbors → normal
 LOF >> 1.0: much sparser than neighbors → anomalous
 ```
+
+Intuition: if your 20 nearest neighbors are tightly packed with each other but far from you, you are a local outlier — even if you sit inside a "busy" region of global space.
+
+### Input data on AIOps pipeline
+
+| Aspect | Typical AIOps choice |
+|--------|----------------------|
+| Signal type | Multivariate feature vectors (service health, trace attributes) |
+| Features | Same engineering as Isolation Forest; **must standardize** |
+| Neighbors `k` | Often 10–30; too small → noisy, too large → globalizes |
+| Mode | `novelty=True` after fit on normal data for streaming predict |
+| Source | Batch fit on history; score new vectors online |
+| Cost | Neighbor search — heavier than Isolation Forest at large n |
+
+### How the algorithm works (step-by-step)
+
+1. For each point, find k nearest neighbors (after scaling).
+2. Compute reachability distances and local reachability density (LRD).
+3. LOF(x) = average of LRD(neighbors) / LRD(x).
+4. LOF ≈ 1 → normal; LOF ≫ 1 → outlier.
+5. Map LOF (or sklearn `score_samples`) to 0–1 for ensemble.
+6. With `novelty=True`, fit on normal history then score new points.
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from sklearn.neighbors import LocalOutlierFactor
@@ -851,11 +1244,74 @@ class LOFDetector:
         return scores
 ```
 
+</details>
+
+### Output
+
+| Field | Meaning |
+|-------|---------|
+| LOF value / score | Continuous; higher → more local-outlier |
+| Optional label | Via contamination threshold |
+| Event | `algorithm=lof`, entity, k, score, feature snapshot |
+
+### Pros / cons
+
+| Pros/Cons | Detail |
+|-----------|--------|
+| ✅ Handles varying-density normals | Better than DBSCAN for mixed traffic regimes |
+| ✅ Continuous score | Ensemble-friendly |
+| ✅ Local context | Catches outliers next to dense clusters |
+| ❌ Computationally heavier | Neighbor queries scale poorly naively |
+| ❌ Sensitive to k and scaling | Bad preprocessing → garbage |
+| ❌ Weak pure temporal model | No sequence memory unless features encode it |
+| ❌ Novelty mode nuances | Must fit carefully for production scoring |
+
+### When to use / when NOT to use
+
+| Use when | Do **not** use when |
+|----------|---------------------|
+| Multiple density regimes in feature space | Millions of points with tight latency (prefer IF) |
+| Medium-sized entity fleets | Univariate seasonal KPIs (STL/SHESD) |
+| Complement Isolation Forest in ensemble | Sequence-of-events log detection |
+| Trace/attribute local oddities | Very high dimension without reduction |
+
 ---
 
 ## 10. One-Class SVM
 
-One-Class SVM learns a **boundary around normal data** in high-dimensional space. Any point outside that boundary is anomalous.
+> [!NOTE]
+> **KEY IDEA**
+> One-Class SVM learns a **soft boundary around "normal only"** data in a kernel space. Anything outside the boundary is novel — you never train on labeled anomalies.
+
+### Problem it solves
+
+When you have a modest set of high-dimensional **normal** examples (trace attributes, request fingerprints) and want a decision boundary for novelty — not isolation-by-random-cuts — OC-SVM is a classic tool. Better than Isolation Forest for small-n, high-d with RBF kernel in some regimes.
+
+### Core idea (intuition)
+
+One-Class SVM learns a **boundary around normal data** in high-dimensional space. Any point outside that boundary is anomalous. Parameter `nu` upper-bounds the fraction of training points allowed outside / soft-margin errors; kernel (usually RBF) shapes a non-linear enclosure.
+
+### Input data on AIOps pipeline
+
+| Aspect | Typical AIOps choice |
+|--------|----------------------|
+| Signal type | Feature vectors of normal operation (traces, request meta, metric snapshots) |
+| Size | Prefer **small–medium** n; large n → slow train/infer |
+| Features | Scaled numeric features; RBF sensitive to scale |
+| Labels | Normal-only training set (purge known incident windows) |
+| Params | `nu` (~expected outlier fraction), `gamma` (kernel width) |
+| Source | Offline fit; online `decision_function` / `score_samples` |
+
+### How the algorithm works (step-by-step)
+
+1. Collect normal-only matrix; standardize features.
+2. Fit One-Class SVM with RBF (or linear) kernel → support vectors define boundary.
+3. For new point, compute signed distance / score to boundary.
+4. Negative / low score → outside → anomalous; normalize to 0–1 for ensemble.
+5. Tune `nu` against holdout FP rate; retrain after major behavior shifts.
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from sklearn.svm import OneClassSVM
@@ -880,7 +1336,17 @@ class OneClassSVMDetector:
         return scores
 ```
 
-**Trade-off comparison with Isolation Forest**:
+</details>
+
+### Output
+
+| Field | Meaning |
+|-------|---------|
+| score | Distance-derived anomaly score (0–1 after norm) |
+| label | Optional ±1 from `predict` |
+| Event | `algorithm=one_class_svm`, `nu`, model version, entity |
+
+### Pros / cons (vs Isolation Forest)
 
 | Criterion | One-Class SVM | Isolation Forest |
 |-----------|---------------|------------------|
@@ -889,6 +1355,16 @@ class OneClassSVMDetector:
 | High-dimensional data | ✅ Works well with RBF | ❌ Degrades |
 | Large datasets | ❌ Slow | ✅ Fast |
 | Memory | High (kernel matrix) | Low |
+| Explainability | Boundary opaque | Also limited, but path stats possible |
+
+### When to use / when NOT to use
+
+| Use when | Do **not** use when |
+|----------|---------------------|
+| Small high-dim datasets (trace attributes) | Large streaming metric fleets (use IF) |
+| Normal-only training is clean and curated | Need O(1) or near-constant memory online |
+| RBF boundary fits the normal manifold | Strong temporal sequence structure (use LSTM) |
+| Offline / low-QPS scoring | You need simple on-call math explanations |
 
 **Production**: One-Class SVM fits **small high-dimensional datasets** better (e.g., trace attribute anomaly). Isolation Forest is better for **large streaming datasets**.
 
@@ -896,7 +1372,15 @@ class OneClassSVMDetector:
 
 ## 11. LSTM for Time-Series Anomaly Detection
 
-### Intuition
+> [!NOTE]
+> **KEY IDEA**
+> LSTM anomaly detection is **forecast error as a sensor**: the model learns "what comes next" under normal ops; large `|actual − predicted|` means the recent trajectory left the learned manifold.
+
+### Problem it solves
+
+Statistical detectors treat points (or short windows) without deep sequential memory. Many failures are **shape** problems: rising staircase leak, oscillating latency, delayed recovery. LSTM captures temporal dependence that EWMA/Z/IF miss when features are only snapshots.
+
+### Core idea (intuition)
 
 LSTM (Long Short-Term Memory) is a recurrent neural network that learns **temporal patterns**. For anomaly detection:
 
@@ -926,10 +1410,36 @@ graph LR
     PRED --> ERR
     ERR --> THRESH
 
-    style LSTM fill:#4a148c,color:#fff
+    style Input fill:#dbeafe,color:#1e293b
+    style LSTM fill:#f3e8ff,color:#1e293b
+    style Compare fill:#dcfce7,color:#1e293b
 ```
 
+### Input data on AIOps pipeline
+
+| Aspect | Typical AIOps choice |
+|--------|----------------------|
+| Signal type | Univariate or multivariate metric sequences |
+| History for train | **2–4+ weeks** mostly normal data |
+| Sequence length | e.g. 60 points (5 min @ 5s, or 5h @ 5m — pick to match dynamics) |
+| Features | Scaled series; multi-metric channels as `input_size > 1` |
+| Inference buffer | Rolling deque of last `seq_len` points per series |
+| Threshold | Calibrate error mean/std on clean validation; use k-σ or quantile |
+| Runtime | Prefer GPU/batch or selective high-value services |
+
+### How the algorithm works (step-by-step)
+
+1. Slide windows over normal history: input `x[t−L:t]`, target `x[t]` (or multi-step).
+2. Train LSTM + linear head with MSE/MAE; clip gradients.
+3. On validation, collect prediction errors → mean/std or high quantile threshold.
+4. Online: append point to buffer; when full, predict; compare to actual.
+5. `z = (error − μ_err) / σ_err`; anomaly if `z > k`.
+6. Score for ensemble; include prediction and error in event context.
+
 ### Implementation
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import torch
@@ -1022,7 +1532,12 @@ class LSTMDetectionService:
         }
 ```
 
+</details>
+
 ### LSTM Training Pipeline
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import torch.optim as optim
@@ -1075,7 +1590,18 @@ def train_lstm(
     return model
 ```
 
-### LSTM Trade-offs
+</details>
+
+### Output
+
+| Field | Meaning |
+|-------|---------|
+| `anomaly` | bool from error z-score / threshold |
+| `score` | 0–1 from normalized error severity |
+| `error`, `prediction`, `z_score` | For dashboards and human validation |
+| Event | `algorithm=lstm`, model version, seq_len, service/metric |
+
+### Pros / cons
 
 | Trait | Detail |
 |-------|--------|
@@ -1088,15 +1614,65 @@ def train_lstm(
 | ❌ Sensitive to distribution drift | Must retrain when the system changes a lot |
 | ❌ Black box | Hard to explain exactly why it flagged |
 
+### When to use / when NOT to use
+
+| Use when | Do **not** use when |
+|----------|---------------------|
+| Shape/trajectory anomalies matter | Cold-start service with days of data only |
+| Critical services justify MLOps cost | Need sub-ms scoring on all series |
+| Secondary high-confidence score after stats | Simple threshold/SLO burn is already perfect |
+| Multivariate short sequences fit in memory | You lack GPU/batch path and scale is huge |
+
+> [!WARNING]
+> If incidents are **left in the training set**, the model learns outages as "normal" and fails silent. Curate training windows; freeze or retrain after major architecture changes.
+
 **Production**: Deploy LSTM as a **secondary detector** alongside statistics. Use statistics (EWMA/Z-score) for fast first-pass alerts. Use LSTM for higher-confidence scoring into the correlation engine.
 
 ---
 
 ## 12. Transformer-Based Detection
 
-Transformers use **self-attention** to capture long-range temporal links — often outperforming LSTM on complex multivariate time series.
+> [!NOTE]
+> **KEY IDEA**
+> Transformers replace recurrence with **self-attention**: every timestep can attend to any other in the window. For anomaly detection, that means long-range context (morning vs now, deploy spike vs weekend) without LSTM's sequential bottleneck — often with reconstruction or association-discrepancy scores.
+
+### Problem it solves
+
+LSTM struggles with very long dependencies and heavy multivariate coupling across long windows. Transformers excel when anomalies depend on **global structure** inside a long context (multi-metric, multi-hour patterns) and you can afford more compute for accuracy.
+
+### Core idea (intuition)
+
+Transformers use **self-attention** to capture long-range temporal links — often outperforming LSTM on complex multivariate time series. Common AIOps setups:
+
+1. Encode a window of multivariate points.
+2. Reconstruct the window (autoencoder-style) **or** predict / model association patterns (Anomaly Transformer).
+3. Large reconstruction error (or association discrepancy) → anomaly.
+4. Often take **max** or mean error over the window as the score.
+
+### Input data on AIOps pipeline
+
+| Aspect | Typical AIOps choice |
+|--------|----------------------|
+| Signal type | Multivariate metric windows (service-level matrix) |
+| Window `seq_len` | e.g. 100 steps of 5–15 features |
+| Train data | Weeks of normal-ish history; GPU training |
+| Inference | Batch or near-realtime on priority services |
+| Features | Standardized multi-metric channels + optional time encodings |
+| Mode | Prefer offline/batch analysis; selective online |
+
+### How the algorithm works (step-by-step)
+
+1. Project inputs to `d_model`; add positional encoding.
+2. Stack Transformer encoder layers (multi-head self-attention + FFN).
+3. Project back to feature space (reconstruction) or compute association discrepancy heads.
+4. Per-timestep error = MSE(input, reconstruction); aggregate (max/mean).
+5. Threshold from validation error distribution.
+6. Emit score + which timesteps/features contributed most error.
 
 ### Key Architecture: Anomaly Transformer
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import torch
@@ -1167,13 +1743,53 @@ def compute_anomaly_score(
     return float(error.max().item())
 ```
 
+</details>
+
+### Output
+
+| Field | Meaning |
+|-------|---------|
+| `score` | Aggregated reconstruction / discrepancy error |
+| Optional mask | Which timesteps exceeded threshold |
+| Context | Feature-wise error contribution if computed |
+| Event | `algorithm=transformer`, model version, window, service |
+
+### Pros / cons
+
+| Pros/Cons | Detail |
+|-----------|--------|
+| ✅ Long-range multivariate context | Strong accuracy on complex series |
+| ✅ Parallelizable attention | Better GPU utilization than pure RNN |
+| ✅ Flexible heads | Reconstruct, forecast, or association discrepancy |
+| ❌ Compute & memory heavy | Not for every metric at 5s cadence |
+| ❌ Data hungry | Needs careful train/val hygiene |
+| ❌ Harder ops | Serving, versioning, drift monitoring |
+| ❌ Less explainable than stats | Needs feature-error tooling for humans |
+
+### When to use / when NOT to use
+
+| Use when | Do **not** use when |
+|----------|---------------------|
+| Critical multivariate series, batch or few online streams | Fleet-wide first-pass detection |
+| Long windows where LSTM underperforms | Tiny datasets / no GPU budget |
+| Research→prod for high-value KPIs | Need simple audit math only |
+| Offline backfill of historical incidents | Sub-ms edge detection |
+
 **Production**: Transformers deliver the highest accuracy today but need more compute than LSTM. Prefer for **offline model training** and **batch analysis**. For realtime AIOps pipelines, LSTM is the more practical balance.
 
 ---
 
 ## 13. Log Anomaly Detection — Drain Algorithm
 
-### Intuition
+> [!NOTE]
+> **KEY IDEA**
+> Drain turns free-text logs into a **catalog of templates**. Anomalies are then simple: **never-seen template** (new error shape / deploy) or **rate spike of a known template** — without needing NLP on every line.
+
+### Problem it solves
+
+Raw logs are high-cardinality and noisy; string matching does not scale. You need stable **event types** for counting, alerting, and as vocabulary for sequence models (DeepLog). Drain is the industry workhorse for online log parsing.
+
+### Core idea (intuition)
 
 Logs from many services mix **static text** (log template) and **dynamic values** (IDs, timestamps, values):
 
@@ -1183,14 +1799,39 @@ Template (static):  "User <*> logged in from <*>"
 Variables:          ["john@example.com", "192.168.1.1"]
 ```
 
-**Drain** (a log parsing algorithm) groups log lines into **templates** efficiently using a prefix tree.
+**Drain** groups log lines into **templates** efficiently using a fixed-depth prefix tree and token similarity. Detection layers on top:
 
-**Anomaly detection**:
-1. Parse logs into templates with Drain
-2. Detect newly appearing templates (never seen before = anomaly risk)
-3. Detect anomalous frequency of known templates
+1. Parse logs into templates with Drain  
+2. Detect newly appearing templates (never seen before = anomaly risk)  
+3. Detect anomalous frequency of known templates (EWMA/Z on rate)
+
+### Input data on AIOps pipeline
+
+| Aspect | Typical AIOps choice |
+|--------|----------------------|
+| Signal type | Application / platform log lines |
+| Source | Kafka log topic, Loki stream, Fluent Bit |
+| Fields | Prefer `message` + `service` + `level` + `trace_id` |
+| State | Per-service (or global) Drain miner + template counters |
+| Windows | Rate windows 1–5 minutes per `template_id` |
+| Params | `sim_threshold`, tree `depth`, max children |
+
+> [!TIP]
+> Run Drain **per service** (or domain). A global tree mixes unrelated vocabularies and creates brittle templates.
+
+### How the algorithm works (step-by-step)
+
+1. Tokenize the log line (whitespace / custom).
+2. Walk/update Drain prefix tree by token length and content.
+3. Match or create a template; replace variables with `<*>`.
+4. If `change_type == created` (new template) and still rare → high anomaly score.
+5. Else increment template count; feed rate into EWMA/Z for frequency anomalies.
+6. Publish event with template string, id, raw snippet, trace_id if present.
 
 ### Drain Implementation
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from drain3 import TemplateMiner
@@ -1264,9 +1905,14 @@ def process_log_stream(kafka_consumer, drain_detector: DrainLogDetector):
             )
 ```
 
+</details>
+
 ### Log Frequency Anomaly
 
 Besides new templates, sudden frequency changes of known templates also indicate anomalies:
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from collections import defaultdict, deque
@@ -1297,15 +1943,109 @@ class LogFrequencyDetector:
         return {"template_id": template_id, "rate": current_rate}
 ```
 
+</details>
+
+### Output
+
+| Field | Meaning |
+|-------|---------|
+| `anomaly` | bool — new template and/or abnormal rate |
+| `score` | High fixed score for new template; rate-based score for frequency |
+| `template`, `template_id` | Stable event type for correlation / DeepLog |
+| `reason` | e.g. `new_log_template`, `template_rate_spike` |
+| Event | `signal_type=LOG`, service, raw snippet, `trace_id` |
+
+### Pros / cons
+
+| Pros/Cons | Detail |
+|-----------|--------|
+| ✅ Online, streaming-friendly | Constant-ish work per log line |
+| ✅ Produces stable event vocabulary | Enables counting and DeepLog |
+| ✅ New-template signal | Catches new errors and bad deploys early |
+| ✅ Explainable | Humans read the template string |
+| ❌ Parsing quality sensitive | Threshold/depth mis-tune → template explosion or collapse |
+| ❌ Not semantic | "Same meaning, different wording" can split templates |
+| ❌ Frequency needs separate model | Drain alone does not score rates |
+| ❌ Multi-line / structured JSON logs need preprocessing | |
+
+### When to use / when NOT to use
+
+| Use when | Do **not** use when |
+|----------|---------------------|
+| High-volume free-text application logs | Already structured events with stable enums |
+| Need template catalog for AIOps pipeline | You only care about metric spikes |
+| Detect new error shapes after deploy | Logs are pure PII blobs with no static skeleton |
+| Feed event IDs into DeepLog | You need deep sequence semantics without a parser stage |
+
 ---
 
 ## 14. Log Anomaly Detection — DeepLog
 
-DeepLog (Min Du et al., 2017) uses an **LSTM to model sequences of log events** in a workflow:
+> [!NOTE]
+> **KEY IDEA**
+> DeepLog does not read English — it models **workflows as sequences of template IDs**. If the next event is outside the model's top-k guesses given recent history, the execution path left the normal script.
 
-1. Parse logs into **event keys** (template IDs from Drain)
-2. Train LSTM to predict the **next event key** from recent history
-3. Anomaly: observed event differs from the model's prediction
+### Problem it solves
+
+Template counts miss **order**. Many failures are wrong sequences: retry storms, missing "success after start", auth before request inversion. DeepLog (Min Du et al., 2017) learns normal event order per system and flags deviant paths.
+
+### Core idea (intuition)
+
+DeepLog uses an **LSTM over log event keys**:
+
+1. Parse logs into **event keys** (template IDs from Drain)  
+2. Train LSTM to predict the **next event key** from recent history  
+3. Anomaly: observed event is **not in top-k** predicted candidates  
+
+```mermaid
+graph LR
+    subgraph Parse["Drain"]
+        L[Log lines] --> T[Template IDs]
+    end
+    subgraph Seq["Recent window"]
+        E1[e_{t-10}] --> E2[e_{t-9}] --> E3[...] --> E4[e_{t-1}]
+    end
+    subgraph Model["DeepLog LSTM"]
+        PRED[Top-k next events]
+    end
+    subgraph Decision["Decision"]
+        OBS[Observed e_t]
+        CMP{e_t in top-k?}
+    end
+    T --> Seq --> PRED --> CMP
+    OBS --> CMP
+
+    style Parse fill:#dbeafe,color:#1e293b
+    style Model fill:#f3e8ff,color:#1e293b
+    style Decision fill:#dcfce7,color:#1e293b
+```
+
+### Input data on AIOps pipeline
+
+| Aspect | Typical AIOps choice |
+|--------|----------------------|
+| Signal type | Sequences of Drain `template_id` **per session / request / service** |
+| Prerequisite | Stable Drain (or equivalent) vocabulary |
+| Window | Last `seq_len` events (e.g. 10) as context |
+| Training | Normal-period sequences; vocabulary size = #templates |
+| Grouping key | Critical: group by `trace_id` / session so order is meaningful |
+| Params | `top_k` (e.g. 9), embedding size, LSTM layers |
+
+> [!WARNING]
+> Mixing unrelated services into one sequence destroys the workflow model. Always key sequences by a coherent execution identity.
+
+### How the algorithm works (step-by-step)
+
+1. Map each log line → template id via Drain.  
+2. Maintain sliding context `[e_{t−L}, …, e_{t−1}]` for the entity.  
+3. Embed IDs → LSTM → logits over vocabulary.  
+4. Take top-k predicted next IDs.  
+5. If actual `e_t` ∉ top-k → sequence anomaly.  
+6. Optional score: rank of true event or 1 − softmax probability.  
+7. Emit event with context window, predicted top-k, observed id.
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import torch
@@ -1358,6 +2098,38 @@ class DeepLog(nn.Module):
         return next_event not in top_k_events
 ```
 
+</details>
+
+### Output
+
+| Field | Meaning |
+|-------|---------|
+| `anomaly` | bool — observed event outside top-k |
+| `score` | Optional from rank / probability |
+| Context | Recent event id window + top-k predictions |
+| Event | `algorithm=deeplog`, service/session, template ids, model version |
+
+### Pros / cons
+
+| Pros/Cons | Detail |
+|-----------|--------|
+| ✅ Captures workflow order | Missed by pure template rates |
+| ✅ Builds on Drain vocabulary | Clear pipeline split parse → sequence |
+| ✅ Top-k rule is practical | Allows legitimate multi-path systems |
+| ❌ Needs stable parsing | Template drift breaks IDs |
+| ❌ Training & grouping care | Wrong session key → nonsense |
+| ❌ New templates OOV | Need unknown-token / retrain strategy |
+| ❌ Heavier than Drain-only | Inference + model ops |
+
+### When to use / when NOT to use
+
+| Use when | Do **not** use when |
+|----------|---------------------|
+| Services with repeatable log workflows | Chaotic logs with no stable templates |
+| Detect path deviations, retry storms, missing steps | Only care about new error strings (Drain enough) |
+| Trace/session-grouped sequences available | Cannot correlate lines into ordered sessions |
+| After Drain is production-stable | Brand-new services still exploding templates |
+
 ---
 
 ## 15. Algorithm Selection Guide
@@ -1382,9 +2154,9 @@ graph TD
     STAT -.->|After 2+ weeks| STL_DET
     STL_DET -.->|Ensemble with| LSTM_DET
 
-    style STAT fill:#2e7d32,color:#fff
-    style LSTM_DET fill:#4a148c,color:#fff
-    style BATCH fill:#1565c0,color:#fff
+    style STAT fill:#dcfce7,color:#1e293b
+    style LSTM_DET fill:#f3e8ff,color:#1e293b
+    style BATCH fill:#dbeafe,color:#1e293b
 ```
 
 ### Production Recommendation Table
@@ -1402,6 +2174,9 @@ graph TD
 ---
 
 ## 16. Feature Engineering
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import numpy as np
@@ -1473,6 +2248,8 @@ def extract_features(
     return features
 ```
 
+</details>
+
 ---
 
 ## 17. Production Architecture
@@ -1523,14 +2300,17 @@ flowchart TD
     StatLayer --> METRICS
     MLLayer --> METRICS
 
-    style Input fill:#1565c0,color:#fff
-    style StatLayer fill:#2e7d32,color:#fff
-    style MLLayer fill:#4a148c,color:#fff
-    style LogLayer fill:#e65100,color:#fff
-    style Ensemble fill:#b71c1c,color:#fff
+    style Input fill:#dbeafe,color:#1e293b
+    style StatLayer fill:#dcfce7,color:#1e293b
+    style MLLayer fill:#f3e8ff,color:#1e293b
+    style LogLayer fill:#ffedd5,color:#1e293b
+    style Ensemble fill:#fecaca,color:#1e293b
 ```
 
 ### Ensemble Weighting Strategy
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 def ensemble_score(
@@ -1577,6 +2357,8 @@ def ensemble_score(
     return total_score / total_weight
 ```
 
+</details>
+
 ---
 
 ## 18. Model Training and Retraining Pipeline
@@ -1616,12 +2398,15 @@ graph TD
     Eval -->|Pass threshold| CANARY --> PROMOTE
     PROMOTE -.->|FPR spike| ROLLBACK
 
-    style Collection fill:#1565c0,color:#fff
-    style Train fill:#4a148c,color:#fff
-    style Deploy fill:#2e7d32,color:#fff
+    style Collection fill:#dbeafe,color:#1e293b
+    style Train fill:#f3e8ff,color:#1e293b
+    style Deploy fill:#dcfce7,color:#1e293b
 ```
 
 ### Retraining Schedule
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 retraining_schedule:
@@ -1650,6 +2435,8 @@ retraining_schedule:
     training_data: last_30_days_logs
 ```
 
+</details>
+
 ---
 
 ## 19. False Positive Management
@@ -1665,6 +2452,9 @@ False Positives (FPs) are the leading cause of alert fatigue and AIOps adoption 
 | P3 (record for analysis) | <20% | Trend analysis; no immediate action |
 
 ### FP Reduction Techniques
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 def apply_fp_reduction(
@@ -1718,6 +2508,8 @@ def apply_fp_reduction(
     return anomaly_event
 ```
 
+</details>
+
 ---
 
 ## 20. Common Mistakes
@@ -1738,6 +2530,9 @@ def apply_fp_reduction(
 ---
 
 ## 21. Monitoring the Detection System
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```promql
 # Anomaly detection throughput
@@ -1760,7 +2555,12 @@ histogram_quantile(0.99,
 kafka_consumer_group_lag_sum{group="anomaly-detector-group"}
 ```
 
+</details>
+
 ### Critical Alerts
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 - alert: AnomalyDetectionHighFPRate
@@ -1785,6 +2585,8 @@ kafka_consumer_group_lag_sum{group="anomaly-detector-group"}
     severity: critical
 ```
 
+</details>
+
 ---
 
 ## 22. Scaling
@@ -1792,6 +2594,9 @@ kafka_consumer_group_lag_sum{group="anomaly-detector-group"}
 ### Horizontal Scaling Strategy
 
 Each detector service is designed **stateless at the inference layer** (history state lives in Redis):
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 deployment:
@@ -1819,9 +2624,14 @@ deployment:
       node.kubernetes.io/instance-type: "g4dn.xlarge"  # AWS GPU EC2 family
 ```
 
+</details>
+
 ### Partitioned Processing
 
 To scale, assign Kafka partitions to detector replicas:
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 # Each detector replica only processes its assigned partitions
@@ -1833,6 +2643,8 @@ consumer_config = {
     "group.id": "lstm-detector-group",
 }
 ```
+
+</details>
 
 ---
 
@@ -1884,6 +2696,9 @@ Three phenomena look similar on dashboards but demand completely different respo
 > [!WARNING]
 > **Anti-pattern**: Treat every shift as an anomaly. After Black Friday or a migration, the old model will "scream" continuously. Without **change-aware suppression + retrain**, on-call will mute the detector — and you lose the whole detection layer when a real incident hits.
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```python
 def classify_shift(
     metric_series,
@@ -1915,6 +2730,8 @@ def classify_shift(
     return "point_or_contextual_anomaly"
 ```
 
+</details>
+
 **Decision playbook**:
 
 ```
@@ -1925,7 +2742,7 @@ shift_type == regime_change         → reset baseline; require human "accept ne
 shift_type == point_or_contextual   → normal anomaly pipeline → Kafka aiops-anomalies
 ```
 
-See commercial seasonality scenarios in [14 — E-commerce & Banking](../15-ecommerce-banking/README.md) and real drift incidents in [15 — Famous Incidents](../16-famous-incidents/README.md).
+See commercial seasonality scenarios in [15 — E-commerce & Banking](../15-ecommerce-banking/README.md) and real drift incidents in [16 — Famous Incidents](../16-famous-incidents/README.md).
 
 ### 25.2 Alert Fatigue from Over-Sensitive Models
 
@@ -1951,6 +2768,9 @@ See commercial seasonality scenarios in [14 — E-commerce & Banking](../15-ecom
 | Service-tier policy (P1 only for checkout/payment) | Protect sleep | Blind spot on internal services |
 | Feedback-driven threshold | Learn from on-call | Bias if labels are poor |
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```yaml
 # Tiered policy — avoid "every metric can page"
 detection_policy:
@@ -1966,6 +2786,8 @@ detection_policy:
     page_min_score: 0.85
     notify: slack_only  # no PagerDuty
 ```
+
+</details>
 
 ### 25.3 Ensemble Disagreement — Edge Cases
 
@@ -1985,6 +2807,9 @@ Ensemble is not always "safer than one model". Hard cases:
 > - **2/3 fire** → page candidate after `min_duration`
 > - **3/3 fire right after deploy** → **do not** trust immediately; check change window first
 > - **Disagreement lasting > 1 hour on same metric** → ticket for ML platform (model drift / feature bug)
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 def ensemble_decision(votes: dict, context: dict) -> dict:
@@ -2023,6 +2848,8 @@ def ensemble_decision(votes: dict, context: dict) -> dict:
     return {"action": "log_only", "score": max(votes.values())}
 ```
 
+</details>
+
 ### 25.4 Labeling Feedback Loop from On-Call
 
 No clean labels → no meaningful retrain. But **on-call labels are biased**:
@@ -2048,6 +2875,9 @@ After resolve:
   - Postmortem root_cause_service → TP for anomalies on same service ± window
 ```
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```python
 def build_retrain_labels(feedback_rows: list, auto_signals: list) -> list:
     """
@@ -2072,6 +2902,8 @@ def build_retrain_labels(feedback_rows: list, auto_signals: list) -> list:
             })
     return [x for x in labels if x["label_confidence"] >= 0.55]
 ```
+
+</details>
 
 **Anti-poisoning feedback**: rate-limit labels per user; audit users with continuous FP rate > 90%; separate "mute for me" from "global FP".
 
@@ -2116,7 +2948,7 @@ Does the metric have a clear business threshold?
 > [!NOTE]
 > **Check question**: Detector silent for 48h on a 100-service production estate — which **3 signals** do you check first before believing "the system is healthy"?
 
-Platform-level operations: [12 — Production](../13-production/README.md). How Big Tech tiers detection: [13 — Big Tech AIOps](../14-bigtech-aiops/README.md).
+Platform-level operations: [13 — Production](../13-production/README.md). How Big Tech tiers detection: [14 — Big Tech AIOps](../14-bigtech-aiops/README.md).
 
 ---
 

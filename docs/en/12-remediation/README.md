@@ -55,6 +55,25 @@ After this chapter, continue to [12 — Production Operations](../13-production/
 
 ---
 
+
+## How to read this chapter (concept-first)
+
+> [!IMPORTANT]
+> **Concepts first — code second**
+> From chapter 08 onward, prefer: **problem → idea → input data → algorithm/model → output → pros/cons → when to use**. Implementation lives under **See the code below** (click to expand). Goal: understand *why it works on AIOps telemetry*, not only copy-paste snippets.
+
+| Step | Question |
+|------|----------|
+| 1. Problem | What pain does this solve (noise, cascade, MTTR…)? |
+| 2. Idea | 2–3 sentence intuition, no formulas |
+| 3. Data in | Which metrics/logs/traces/events, windows, features? |
+| 4. Algorithm | Computation steps / model flow |
+| 5. Output | Event schema, score, rank, action proposal? |
+| 6. Trade-offs | Pros / cons / cost / explainability |
+| 7. When | When to use — and when **not** to |
+
+---
+
 ## 1. Why Automated Remediation?
 
 ![Remediation Safety Pipeline](../../assets/diagrams/05-remediation-safety.png)
@@ -179,10 +198,10 @@ flowchart TD
     Execution --> AUDIT
     AUDIT --> HISTORY
 
-    style Trigger fill:#1565c0,color:#fff
-    style Engine fill:#4a148c,color:#fff
-    style Storage fill:#2e7d32,color:#fff
-    style Output fill:#e65100,color:#fff
+    style Trigger fill:#dbeafe,color:#1e293b
+    style Engine fill:#f3e8ff,color:#1e293b
+    style Storage fill:#dcfce7,color:#1e293b
+    style Output fill:#ffedd5,color:#1e293b
 ```
 
 > [!NOTE]
@@ -252,6 +271,9 @@ These actions are safe, reversible, and low risk:
 ## 4. Kubernetes-Based Remediation
 
 ### Kubernetes Remediation Executor
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from kubernetes import client, config
@@ -500,6 +522,8 @@ class KubernetesRemediationExecutor:
         return False  # Timed out
 ```
 
+</details>
+
 > [!WARNING]
 > **No freeform `subprocess` shell from the LLM**
 > The `kubectl rollout undo` example above is a **fixed command in code**, with validated params (name/namespace/revision). The LLM may only choose `action_type` + schema params — never arbitrary shell strings. See [§21 Runbook-as-Code](#21-runbook-as-code-vs-llm-freeform).
@@ -513,6 +537,9 @@ class KubernetesRemediationExecutor:
 ## 5. AWS SSM Automation
 
 For resources not on Kubernetes (RDS, ElastiCache, EC2), use AWS SSM Automation:
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import boto3
@@ -658,6 +685,8 @@ CUSTOM_SSM_DOCUMENTS = {
 }
 ```
 
+</details>
+
 > [!CAUTION]
 > **SSM `AWS-RunShellScript` is a double-edged sword**
 > Document `aiops-flush-elasticache` is only safe if parameters are whitelisted + dual-control. **Forbid** LLM-supplied arbitrary `commands[]`. Banking/PCI: prefer managed APIs (ElastiCache API) over shell on bastion — [14 — Banking](../15-ecommerce-banking/README.md).
@@ -665,6 +694,63 @@ CUSTOM_SSM_DOCUMENTS = {
 ---
 
 ## 6. Safety Framework
+
+Safety is the product surface of remediation — not a helper library. Every path (Kafka RCA, Slack approve, rule engine) must pass the same gate composition.
+
+### Problem / idea
+
+| | |
+|--|--|
+| **Problem** | Fast wrong actions beat slow right ones on outage cost. Auto-remediation without gates creates **AIOps-caused SEVs** (thundering herd restarts, capacity cliffs). |
+| **Idea** | Compose independent checks: namespace protect, confidence floor, rate limit, action whitelist, pre-health, blast radius, freeze/compliance, dual-control — **fail closed** on unknown. |
+
+Cross-link: automation paradox in [§1](#1-why-automated-remediation); risk matrix [§19](#19-risk-decision-matrix).
+
+### Inputs from the AIOps data plane
+
+| Input | Source | Role |
+|-------|--------|------|
+| Action intent | LLM/RCA/rule | `action_type`, params, service |
+| Confidence + evidence_quality | Ch10/11 | Soft gate (not sole) |
+| Open incident / locks | Redis | Per-service advisory lock |
+| Freeze / change calendar | Policy plane | Hard block |
+| Recent remediation history | Audit store | Rate limits, flip-flop detect |
+
+### How it works (steps)
+
+```
+1. Parse + JSON Schema validate against catalog (reject freeform)
+2. Run SafetyCheck chain; any blocks_on_failure → deny + notify
+3. Map risk tier → AUTO | APPROVAL | BLOCK
+4. Acquire per-service lock; enforce global/per-action rate limits
+5. If pass → executor; always write audit event (allow or deny)
+```
+
+### Output / what on-call sees
+
+```
+GATE DENY · confidence 0.62 < 0.75
+GATE DENY · action scale_down not whitelist Tier1
+GATE ALLOW · Tier1 rolling_restart · lock acquired · audit#…
+```
+
+Deny reasons must be human-readable at 3am.
+
+### Pros / cons + when
+
+| Pros | Cons |
+|------|------|
+| Prevents most catastrophic automation | Over-tight gates reduce auto-MTTR benefit |
+| Auditable decisions | Misconfigured whitelist = silent no-ops or holes |
+| Same path for human and machine | Must be HA — gate down should not fail open |
+
+| Use when | Do **not** |
+|----------|------------|
+| Always, no production bypass in code | “Emergency bypass” flag in hot path without dual-control |
+| Before any mutate | Trust model confidence alone without whitelist |
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from dataclasses import dataclass
@@ -790,6 +876,8 @@ class SafetyFramework:
         return True, "approved"
 ```
 
+</details>
+
 > [!NOTE]
 > **KEY IDEA — Safety is composition, not a single if**
 > Namespace deny-list, confidence floor, rate limit, whitelist tier, pre-health check are **AND**. One check fails → fail-closed. Extensions: change-freeze calendar, dual-control, remediation circuit breaker, service advisory lock — see [§20](#20-circuit-breakers-rate-limits--dual-control).
@@ -799,6 +887,9 @@ class SafetyFramework:
 > The 0.75 threshold is only policy. Combining evidence score from [09 — RCA](../10-root-cause-analysis/README.md) (multi-signal) matters more than one model float. Wrong RCA + high confidence = fast accident.
 
 ### Advisory lock & concurrent incidents
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import redis
@@ -820,11 +911,16 @@ class ServiceActionLock:
             self.r.delete(f"remediation:lock:{service}")
 ```
 
+</details>
+
 ---
 
 ## 7. Blast Radius Calculation
 
 Before executing any remediation action, calculate its blast radius:
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import networkx as nx
@@ -873,6 +969,8 @@ def calculate_blast_radius(
     }
 ```
 
+</details>
+
 > [!TIP]
 > **Blast radius ≠ graph topology only**
 > Add: canary traffic %, dependency fan-out, shared DB/queue, multi-tenant blast, regulatory blast (PII path). Banking: actions touching core-ledger always `DO_NOT_AUTO_REMEDIATE` regardless of graph score — [14 — Banking](../15-ecommerce-banking/README.md).
@@ -882,6 +980,9 @@ def calculate_blast_radius(
 ## 8. Rollback Design
 
 Every automated remediation action must ship with a clearly defined rollback plan:
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from dataclasses import dataclass, field
@@ -1017,6 +1118,8 @@ class RollbackMonitor:
         return improvements_seen / total_checks >= 0.6 if total_checks > 0 else False
 ```
 
+</details>
+
 > [!IMPORTANT]
 > **Rollback is also a dangerous action**
 > Auto-rollback while metrics are still unstable (cold start, deploy lag) can create flip-flops. Need: min wait, hysteresis, max_auto_rollback_per_incident=1, then escalate to humans.
@@ -1025,7 +1128,54 @@ class RollbackMonitor:
 
 ## 9. Canary-Based Remediation
 
-For higher-risk remediation actions, trial on a small cohort first:
+For higher-risk remediation actions, trial on a small cohort first. Canary is how you keep Tier1 automation from becoming a cluster-wide outage amplifier.
+
+### Problem / idea
+
+| | |
+|--|--|
+| **Problem** | Scaling all replicas or flipping env on 100% of pods can saturate a shared DB or trigger a retry storm before you notice. |
+| **Idea** | Apply change to 1–10% (or 1 pod), **verify SLIs**, abort+rollback on red, only then ramp — progressive delivery for remediation, not only for deploys. |
+
+### Inputs from the AIOps data plane
+
+| Input | Source | Role |
+|-------|--------|------|
+| Action + deployment target | Catalog executor | What to mutate |
+| Canary fraction / wait | Policy | Scope and soak |
+| Error rate / latency / saturation | Prometheus | Abort criteria |
+| Business KPI (optional) | Product metrics | Catch silent drop |
+
+### How it works (steps)
+
+```
+1. Snapshot pre-metrics
+2. Apply to canary cohort (Argo Rollouts / pod subset / flag)
+3. Wait verification_seconds (effect lag)
+4. If SLI fail → rollback canary; status=canary_failed; page
+5. Else ramp 25% → 50% → 100% with abort criteria each step
+6. Soak; emit audit + metrics
+```
+
+### Output / what on-call sees
+
+`canary_verified=true` with phase timeline, or `canary_failed` + auto-rollback once + freeze further auto for service N minutes.
+
+### Pros / cons + when
+
+| Pros | Cons |
+|------|------|
+| Bounds blast of wrong action | Slower than big-bang fix |
+| Builds trust for more Tier1 | Bad abort metrics cause false aborts or blind ramps |
+| Works with progressive delivery tooling | Not all actions are canary-able (DNS, global config) |
+
+| Use when | Do **not** skip when |
+|----------|----------------------|
+| Scale, env, rollout-affecting mutates | “I’m sure” + 100% blast on shared dependency |
+| After any LLM-proposed change | Action is already dual-control Tier3 (use change mgmt) |
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import asyncio
@@ -1096,6 +1246,8 @@ class CanaryRemediationExecutor:
         return True
 ```
 
+</details>
+
 ### Progressive rollout of remediation actions
 
 Canarying one “pod group” is not enough — production should use **progressive + abort criteria**:
@@ -1123,6 +1275,9 @@ Abort if: error_rate↑, p99↑, bad saturation, business KPI↓
 ## 10. GitOps Remediation
 
 For configuration changes that must be tracked via code review:
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import subprocess
@@ -1227,9 +1382,62 @@ class GitOpsRemediationExecutor:
         }
 ```
 
+</details>
+
 ---
 
 ## 11. Verification Pipeline
+
+Execution without verification is **hope-driven ops**. The pipeline defines success metrics, waits for effect lag, and triggers rollback when the fix did not fix.
+
+### Problem / idea
+
+| | |
+|--|--|
+| **Problem** | Action returns HTTP 200 from the API while error_rate stays high (or recovers then metastable-fails 15m later). |
+| **Idea** | Per-action verification recipes: metric + direction + target + wait; pass → close; fail → single rollback → re-check → escalate; inconclusive → do not claim success. |
+
+### Inputs from the AIOps data plane
+
+| Input | Source | Role |
+|-------|--------|------|
+| Execution record | Remediation engine | action_type, service, pre-snapshot |
+| Verification recipe | Catalog config | Steps per action |
+| Live metrics | Prometheus | Post-check values |
+| Optional logs/traces | Loki/Tempo | Class of residual errors |
+
+### How it works (steps)
+
+```
+1. Load VERIFICATION_STEPS[action_type]
+2. For each step: sleep wait_seconds → query metric → compare target/direction
+3. All passed → verification_passed=true
+4. Any failed → rollback once (if reversible) → re-verify → else page human
+5. Metastable watch: optional soak window for queue/retry storms (§ below)
+```
+
+### Output / what on-call sees
+
+```
+VERIFY PASS · error_rate 0.8% ≤ 1% · latency_p99 −40%
+VERIFY FAIL · pool still 20/20 → rollback DB_POOL_SIZE → escalate
+```
+
+### Pros / cons + when
+
+| Pros | Cons |
+|------|------|
+| Closes the automation loop | Wrong targets greenwash failures |
+| Enables safe expansion of Tier1 | Adds latency to MTTR (necessary) |
+| Feeds success/rollback KPIs | No recipe = unknown status (block auto-close) |
+
+| Use when | Do **not** |
+|----------|------------|
+| After every mutate | Mark success on executor ACK only |
+| Canary and full rollout phases | Ignore business KPI when tech SLI green |
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import asyncio
@@ -1301,6 +1509,8 @@ class RemediationVerificationPipeline:
         }
 ```
 
+</details>
+
 ### How do you know the fix worked? Verification loops
 
 ```
@@ -1330,6 +1540,9 @@ pre-snapshot → execute → wait (effect lag) → post-check
 ## 12. Audit Logging
 
 Every automated remediation action must be fully audit-logged:
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import boto3
@@ -1375,6 +1588,8 @@ class RemediationAuditLogger:
         )
 ```
 
+</details>
+
 ### Audit log cho regulator (banking / PCI / SOX)
 
 Beyond SRE debug, audit must **prove control** independently:
@@ -1399,6 +1614,9 @@ export SIEM/GRC, redact secrets, link Tier2/3 change tickets.
 ---
 
 ## 13. Production Configuration
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 # Deploy remediation-engine
@@ -1466,6 +1684,8 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ```
 
+</details>
+
 ---
 
 ## 14. Common Mistakes
@@ -1490,6 +1710,9 @@ roleRef:
 ---
 
 ## 15. Monitoring Remediation
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```promql
 # Remediation execution load
@@ -1520,6 +1743,8 @@ histogram_quantile(0.95, rate(aiops_remediation_approval_wait_seconds_bucket[1h]
 aiops_remediation_circuit_state
 ```
 
+</details>
+
 > [!TIP]
 > **Alert on remediation itself**
 > Alert when: rollback_rate > 10%/24h, safety_blocks spike (possible RCA/LLM regress), concurrent_actions near cap, approval_p95 > 10 minutes (on-call UX broken).
@@ -1529,6 +1754,9 @@ aiops_remediation_circuit_state
 ## 16. Scaling
 
 The remediation engine is intentionally rate-limited. It should **NOT** be scaled out aggressively — two remediation-engine instances running conflicting actions on the same resource is very dangerous.
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 # Max replicas: 2 (active-passive for HA, not for throughput)
@@ -1541,6 +1769,8 @@ leader_election:
   lease_duration_seconds: 60
   renew_deadline_seconds: 40
 ```
+
+</details>
 
 ---
 
@@ -1573,7 +1803,23 @@ leader_election:
 
 ## 19. Risk Decision Matrix
 
-Production decision matrix: **reversibility × blast radius × confidence × compliance**.
+Production decision matrix: **reversibility × blast radius × confidence × compliance**. This is the **policy brain** above the Safety Framework checks.
+
+### Problem / idea
+
+| | |
+|--|--|
+| **Problem** | Teams argue case-by-case “is scale-down auto OK?” leading to inconsistent 3am decisions and postmortem surprises. |
+| **Idea** | Encode four axes into AUTO / APPROVAL / BLOCK before executor; **whitelist still mandatory** — matrix never invents new action types. |
+
+### Inputs from the AIOps data plane
+
+| Axis input | Source |
+|------------|--------|
+| Reversibility class | Action catalog metadata |
+| Blast estimate | Topology impact radius + target scope |
+| Confidence | publishable_confidence (Ch10) |
+| Compliance / freeze | Change calendar, data class, region |
 
 ### Four axes
 
@@ -1599,6 +1845,22 @@ Production decision matrix: **reversibility × blast radius × confidence × com
 risk ≈ w1*(1-rev) + w2*blast + w3*(1-conf) + w4*compliance_flag
 → AUTO | REQUIRE_APPROVAL | BLOCK  (whitelist still mandatory)
 ```
+
+### Output / what on-call sees
+
+Risk chip on approval card: `rev=45s · blast=1svc · conf=0.88 · compliance=OK → AUTO canary` or `→ NEED APPROVAL`.
+
+### Pros / cons + when
+
+| Pros | Cons |
+|------|------|
+| Consistent policy; trainable thresholds | Rubbish blast estimates mis-tier actions |
+| Explains denies to auditors | Over-complex weights without logs of outcomes |
+
+| Use when | Do **not** |
+|----------|------------|
+| Always as policy layer | Let matrix override freeze/compliance hard gates |
+| Expanding Tier1 coverage | Auto-approve irreversible actions ever |
 
 > [!IMPORTANT]
 > **Compliance is a hard gate** — confidence=0.99 still cannot overrule change-freeze / banking core.
@@ -1646,6 +1908,13 @@ Break-glass: time-boxed + security alarm + mandatory post-incident review
 
 ## 21. Runbook-as-Code vs LLM Freeform
 
+### Problem / idea
+
+| | |
+|--|--|
+| **Problem** | Letting the model “just run what it would type” couples hallucination and injection directly to the production control plane. |
+| **Idea** | LLM may **select** `action_id` + args; **implementation** lives in reviewed code/docs; execution path never evaluates model-authored shell. |
+
 | Model | Description | Safe? |
 |---------|-------|----------|
 | **Runbook-as-code** | Action = reviewed function/document, JSON Schema params, unit tests | **Mandatory in production** |
@@ -1653,10 +1922,19 @@ Break-glass: time-boxed + security alarm + mandatory post-incident review
 | **LLM chooses from catalog** | Model selects `action_type` + validated args | Allowed after gate |
 | **GitOps PR** | LLM/engine proposes diff, human merges | Good for Tier2/3 |
 
+### Inputs / outputs
+
+| In | Out |
+|----|-----|
+| Structured intent from RCA/LLM | `action_type` ∈ catalog |
+| JSON Schema params | Validated ranges/enums |
+| SafetyGate + risk matrix | allow/deny |
+| Fixed executor in repo | Mutate + verify + audit |
+
 ```
 Safe pipeline:
   RCA/LLM → structured intent
-         → map sang action_id trong catalog
+         → map to action_id in catalog
          → validate JSON Schema (whitelist keys + ranges)
          → SafetyGate + risk matrix
          → Executor implementation fixed in the repo
@@ -1667,6 +1945,19 @@ Forbidden:
   subprocess(llm_generated_argv)  # except allowlisted binary + fixed flags
   SSM commands[] from raw LLM string
 ```
+
+### Pros / cons + when
+
+| Pros | Cons |
+|------|------|
+| Injection cannot invent new verbs easily | Catalog must grow with real failure modes |
+| Unit-testable remediation | Feels slower than “smart shell” demos |
+| Clear SoD with GitOps | Requires discipline vs cowboy automation |
+
+| Use when | **Never** |
+|----------|-----------|
+| All production mutates | Freeform shell tool on the agent |
+| SSM/automation documents | LLM-supplied arbitrary `commands[]` |
 
 > [!CAUTION]
 > **Never freeform shell**

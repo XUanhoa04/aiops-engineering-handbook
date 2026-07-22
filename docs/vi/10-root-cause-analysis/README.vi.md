@@ -52,6 +52,25 @@ Sau chương này, hãy chuyển sang [10 — LLM Agent](../11-llm-agent/README.
 
 ---
 
+
+## Cách đọc chapter này (concept-first)
+
+> [!IMPORTANT]
+> **Đọc concept trước — code để sau**
+> Từ chapter 08 trở đi, handbook ưu tiên: **vấn đề → ý tưởng → input data → thuật toán/model → output → ưu/nhược → khi nào dùng**. Phần implementation nằm trong khối **See the code below** (bấm mới mở). Mục tiêu: bạn hiểu *tại sao và hoạt động ra sao trên telemetry AIOps*, không chỉ copy-paste.
+
+| Bước đọc | Câu hỏi |
+|----------|---------|
+| 1. Vấn đề | Detector/engine này giải quyết pain gì (false positive, cascade, MTTR…)? |
+| 2. Ý tưởng | Trực giác 2–3 câu, không công thức |
+| 3. Data in | Metric/log/trace/event nào, window nào, feature nào? |
+| 4. Thuật toán | Các bước tính toán / model flow |
+| 5. Output | Schema sự kiện, score, rank, action proposal? |
+| 6. Trade-off | Ưu / nhược / chi phí / giải thích được không? |
+| 7. When | Dùng khi nào — và khi nào **đừng** dùng |
+
+---
+
 ## 1. Why Automated RCA?
 
 > [!NOTE]
@@ -154,9 +173,9 @@ flowchart TD
     SCORE --> HYPO --> RCA_RESULT --> PUB
     RCA_RESULT --> HUMAN
 
-    style Input fill:#1565c0,color:#fff
-    style RCA fill:#4a148c,color:#fff
-    style Output fill:#2e7d32,color:#fff
+    style Input fill:#dbeafe,color:#1e293b
+    style RCA fill:#f3e8ff,color:#1e293b
+    style Output fill:#dcfce7,color:#1e293b
 ```
 
 ---
@@ -164,6 +183,9 @@ flowchart TD
 ## 3. Signal Collection for RCA
 
 ### Signal Collection Schema
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from dataclasses import dataclass, field
@@ -245,13 +267,89 @@ async def collect_rca_context(
     )
 ```
 
+</details>
+
 ---
 
 ## 4. Topology-Based RCA
 
-Giải pháp RCA đơn giản và có độ tin cậy cao nhất cho các hệ thống microservices được cấu hình giám sát tốt. Thuật toán duyệt ngược sơ đồ phụ thuộc dịch vụ tính từ các triệu chứng lỗi.
+Giải pháp RCA đơn giản và tin cậy nhất cho microservices giám sát tốt. Thuật toán **duyệt ngược** dependency graph từ triệu chứng lỗi về các node trông giống gốc.
+
+### Vấn đề / ý tưởng
+
+| | |
+|--|--|
+| **Vấn đề** | Correlation nói “payment + order + gateway là một incident”, nhưng chưa nói **sửa node nào trước**. Người vẫn tốn 15–30 phút đọc dashboard. |
+| **Ý tưởng** | Root candidate mạnh là node **anomaly** và có callee **khỏe** (fault bắt đầu tại đây) và caller **bị ảnh hưởng** (cascade ra ngoài). Duyệt graph; chấm điểm “lá” của vùng đỏ. |
+
+> [!IMPORTANT]
+> Topology RCA tìm **chỗ tập trung lỗi trong mesh**. Nó **không** chứng minh causation so với confounder AZ/DNS — xem [§20.1](#201-correlation--causation--the-classic-rca-trap).
+
+### Input từ AIOps data plane
+
+| Input | Nguồn | Vai trò |
+|-------|--------|---------|
+| Incident group + services_affected | Correlation engine | Tập đỏ để duyệt |
+| Dependency graph (có hướng) | Trace / mesh / catalog | Cạnh caller → callee |
+| Snapshot metric theo service | Prometheus qua data plane | error_rate, latency vs baseline |
+| Cờ anomaly (tuỳ chọn) | Detector Ch08 | Tín hiệu “đỏ?” nhanh hơn |
+
+### Cách hoạt động (các bước)
+
+```
+1. Với mỗi service trong affected set:
+2.   callees = successors; callers = predecessors
+3.   Nếu service anomaly:
+4.     +0.5 nếu mọi callee khỏe (gốc-like trong vùng đỏ)
+5.     +0.3 nếu caller cũng trong affected (chữ ký cascade)
+6.     +bonus nhỏ theo fan-in (blast rộng hơn)
+7. Sort candidate theo score → danh sách giả thuyết topology
+```
+
+```mermaid
+flowchart TB
+    GW[api-gateway · đỏ] --> ORD[order · đỏ]
+    ORD --> PAY[payment · đỏ · ROOT?]
+    PAY --> DB[(payment-db · xanh)]
+    ORD --> INV[inventory · xanh]
+
+    style GW fill:#fecaca,color:#1e293b
+    style ORD fill:#fecaca,color:#1e293b
+    style PAY fill:#ffedd5,color:#1e293b
+    style DB fill:#dcfce7,color:#1e293b
+    style INV fill:#dcfce7,color:#1e293b
+```
+
+*payment anomaly, callee khỏe, caller đỏ → topology score cao.*
+
+### Output / on-call thấy gì
+
+```
+candidates:
+  - service: payment-service  score: 0.85
+    evidence: [all_dependencies_healthy, cascading_to_2_callers]
+    algorithm: topology_traversal
+  - service: order-service    score: 0.35
+    evidence: [cascading_to_1_callers]
+```
+
+### Ưu / nhược + khi nào dùng
+
+| Ưu | Nhược |
+|------|------|
+| Giải thích được; không cần label train | Mù bug code nếu metric không anomaly |
+| Nhanh (ms–giây) | Sai nếu graph đảo/stale |
+| Thuật toán đầu tốt trong ensemble | Shared infra (AZ) trông như multi-root ồn |
+
+| Dùng khi | **Không** dùng một mình khi |
+|----------|---------------------------|
+| Microservice có trace, SLI rõ | Tuần đầu graph trống/thưa |
+| Luôn là thành viên rẻ của ensemble | Deploy/change khả dĩ — thêm change RCA |
 
 ### Algorithm: Backward Traversal
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 import networkx as nx
@@ -347,13 +445,60 @@ def _is_service_anomalous(
     )
 ```
 
+</details>
+
 ---
 
 ## 5. Causal Graph RCA
 
-Đồ thị nhân quả (Causal graphs) vượt lên trên quan hệ tương quan để trực tiếp mô hình hóa **mối quan hệ nhân quả (cause-and-effect relationships)** giữa các chỉ số metrics.
+Causal graph vượt correlation để mô hình **cấu trúc nhân quả** giữa metrics (và đôi khi services). Dùng khi topology không tách được reverse causation (retry storm: error → CPU).
+
+### Vấn đề / ý tưởng
+
+| | |
+|--|--|
+| **Vấn đề** | Tương quan cao giữa error_rate và CPU không nói cái nào là root — hoặc cả hai bị biến thứ ba điều khiển. |
+| **Ý tưởng** | Từ ma trận time series đa biến, khôi phục DAG độc lập có điều kiện (vd. PC) và chấm các node **giải thích** anomaly downstream. |
+
+### Input từ AIOps data plane
+
+| Input | Nguồn | Vai trò |
+|-------|--------|---------|
+| Ma trận metric căn chỉnh | Feature store / Prom range | Cột = tín hiệu trong cửa sổ incident |
+| Prior edges (tuỳ chọn) | Topology | Ràng buộc mềm cho search |
+| Sampling interval | Config pipeline | Đủ điểm cho CI test |
+
+### Cách hoạt động (các bước) — phác PC
+
+```
+1. Bắt đầu graph vô hướng đầy đủ trên biến
+2. Gỡ cạnh độc lập có điều kiện (Fisher-Z / kernel CI)
+3. Định hướng cạnh còn lại (collider / Meek) → CPDAG/DAG
+4. Map biến anomaly; rank parent d-separate symptom
+5. Emit giả thuyết causal kèm edge confidence
+```
+
+### Output / on-call thấy gì
+
+Cạnh xếp hạng dạng `db_pool_wait → payment_error_rate → order_latency` với algorithm=`pc_causal`, không chỉ “correlated 0.9”.
+
+### Ưu / nhược + khi nào dùng
+
+| Ưu | Nhược |
+|------|------|
+| Tấn công thẳng correlation≠causation | Cần window sạch; nhạy sampling |
+| Bắt reverse-causation | Nặng compute; khó explain cho SRE non-ML |
+| Bổ sung topology | Thất bại khi confounder mạnh không có latent |
+
+| Dùng khi | **Không** dùng khi |
+|----------|---------------------|
+| Incident đa metric mơ hồ | P1 fast-path đã có change+log mạnh |
+| Deep RCA offline / async | Metric thưa hoặc < vài chục điểm |
 
 ### PC Algorithm (Constraint-Based Causal Discovery)
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from causallearn.search.ConstraintBased.PC import pc
@@ -446,6 +591,8 @@ class CausalGraphRCA:
         return sorted(root_causes, key=lambda x: x["score"], reverse=True)
 ```
 
+</details>
+
 ### When Causal Graph RCA Works Best
 
 ```
@@ -469,6 +616,9 @@ Trường hợp KHÔNG phù hợp:
 Mạng Bayesian (Bayesian Networks) mô hình hóa **các mối quan hệ phụ thuộc xác suất (probabilistic dependencies)** giữa các thành phần. Giải pháp này phát huy hiệu quả lớn khi bạn có sẵn các tri thức chuyên môn (domain knowledge) về các kịch bản lỗi của hệ thống.
 
 ### Structure Learning from Data + Domain Knowledge
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from pgmpy.models import BayesianNetwork
@@ -579,7 +729,12 @@ class BayesianNetworkRCA:
         }
 ```
 
+</details>
+
 **Ví dụ khai báo các liên kết nhân quả đã biết trước (Known Causal Edges)**:
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 KNOWN_CAUSAL_EDGES = [
@@ -602,6 +757,8 @@ KNOWN_CAUSAL_EDGES = [
 ]
 ```
 
+</details>
+
 ---
 
 ## 7. Graph Neural Network (GNN) RCA
@@ -609,6 +766,9 @@ KNOWN_CAUSAL_EDGES = [
 Đối với các hệ thống microservices quy mô lớn chứa hàng trăm dịch vụ, mạng thần kinh đồ thị GNN có khả năng tự học các mô hình RCA phức tạp vượt ngoài khả năng của các luật tĩnh hay thống kê thông thường.
 
 ### Architecture: Spatial-Temporal GNN
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 import torch
@@ -734,7 +894,12 @@ def build_graph_from_incident(
     return Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr)
 ```
 
+</details>
+
 ### GNN Training Pipeline
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 def train_rca_gnn(
@@ -781,6 +946,8 @@ def train_rca_gnn(
     return model
 ```
 
+</details>
+
 ### GNN GNN Trade-offs
 
 | Đặc điểm | Chi tiết |
@@ -802,6 +969,9 @@ def train_rca_gnn(
 Phân tích log cung cấp các bằng chứng RCA có tính biểu đạt cao và dễ hiểu nhất đối với con người.
 
 ### Structured Log Analysis
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 import re
@@ -914,11 +1084,16 @@ class LogRCAAnalyzer:
         return traces[:5]  # Chỉ lấy tối đa 5 stack traces duy nhất
 ```
 
+</details>
+
 ---
 
 ## 9. Trace-Based RCA — Span Analysis
 
 Distributed traces cung cấp bằng chứng rõ ràng nhất về vị trí (WHERE) phát sinh lỗi đầu tiên trong chuỗi gọi dịch vụ liên tiếp.
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from typing import List, Optional
@@ -1045,11 +1220,68 @@ class TraceRCAAnalyzer:
         )
 ```
 
+</details>
+
 ---
 
 ## 10. Change Correlation (Deployment-Driven RCA)
 
-Phần lớn các sự cố nghiêm trọng bắt nguồn từ các đợt thay đổi hệ thống. Phân tích tương quan thay đổi mang lại độ chính xác cực cao đối với các sự cố dạng này.
+Hầu hết incident production nghiêm trọng **gần change**. Proximity thời gian deploy/config/flag với onset symptom là tín hiệu RCA precision cao — và cũng bị lạm dụng nhất (rollback monocausal).
+
+### Vấn đề / ý tưởng
+
+| | |
+|--|--|
+| **Vấn đề** | Không có change context, topology có thể đổ lỗi dependency khỏe; **chỉ** có change context, team rollback khi root thật là traffic × capacity. |
+| **Ý tưởng** | Chấm change trong cửa sổ pre-incident theo **delta thời gian × overlap service × loại change**, rồi **đòi** evidence hỗ trợ (error signature mới, canary delta) trước khi “đổ deploy 100%”. |
+
+> [!WARNING]
+> **Confounder**: deploy + marketing spike cùng lúc. Rank **cả hai** candidate và interaction — xem [§20.2](#202-confounding-deploy--traffic-spike-at-the-same-time).
+
+### Input từ AIOps data plane
+
+| Input | Nguồn | Vai trò |
+|-------|--------|---------|
+| Incident start + services affected | Correlation | Neo thời gian và phạm vi |
+| Change events | CI/CD, GitOps, flag, infra ticket ([17](../17-topology-change/README.vi.md)) | Ứng viên nguyên nhân |
+| Impact window (vd. 30m) | Policy | Lookback tối đa trước incident |
+| Tuỳ chọn: version error signature | Loki / canary metrics | Xác nhận hoặc bác bỏ đổ deploy |
+
+### Cách hoạt động (các bước)
+
+```
+1. Lọc change timestamp < incident_start và delta ≤ window
+2. temporal_score = 1 - (minutes_before / window)
+3. service_score = 1 nếu service đổi nằm trong affected, else thấp
+4. type_weight: deploy/migration > infra > config > flag (tune theo org)
+5. combined = tổng có trọng số; sort
+6. Nếu traffic_z cao VÀ có change → multi-hypothesis (không winner đơn)
+```
+
+### Output / on-call thấy gì
+
+```
+change_correlations:
+  - deployment payment@2.15  score 0.91  t-12m  can_rollback: true
+  - flag promo_checkout      score 0.55  t-20m  can_rollback: true
+ui_banner: "Possible confound: deploy AND traffic spike — verify both"
+```
+
+### Ưu / nhược + khi nào dùng
+
+| Ưu | Nhược |
+|------|------|
+| Precision cao khi deploy thật sự regress | False blame deploy trùng thời điểm |
+| Actionable (đường rollback rõ) | Bỏ sót pure capacity / dependency outage |
+| Rẻ để implement | Cần change feed đầy đủ |
+
+| Dùng khi | **Không** auto-rollback khi |
+|----------|------------------------------|
+| Luôn trong ensemble production | Chỉ proximity thời gian, không delta error signature |
+| Freeze / audit change | Confidence cao nhưng evidence_quality thấp |
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from datetime import datetime, timedelta
@@ -1125,11 +1357,66 @@ class ChangeCorrelationRCA:
         return sorted(correlations, key=lambda x: x["score"], reverse=True)
 ```
 
+</details>
+
 ---
 
 ## 11. RCA Evidence Scoring and Ranking
 
-Hợp nhất các kết quả bằng chứng từ mọi thuật toán RCA để xây dựng danh sách giả thuyết cuối cùng:
+Hợp nhất output thuật toán thành **danh sách giả thuyết xếp hạng**. Tách **model confidence** vs **evidence quality** để publishable confidence không vượt những gì data plane thực sự hỗ trợ.
+
+### Vấn đề / ý tưởng
+
+| | |
+|--|--|
+| **Vấn đề** | Năm thuật toán bất đồng; UI hiện một “root” 0.99 từ metric correlation yếu → auto-remediation sai. |
+| **Ý tưởng** | Bình chọn có trọng số theo accuracy lịch sử + **cap** bằng evidence quality (thỏa thuận trace/log/change/topology, freshness, coverage). Cho phép **multi-root** khi #1≈#2 khác domain. |
+
+### Input từ AIOps data plane
+
+| Input | Nguồn | Vai trò |
+|-------|--------|---------|
+| Kết quả topology / causal / log / trace / change | Module RCA | Candidate theo thuật toán |
+| Algorithm weights | Config + feedback loop | Accuracy lịch sử |
+| Artifact evidence | Query id, age, coverage flag | Chiều quality |
+| Feedback on-call (async) | Postmortem TP/FP | Hiệu chỉnh trọng số |
+
+### Cách hoạt động (các bước)
+
+```
+1. Chuẩn hóa top-k mỗi thuật toán → (service, score, evidence[])
+2. service_scores += score × algorithm_weight
+3. Gắn evidence_quality từ fidelity / freshness / agreement
+4. publishable_confidence = f(model_conf, evidence_quality)
+5. finalize: single | multi_root | uncertain (xem §20.3)
+6. Gắn suggested_remediation chỉ khi failure_mode biết + allowlist
+```
+
+### Output / on-call thấy gì
+
+| Trường | Mục đích |
+|--------|----------|
+| `rank`, `root_cause_service`, `failure_mode` | Câu chuyện chính |
+| `confidence` + `evidence_quality` | Hai số, không một lời dối |
+| `evidence[]` có tag thuật toán | Cite-or-doubt |
+| `mode`: single / multi_root / uncertain | Chống monocausality giả |
+| `suggested_remediation` | Gợi ý — gate ở Ch12 |
+
+### Ưu / nhược + khi nào dùng
+
+| Ưu | Nhược |
+|------|------|
+| Ensemble vững | Weight sai nếu không feedback |
+| Đa tín hiệu minh bạch | Trông “do dự” khi uncertain (đúng là tốt!) |
+| An toàn cho cổng auto-act | Over-weight change → văn hóa rollback |
+
+| Dùng khi | **Không** |
+|----------|------------|
+| Luôn trước page / remediate | Giấu alternative khi mode=uncertain |
+| Nuôi context LLM agent | Coi rank-1 là chân lý tuyệt đối |
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from dataclasses import dataclass
@@ -1229,9 +1516,38 @@ REMEDIATION_SUGGESTIONS = {
 }
 ```
 
+</details>
+
 ---
 
 ## 12. RCA Output Schema
+
+Output có cấu trúc là **hợp đồng** giữa RCA, LLM agent, remediation và con người. Báo cáo prose là view dẫn xuất; máy phải consume schema.
+
+### Vấn đề / ý tưởng
+
+Nếu mỗi team tự nghĩ JSON ad-hoc, auto-remediation không gate an toàn theo confidence, postmortem không chấm accuracy. Một schema Avro/JSON → Kafka \iops-rca-results\ → mọi consumer.
+
+### On-call thấy gì (view người của cùng schema)
+
+\RCA · 47s · mode=single · publishable_conf=0.82 (model 0.91 · evidence_q 0.74)
+#1 payment-service · database_connection_exhaustion
+   evidence: topology ✓  logs ✓  change ~  trace ✓
+   suggest: increase DB_POOL_SIZE (Tier1 allowlist) — không auto nếu chưa gate
+#2 payment-db · discarded (metric khỏe)
+partial=false  warnings[]=empty
+\
+### Ưu / nhược + khi nào dùng
+
+| Ưu | Nhược |
+|------|------|
+| Bật automation & eval an toàn | Schema evolution cần compatibility |
+| Ép có evidence link | Schema quá cứng có thể mất free text hữu ích |
+
+**Luôn** publish schema lên Kafka; Markdown là enrichment tuỳ chọn cho Slack.
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```json
 {
@@ -1311,11 +1627,16 @@ REMEDIATION_SUGGESTIONS = {
 }
 ```
 
+</details>
+
 ---
 
 ## 13. Historical Pattern Matching (Case-Based RCA)
 
 Sử dụng tìm kiếm vector tương đồng (vector similarity search) để tìm kiếm các sự cố tương tự từng xảy ra trong lịch sử:
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 from sentence_transformers import SentenceTransformer
@@ -1411,9 +1732,14 @@ class IncidentHistoryMatcher:
         ]
 ```
 
+</details>
+
 ---
 
 ## 14. Production Architecture
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```yaml
 # Triển khai rca-engine
@@ -1451,6 +1777,8 @@ spec:
               memory: "8Gi"
 ```
 
+</details>
+
 ---
 
 ## 15. Common Mistakes
@@ -1469,6 +1797,9 @@ spec:
 ---
 
 ## 16. Monitoring RCA Quality
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```promql
 # Tải phân tích RCA
@@ -1489,7 +1820,12 @@ sum by (algorithm) (rate(aiops_rca_evidence_used_total[5m]))
 kafka_consumer_group_lag_sum{group="rca-engine-group"}
 ```
 
+</details>
+
 ### Critical Alerts
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```yaml
 - alert: RCAEngineDown
@@ -1516,11 +1852,16 @@ kafka_consumer_group_lag_sum{group="rca-engine-group"}
     severity: warning
 ```
 
+</details>
+
 ---
 
 ## 17. Scaling
 
 Tiến trình RCA tiêu tốn nhiều tài nguyên CPU/RAM. Ưu tiên mở rộng theo chiều dọc (tăng tài nguyên CPU/RAM để phục vụ thu thập song song dữ liệu lớn), sau đó áp dụng mở rộng ngang:
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```yaml
 # Mở rộng ngang: tự động scale theo Kafka consumer lag
@@ -1538,6 +1879,8 @@ resources:
     cpu: "4"
     memory: "8Gi"
 ```
+
+</details>
 
 ---
 
@@ -1576,6 +1919,9 @@ resources:
 | Selection bias | Chỉ trace error paths | Span X luôn "root" | Sampling bias |
 | Proxy metric | Queue depth ↑ với latency | Queue là root | Upstream slow producer |
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```python
 def causation_sanity_checks(hypothesis: dict, evidence: list) -> list:
     """
@@ -1594,6 +1940,8 @@ def causation_sanity_checks(hypothesis: dict, evidence: list) -> list:
             warnings.append("temporal_reverse: symptom predates root by >30s")
     return warnings
 ```
+
+</details>
 
 > [!TIP]
 > **Checklist causation tối thiểu trước khi tin rank #1**:
@@ -1619,6 +1967,9 @@ RCA chỉ nhìn change → **đổ 100% cho deploy** (dễ rollback).
 RCA chỉ nhìn traffic → **scale blindly** (pool vẫn 20, vẫn chết).  
 **Root thật**: interaction effect — pool size không theo traffic; deploy là trigger lộ defect sẵn có.
 
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+
 ```yaml
 confounder_policy:
   if:
@@ -1636,6 +1987,8 @@ confounder_policy:
       show: "Possible confound: deploy AND traffic spike — verify both before rollback"
 ```
 
+</details>
+
 > [!IMPORTANT]
 > Rollback deploy khi root là pure traffic sẽ **không** cứu hệ thống và có thể làm mất fix đang rollout. Luôn so sánh: *version N vs N-1 dưới cùng load* (canary metrics / shadow).
 
@@ -1649,6 +2002,9 @@ Không phải mọi incident có 1 root. Các class multi-root:
 | **Independent dual** | 2 outage chồng thời gian | 2 RCA results; không ép 1 winner |
 | **Cascading secondary** | Root A gây B, B trở thành root cục bộ | Primary + secondary roots với timeline |
 | **Partial mitigation residual** | Fix A xong, residual B còn | Re-run RCA after mitigate; đừng đóng incident sớm |
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 def finalize_hypotheses(ranked: list, max_roots=2) -> dict:
@@ -1677,6 +2033,8 @@ def finalize_hypotheses(ranked: list, max_roots=2) -> dict:
     }
 ```
 
+</details>
+
 ### 20.4 Evidence quality scoring (không chỉ confidence algorithm)
 
 `confidence` từ model dễ **ảo tưởng**. Tách **evidence quality** riêng:
@@ -1689,6 +2047,9 @@ def finalize_hypotheses(ranked: list, max_roots=2) -> dict:
 | **Consistency** | Topology + log + change cùng hướng | 3 algorithm mâu thuẫn |
 | **Counter-evidence** | Đã tìm và loại trừ | Chưa search counter |
 | **Provenance** | Query ids tái lập được | "LLM said so" không cite |
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 def evidence_quality(ev: dict) -> float:
@@ -1718,6 +2079,8 @@ def publishable_confidence(model_conf: float, eq: float) -> float:
     return round(min(model_conf, eq + 0.1) * (0.5 + 0.5 * eq), 3)
 ```
 
+</details>
+
 > [!NOTE]
 > **Ý TƯỞNG**
 > UI nên hiện **2 số**: `model_confidence=0.91` và `evidence_quality=0.54` → hệ thống hiển thị **0.58 publishable**. On-call hiểu: "model chắc nhưng bằng chứng mỏng".
@@ -1725,6 +2088,9 @@ def publishable_confidence(model_conf: float, eq: float) -> float:
 ### 20.5 When to stop searching (time budget)
 
 RCA không được thành black hole CPU. On-call cần **hypothesis lúc t+45s**, không phải essay lúc t+10m.
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```yaml
 rca_time_budget:
@@ -1743,6 +2109,11 @@ rca_time_budget:
     - evidence_links: true
     - partial_flag: true   # nếu budget cắt giữa chừng
 ```
+
+</details>
+
+<details>
+<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
 ```python
 import time
@@ -1770,6 +2141,8 @@ def run_rca_with_budget(incident, collectors, algorithms, budget_s=45.0):
         "algorithms_run": [r["name"] for r in results],
     }
 ```
+
+</details>
 
 | Tình huống | Stop khi | Hành động tiếp |
 |------------|----------|----------------|

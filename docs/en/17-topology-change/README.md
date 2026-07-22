@@ -84,6 +84,25 @@ Use this plane as the **context backbone** when operating [09–12] intelligence
 
 ---
 
+
+## How to read this chapter (concept-first)
+
+> [!IMPORTANT]
+> **Concepts first — code second**
+> From chapter 08 onward, prefer: **problem → idea → input data → algorithm/model → output → pros/cons → when to use**. Implementation lives under **See the code below** (click to expand). Goal: understand *why it works on AIOps telemetry*, not only copy-paste snippets.
+
+| Step | Question |
+|------|----------|
+| 1. Problem | What pain does this solve (noise, cascade, MTTR…)? |
+| 2. Idea | 2–3 sentence intuition, no formulas |
+| 3. Data in | Which metrics/logs/traces/events, windows, features? |
+| 4. Algorithm | Computation steps / model flow |
+| 5. Output | Event schema, score, rank, action proposal? |
+| 6. Trade-offs | Pros / cons / cost / explainability |
+| 7. When | When to use — and when **not** to |
+
+---
+
 ## 1. Why a Topology & Change Data Plane
 
 > [!NOTE]
@@ -606,6 +625,9 @@ flowchart LR
 
 ### 6.4 Pseudo-API for construction
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```python
 from dataclasses import dataclass, field
 from typing import List, Optional
@@ -661,9 +683,14 @@ def fuse_edge(obs: List[EdgeObservation], now: datetime) -> GraphEdge:
     )
 ```
 
+</details>
+
 ### 6.5 Graph meta object (required)
 
 Every published graph version must carry:
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```json
 {
@@ -688,6 +715,8 @@ Every published graph version must carry:
 }
 ```
 
+</details>
+
 Consumers **must** read meta before trusting edges. See §15.
 
 ### 6.6 Manual edges and override governance
@@ -698,6 +727,9 @@ Manual critical-path pins are allowed under:
 2. Expiry date (e.g. 90 days) unless renewed  
 3. Owner field  
 4. Audit log  
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 # topology/critical-paths/checkout.yaml
@@ -716,6 +748,8 @@ edges:
 owners: [payments-sre]
 expires: 2026-10-01
 ```
+
+</details>
 
 ---
 
@@ -786,6 +820,9 @@ RCA windows should prefer `started`/`progress` near incident start, not only `co
 
 ### 8.1 Core schema (JSON)
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```json
 {
   "schema_version": "1.0.0",
@@ -839,6 +876,8 @@ RCA windows should prefer `started`/`progress` near incident start, not only `co
   }
 }
 ```
+
+</details>
 
 ### 8.2 Field rules
 
@@ -993,6 +1032,9 @@ Metric: `change_ingest_coverage_ratio{class=…}`.
 
 ### 10.1 Freeze event schema (subset)
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```json
 {
   "change_class": "freeze",
@@ -1011,6 +1053,8 @@ Metric: `change_ingest_coverage_ratio{class=…}`.
   }
 }
 ```
+
+</details>
 
 ### 10.2 Severity levels
 
@@ -1300,6 +1344,9 @@ Never dump full enterprise graph into the prompt.
 
 ### 14.2 Blast radius request example
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```json
 {
   "action": "restart",
@@ -1309,6 +1356,11 @@ Never dump full enterprise graph into the prompt.
   "as_of": "now"
 }
 ```
+
+</details>
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```json
 {
@@ -1323,6 +1375,8 @@ Never dump full enterprise graph into the prompt.
   "warnings": []
 }
 ```
+
+</details>
 
 ### 14.3 SLOs for the API
 
@@ -1376,6 +1430,9 @@ Never dump full enterprise graph into the prompt.
 
 ### 15.3 Consumer degradation policy
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```python
 def topology_mode(meta: dict) -> dict:
     age = meta["staleness_seconds"]
@@ -1396,6 +1453,8 @@ def topology_mode(meta: dict) -> dict:
         }
     return {"use_topology": True, "topology_weight": 0.4}
 ```
+
+</details>
 
 Align with [09 §19.1](../09-alert-correlation/README.md).
 
@@ -1734,6 +1793,9 @@ Dogfood: the plane monitors its own freshness with a **separate** minimal path (
 
 ### 21.2 Alert examples
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```yaml
 - alert: TopologyGraphStale
   expr: topology_graph_age_seconds{env="prod"} > 1800
@@ -1753,6 +1815,8 @@ Dogfood: the plane monitors its own freshness with a **separate** minimal path (
   for: 30m
   labels: {severity: ticket}
 ```
+
+</details>
 
 ### 21.3 Dashboards (minimum panels)
 

@@ -88,8 +88,41 @@ def _convert_block(match: Match[str]) -> str:
     return f"!!! {adm}\n{indented}\n\n"
 
 
+# Soften remaining harsh Mermaid fills at build time (pastel + dark text)
+_HARSH_FILLS = {
+    "#e94560": "#fecdd3",
+    "#ff4444": "#fecaca",
+    "#b71c1c": "#fecaca",
+    "#e65100": "#ffedd5",
+    "#1565c0": "#dbeafe",
+    "#2e7d32": "#dcfce7",
+    "#4a148c": "#f3e8ff",
+    "#0d4f8b": "#dbeafe",
+    "#1a1a2e": "#e2e8f0",
+    "#533483": "#ede9fe",
+}
+
+
+def _soften_mermaid(markdown: str) -> str:
+    def repl(m: re.Match) -> str:
+        s = m.group(0)
+        for old, new in _HARSH_FILLS.items():
+            s = re.sub(re.escape(old), new, s, flags=re.I)
+        s = re.sub(r"color:#fff\b", "color:#1e293b", s, flags=re.I)
+        s = re.sub(r"color:#ffffff\b", "color:#1e293b", s, flags=re.I)
+        return s
+
+    return re.sub(
+        r"style\s+\w+\s+fill:#[0-9A-Fa-f]{3,8}(?:,[^\n]*)?",
+        repl,
+        markdown,
+        flags=re.I,
+    )
+
+
 def on_page_markdown(markdown: str, **kwargs) -> str:
     """MkDocs page hook entrypoint."""
+    markdown = _soften_mermaid(markdown)
     if "[!" not in markdown:
         return markdown
     return _ALERT_RE.sub(_convert_block, markdown)

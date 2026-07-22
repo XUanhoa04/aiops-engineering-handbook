@@ -51,6 +51,25 @@ After this chapter, continue to [09 — Root Cause Analysis](../10-root-cause-an
 
 ---
 
+
+## How to read this chapter (concept-first)
+
+> [!IMPORTANT]
+> **Concepts first — code second**
+> From chapter 08 onward, prefer: **problem → idea → input data → algorithm/model → output → pros/cons → when to use**. Implementation lives under **See the code below** (click to expand). Goal: understand *why it works on AIOps telemetry*, not only copy-paste snippets.
+
+| Step | Question |
+|------|----------|
+| 1. Problem | What pain does this solve (noise, cascade, MTTR…)? |
+| 2. Idea | 2–3 sentence intuition, no formulas |
+| 3. Data in | Which metrics/logs/traces/events, windows, features? |
+| 4. Algorithm | Computation steps / model flow |
+| 5. Output | Event schema, score, rank, action proposal? |
+| 6. Trade-offs | Pros / cons / cost / explainability |
+| 7. When | When to use — and when **not** to |
+
+---
+
 ## 1. Why Alert Correlation?
 
 > [!NOTE]
@@ -113,9 +132,9 @@ graph LR
 
     Input --> Correlation --> Output
 
-    style Input fill:#b71c1c,color:#fff
-    style Correlation fill:#4a148c,color:#fff
-    style Output fill:#1b5e20,color:#fff
+    style Input fill:#fecaca,color:#1e293b
+    style Correlation fill:#f3e8ff,color:#1e293b
+    style Output fill:#dcfce7,color:#1e293b
 ```
 
 ---
@@ -159,9 +178,9 @@ flowchart TD
     S5 --> GRAFANA
     S5 --> WEBHOOK
 
-    style Sources fill:#1565c0,color:#fff
-    style Pipeline fill:#2e7d32,color:#fff
-    style Output fill:#e65100,color:#fff
+    style Sources fill:#dbeafe,color:#1e293b
+    style Pipeline fill:#dcfce7,color:#1e293b
+    style Output fill:#ffedd5,color:#1e293b
 ```
 
 ### Data Flow Timing
@@ -186,7 +205,57 @@ Total: 5–6 minutes from first alert fire to one structured unified incident
 
 ## 3. Stage 1 — Deduplication
 
-Deduplication removes **exact or near-exact duplicate alerts** that fire repeatedly.
+Deduplication removes **exact or near-exact duplicate alerts** that fire repeatedly. It is the cheapest stage and should run **before** topology or semantic work — every duplicate you keep multiplies cost and cognitive load downstream.
+
+### Problem / idea
+
+| | |
+|--|--|
+| **Problem** | Alertmanager re-evaluates every 15–30s; multi-pod and dual detectors (Prometheus + anomaly ML) produce **many events for one fault**. Without dedup, correlation sees 50 near-clones and never forms a clean incident. |
+| **Idea** | Fingerprint each alert on **stable identity** (alertname + service + namespace + severity), ignore volatile labels (`pod`, `instance`), and keep the first event in a TTL window while **counting** later occurrences. |
+
+### Inputs from the AIOps data plane
+
+| Input | Source | Role |
+|-------|--------|------|
+| Normalized alert / anomaly events | Kafka `aiops-anomalies`, Alertmanager webhook | Raw stream to collapse |
+| Canonical labels (`service`, `namespace`) | [06 — Data Plane](../06-data-plane/README.md) enrich | Stable fingerprint fields |
+| Pod / instance labels | K8s / Prometheus | **Stripped** from key; used only for `affected_pods[]` |
+| Dedup window (TTL) | Config (typically 60–300s) | How long a fingerprint is “the same alert” |
+
+### How it works (steps)
+
+```
+1. Build fingerprint = hash(alertname, service, namespace, severity)  — drop pod/instance
+2. Lookup Redis/in-memory key for fingerprint
+3. If miss → store first_seen + occurrence_count=1 + affected_pods; emit as new
+4. If hit within TTL → occurrence_count++; merge pod into affected_pods; suppress emit
+5. On TTL expiry → next matching event opens a new “first” (or attach to open incident in late-join)
+```
+
+### Output / what on-call sees
+
+| Field | Example | On-call meaning |
+|-------|---------|-----------------|
+| `dedup_key` | `dedup:a3f2…` | Stable identity of the symptom |
+| `occurrence_count` | `12` | How noisy this signal was |
+| `affected_pods` | `[pod-a, pod-b, pod-c]` | Spread of the fault |
+| `first_seen` / `last_seen` | ISO timestamps | Duration without flooding pages |
+
+On-call does **not** get 12 pages for one HighCPU — they get **one** row with `pod_count=3` later folded into the incident card.
+
+### Pros / cons + when
+
+| Pros | Cons |
+|------|------|
+| O(1) per event; trivial to operate | Over-aggressive fingerprint can hide **distinct** failures (wrong label strip) |
+| Immediate noise reduction before topology | Under-dedup if `service` label missing/renamed |
+| Preserves multiplicity as metadata | Does not understand cascades — that is Stages 3–4 |
+
+| Use when | Do **not** use alone when |
+|----------|---------------------------|
+| Any production Alertmanager / multi-replica path | You need causal root (need topology + ordering) |
+| Dual detector stacks (rules + ML) | Shared-infra multi-service storms (need topology merge, not just dedup) |
 
 ### Types of Duplicates
 
@@ -206,6 +275,9 @@ Type 3: Alert + Anomaly duplicates
 ```
 
 ### Deduplication Implementation
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import hashlib
@@ -291,13 +363,69 @@ class AlertDeduplicator:
         ]
 ```
 
+</details>
+
 ---
 
 ## 4. Stage 2 — Grouping
 
-After deduplication, group remaining alerts by **shared attributes**.
+After deduplication, group remaining alerts by **shared attributes**. Grouping is the bridge from “unique symptoms” to “candidate incident bags” that topology will later merge or split.
+
+### Problem / idea
+
+| | |
+|--|--|
+| **Problem** | After dedup you still have many **different** alertnames on the same service (error_rate, latency, CPU, SLO burn). Treating each as a separate incident re-creates the storm at service granularity. |
+| **Idea** | Bucket alerts that share a **primary key** (usually `service`, then namespace / time for orphans) so one service fault becomes one group; leave cross-service linkage to Stage 3. |
+
+### Inputs from the AIOps data plane
+
+| Input | Source | Role |
+|-------|--------|------|
+| Deduped events | Stage 1 | Leaner stream |
+| Service / job / namespace labels | Data plane canonical model | Group key |
+| Time window buffer | Redis sorted set / in-mem (5m default) | Who is “concurrent” |
+| Severity labels | Alertmanager | Group severity = max of members |
+
+### How it works (steps)
+
+```
+1. Prefer group_key = labels.service (fallback: job → "unknown")
+2. Place each alert into AlertGroup[service]; track alert_types[], max severity
+3. Orphans without service → temporary TIME_WINDOW group
+4. Do NOT yet merge different services (that needs topology score)
+5. Emit list of AlertGroup for Stage 3
+```
+
+### Output / what on-call sees
+
+Not yet a full incident card — intermediate:
+
+```
+group_id: svc-payment-…
+services_affected: [payment-service]
+alert_types: [HighErrorRate, HighLatency, HighCPU]
+severity: critical
+alerts: […3–15 deduped members…]
+```
+
+### Pros / cons + when
+
+| Pros | Cons |
+|------|------|
+| Explainable, deterministic | Service-only groups **under-merge** true cascades |
+| Fast; good partial incident early | Missing `service` label → junk “unknown” buckets |
+| Natural unit for suppression while open | Wrong service rename breaks grouping until data plane fixes |
+
+| Use when | Do **not** stop here when |
+|----------|---------------------------|
+| Always as Stage 2 | Cascade spans checkout→payment→db (need Stage 3) |
+| Single-service noise storms | Independent multi-failures that only share a time window |
 
 ### Grouping Dimensions
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from dataclasses import dataclass, field
@@ -386,11 +514,89 @@ class AlertGrouper:
         return group
 ```
 
+</details>
+
 ---
 
 ## 5. Stage 3 — Topology-Aware Correlation
 
-This is the most powerful correlation layer. It uses the **service dependency graph** to understand how alerts are causally linked.
+This is the most powerful correlation layer. It uses the **service dependency graph** to understand how alerts are causally linked — not just “same time,” but “same failure domain.”
+
+### Problem / idea
+
+| | |
+|--|--|
+| **Problem** | Time-window grouping alone **over-merges** independent outages and **under-merges** slow cascades that hop hop-by-hop across services. |
+| **Idea** | If service A calls B and both alert within the correlation window, they likely share one incident; walk edges (and shared infra nodes: DB, Kafka, cache) to merge groups and estimate impact radius. |
+
+> [!WARNING]
+> Topology correlation is only as good as graph freshness. A **stale graph is worse than no graph** (false merge / inverted root). See [§19.1](#191-topology-stale-graph--worse-than-no-graph).
+
+### Inputs from the AIOps data plane
+
+| Input | Source | Role |
+|-------|--------|------|
+| Service groups | Stage 2 | Nodes currently “red” |
+| Dependency edges | OTel SpanMetrics, mesh, catalog | Caller → callee |
+| Shared infra nodes | Data plane / CMDB | DB, queue, CDN as first-class nodes |
+| Graph age / coverage metrics | Topology side plane ([17](../17-topology-change/README.md)) | Gate: use / degrade / disable topology |
+| Call rates, error edges | Span metrics | Weight edges; prefer hot paths |
+
+### How it works (steps)
+
+```
+1. Load graph; if age > max_age or coverage low → degrade (temporal/label only)
+2. For each red service, expand upstream (callers) and downstream (callees) to max_depth
+3. Score pair (group_i, group_j): topology_distance, shared_infra, edge weight
+4. Merge if score ≥ threshold AND no multi-failure veto (see §19.3)
+5. Gray zone → LINK (related incidents), not hard MERGE
+6. Compute impact_radius = ancestors of hypothesized root
+```
+
+```mermaid
+flowchart LR
+    subgraph Red["Red services in window"]
+        GW[api-gateway]
+        ORD[order]
+        PAY[payment]
+    end
+    subgraph Graph["Fresh dependency graph"]
+        GW2[api-gateway] --> ORD2[order]
+        ORD2 --> PAY2[payment]
+        PAY2 --> DB[(payment-db)]
+    end
+    Red --> Merge[Merge score ≥ 0.6]
+    Graph --> Merge
+    Merge --> Inc[One incident · impact radius]
+
+    style Red fill:#fecaca,color:#1e293b
+    style Graph fill:#dbeafe,color:#1e293b
+    style Merge fill:#dcfce7,color:#1e293b
+    style Inc fill:#ffedd5,color:#1e293b
+```
+
+### Output / what on-call sees
+
+| Field | Meaning |
+|-------|---------|
+| `merged_services[]` | Services folded into one incident |
+| `topology_paths[]` | Why they were linked (edge list) |
+| `impact_radius` | Who will hurt if root stays broken |
+| `topology_confidence` / `graph_age_s` | Trust signal on the card |
+| `decision` | `merge` \| `link` \| `split_candidate` |
+
+### Pros / cons + when
+
+| Pros | Cons |
+|------|------|
+| Captures real cascades; best ROI after dedup | Requires maintained graph + infra nodes |
+| Supports correct RCA direction later | Stale/inverted edges poison root selection |
+| Enables impact-aware severity | Sparse graphs under-merge new services |
+
+| Use when | Do **not** use when |
+|----------|---------------------|
+| Microservices with tracing or mesh | Graph age high / coverage low (fall back temporal) |
+| Shared DB/Kafka fan-out storms | You only have hostnames and no service map |
 
 ### Service Dependency Graph Sources
 
@@ -412,9 +618,15 @@ graph TD
     end
 
     Sources --> Graph
+
+    style Sources fill:#dbeafe,color:#1e293b
+    style Graph fill:#dcfce7,color:#1e293b
 ```
 
 ### Building the Dependency Graph from Traces
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import networkx as nx
@@ -540,13 +752,77 @@ class ServiceDependencyGraph:
         return correlated_groups
 ```
 
+</details>
+
 ---
 
 ## 6. Stage 4 — Causal Ordering
 
-From a group of correlated alerts, determine which service is the **root cause** and which services are cascading **symptoms**.
+From a group of correlated alerts, determine which service is the **root cause** and which services are cascading **symptoms**. Correlation merges; causal ordering **ranks roles** so on-call does not restart the leaf gateway first.
+
+### Problem / idea
+
+| | |
+|--|--|
+| **Problem** | Inside one incident, 10 services are red. Without order, humans fix symptoms (scale gateway) while the DB pool stays exhausted. |
+| **Idea** | Combine **earliest symptom time** with **dependency depth**: among near-simultaneous alerts, prefer the depended-on service (deeper callee / shared dependency) as root candidate; mark callers as symptoms. |
+
+> [!NOTE]
+> This is still a **hypothesis for RCA**, not proof of causation. Chapter 10 adds change confounders, evidence quality, and multi-root. Correlation ≠ causation remains true.
+
+### Inputs from the AIOps data plane
+
+| Input | Source | Role |
+|-------|--------|------|
+| Merged incident group | Stage 3 | Services + first_alert times |
+| Dependency graph | Topology plane | Distance and direction |
+| Time tolerance (e.g. 120s) | Config | “Simultaneous” band (clock skew + detect lag) |
+| Optional change events | Deploy / config stream | Soft prior (not full RCA yet) |
+
+### How it works (steps)
+
+```
+1. Map service → first_alert_timestamp
+2. earliest = min timestamp; simultaneous = within ±tolerance of earliest
+3. Score simultaneous services by “how many others depend on me” / depth
+4. root_hypothesis = highest topology score among simultaneous (not always earliest leaf)
+5. Rank all services by graph distance from root → causal_chain
+6. If graph stale → skip topology preference; mark confidence degraded
+```
+
+### Output / what on-call sees
+
+```
+root_cause: payment-service
+root_cause_candidates: [payment-service, payment-db]
+causal_chain:
+  - payment-service  role=root_cause   rank=0
+  - order-service    role=symptom      rank=1
+  - api-gateway      role=symptom      rank=2
+evidence:
+  temporal: payment alerted first at …
+  topological: 4 services depend on payment
+```
+
+Incident title becomes actionable: `payment-service … → cascade to order, gateway` instead of `many alerts`.
+
+### Pros / cons + when
+
+| Pros | Cons |
+|------|------|
+| Cheap ordering; big UX win | Clock skew / delayed metrics invert time |
+| Aligns with human mental model of cascades | Shared AZ failure fools pure service-graph order |
+| Feeds RCA and remediation allowlists | Single-root bias — multi-root needs Ch10 |
+
+| Use when | Do **not** trust blindly when |
+|----------|-------------------------------|
+| Clear caller→callee mesh | Graph direction unknown or stale |
+| Classic cascade patterns | Dual independent failures (use split/link) |
 
 ### Algorithm: Topological + Temporal Analysis
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from datetime import datetime
@@ -641,11 +917,70 @@ def determine_causal_order(
     }
 ```
 
+</details>
+
 ---
 
 ## 7. Stage 5 — Alert Enrichment
 
-Enrichment adds **context** that makes the grouped incident immediately actionable:
+Enrichment adds **context** that makes the grouped incident immediately actionable. Without it, correlation only reduces count; with it, the first page answers “what / where / recent change / which runbook.”
+
+### Problem / idea
+
+| | |
+|--|--|
+| **Problem** | A clean group with root=`payment-service` still forces on-call to open 5 tabs (Prom, Loki, Tempo, deploys, wiki). That burns the MTTR budget correlation just saved. |
+| **Idea** | In parallel, attach **evidence links + snippets** (errors, traces, metric context, recent deploys, runbook) so the incident card is a **workbench**, not a title. |
+
+### Inputs from the AIOps data plane
+
+| Input | Source | Role |
+|-------|--------|------|
+| Incident skeleton | Stages 1–4 | Root, services, window |
+| Metrics snapshot | Prometheus | Error rate, saturation, burn |
+| Error logs | Loki | Template / top messages |
+| Traces | Tempo | Exemplar trace ids, slow spans |
+| Changes | CI/CD / [17 Topology & Change](../17-topology-change/README.md) | Deploy within impact window |
+| Runbook index | Wiki / Git | Deep link by failure_mode |
+
+### How it works (steps)
+
+```
+1. Bound time range (e.g. now-30m → now) around incident start
+2. Fan-out async queries: logs, traces, metrics, deploys, runbook search
+3. Soft-fail each source (partial enrichment > empty card)
+4. Cap payload size (top N errors, 1–3 trace ids) for page UX
+5. Publish enriched incident → Kafka aiops-correlated-alerts + Pager/Slack
+```
+
+### Output / what on-call sees
+
+```
+title: payment-service db pool → cascade (9 services)
+root: payment-service · confidence 0.84 · graph_age 4m
+metrics: error_rate 12% · pool 20/20 · burn 14x
+logs: 847× "connection pool exhausted" (Loki link)
+traces: 4bf92f35… (Tempo)
+changes: deploy payment@2.14.3 (8m ago)
+runbook: /runbooks/db-conn-pool
+suppressed_alerts: 63
+```
+
+### Pros / cons + when
+
+| Pros | Cons |
+|------|------|
+| Largest jump in *time-to-understanding* | Query fan-out can add 1–5s; dependency on observability stack |
+| Partial results still useful | Over-enrichment floods the card (need caps) |
+| Feeds LLM agent / RCA with cites | Stale runbooks mislead (content ownership) |
+
+| Use when | Do **not** block page when |
+|----------|----------------------------|
+| Always for P1/P2 pageable incidents | Loki/Tempo down — ship skeleton + banner |
+| Before LLM investigation | Enrichment SLA would exceed page SLO — defer deep attach |
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import aiohttp
@@ -774,6 +1109,8 @@ class AlertEnricher:
         return {}
 ```
 
+</details>
+
 ---
 
 ## 8. Correlation Algorithms Deep Dive
@@ -781,6 +1118,9 @@ class AlertEnricher:
 Beyond topology relationships, additional algorithms improve correlation accuracy.
 
 ### Algorithm 1: Temporal Sliding Window
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from collections import deque
@@ -813,9 +1153,14 @@ class TemporalWindowCorrelator:
         return [a for _, a in self.buffer]
 ```
 
+</details>
+
 ### Algorithm 2: Label-Based Fingerprinting
 
 Two alerts are considered correlated if they have high label overlap:
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 def label_similarity_score(alert_a: dict, alert_b: dict) -> float:
@@ -837,9 +1182,14 @@ def label_similarity_score(alert_a: dict, alert_b: dict) -> float:
     return intersection / union if union > 0 else 0.0
 ```
 
+</details>
+
 ### Algorithm 3: Mutual Information (Statistical Correlation)
 
 For time-series anomaly scores, use mutual information to detect anomalous correlation:
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from sklearn.metrics import mutual_info_score
@@ -860,6 +1210,8 @@ def compute_mutual_information(
     return mutual_info_score(a_bins, b_bins)
 ```
 
+</details>
+
 ---
 
 ## 9. Service Dependency Graph
@@ -867,6 +1219,9 @@ def compute_mutual_information(
 ### Building from OpenTelemetry Service Graph Metrics
 
 Tempo's metrics generator produces `traces_service_graph_*` metrics describing dependencies:
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```promql
 # Service edges (caller → callee)
@@ -887,7 +1242,12 @@ rate(traces_service_graph_request_total{
 }[5m])
 ```
 
+</details>
+
 ### Maintaining the Graph in Redis
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import redis
@@ -940,6 +1300,8 @@ class ServiceGraphStore:
         return list(self.redis.smembers(f"{self.key_prefix}callees:{service}"))
 ```
 
+</details>
+
 ---
 
 ## 10. Temporal Correlation
@@ -947,6 +1309,9 @@ class ServiceGraphStore:
 ### Cross-Correlation for Time-Series Alignment
 
 Cross-correlation measures the time shift between two anomaly series. Positive lag means service A's anomaly appears before service B's — evidence that A may cause B.
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 import numpy as np
@@ -995,11 +1360,16 @@ def cross_correlate_anomaly_series(
     }
 ```
 
+</details>
+
 ---
 
 ## 11. Semantic Similarity Correlation
 
 For raw alert names and descriptions, use embedding similarity to find alerts with related semantic content (even when labels do not match):
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from sentence_transformers import SentenceTransformer
@@ -1052,11 +1422,16 @@ class SemanticAlertCorrelator:
         return clusters
 ```
 
+</details>
+
 ---
 
 ## 12. Incident Formation Rules
 
 After correlation computation, apply rules to assign severity and route incident handling:
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```python
 from dataclasses import dataclass
@@ -1137,11 +1512,16 @@ def apply_formation_rules(incident: dict) -> dict:
     return incident
 ```
 
+</details>
+
 ---
 
 ## 13. Production Configuration
 
 ### Kafka Consumer Configuration
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 # correlation-engine deployment
@@ -1182,7 +1562,12 @@ spec:
               memory: "4Gi"
 ```
 
+</details>
+
 ### Correlation Engine Configuration
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 # config.yaml
@@ -1214,6 +1599,8 @@ incident:
   auto_close_if_resolved_in: 300   # Auto-close if all alerts clear within 5 minutes
 ```
 
+</details>
+
 ---
 
 ## 14. Common Mistakes
@@ -1233,6 +1620,9 @@ incident:
 
 ## 15. Monitoring the Correlation Engine
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```promql
 # Processing throughput
 rate(aiops_correlation_alerts_received_total[5m])
@@ -1251,7 +1641,12 @@ aiops_correlation_time_to_first_incident_seconds # Time from alert fire to incid
 kafka_consumer_group_lag_sum{group="correlation-engine-group"}
 ```
 
+</details>
+
 ### Alerting Rules
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 - alert: CorrelationEngineLagHigh
@@ -1278,6 +1673,8 @@ kafka_consumer_group_lag_sum{group="correlation-engine-group"}
     summary: "Low correlation efficiency: >50% of alerts create separate incidents (expected: <20%)"
 ```
 
+</details>
+
 ---
 
 ## 16. Scaling
@@ -1286,6 +1683,9 @@ The correlation engine is designed **stateful** (correlation windows live in Red
 
 1. **Vertical**: Increase memory for larger correlation windows
 2. **Horizontal with partitioning**: Route alerts for the same service to the same correlation engine instance (sticky partitioning by service label)
+
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
 
 ```yaml
 apiVersion: autoscaling/v2
@@ -1310,6 +1710,8 @@ spec:
           type: Value
           value: "5000"
 ```
+
+</details>
 
 ---
 
@@ -1349,6 +1751,9 @@ spec:
 | Missing shared dependency (DB/Kafka) | 2 services fail together, not merged | On-call thinks 2 outages | Add infra nodes (db, queue, cache) to the graph |
 | Multi-cluster blind | Cross-cluster cascade splits incidents | Higher MTTR | Cluster-aware graph + shared resource edges |
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```python
 class TopologyHealthGuard:
     """
@@ -1379,6 +1784,8 @@ class TopologyHealthGuard:
         return {"use_topology": True, "topology_weight": 0.40}
 ```
 
+</details>
+
 > [!IMPORTANT]
 > When `stale_graph=true`, **disable** topology-based causal ordering; only temporal clustering + show banner: *"Topology outdated — correlation confidence reduced"*. Do not silently use a rotten graph.
 
@@ -1397,6 +1804,9 @@ class TopologyHealthGuard:
 > **KEY IDEA**
 > Window is not a single number. Use a **two-phase window**: *fast path* 90s to page early with a partial group; *late-join* for another 5–10 minutes to attach late alerts to the open incident — without creating a new incident.
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```yaml
 correlation_windows:
   fast_path:
@@ -1410,6 +1820,8 @@ correlation_windows:
     # If 2 groups have no topology path and delta_t > 180s → keep split
     independent_gap_seconds: 180
 ```
+
+</details>
 
 **Signs the window is wrong**:
 
@@ -1441,6 +1853,9 @@ Consequence:
 4. Different geo blast radius (1 region vs global)
 5. Low semantic title similarity + low label Jaccard even if temporally close
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```python
 def should_merge(group_a: dict, group_b: dict, graph, changes) -> dict:
     topo_dist = graph.distance(group_a["root"], group_b["root"])  # inf if none
@@ -1466,6 +1881,8 @@ def should_merge(group_a: dict, group_b: dict, graph, changes) -> dict:
 
     return {"merge": score >= 0.60, "score": score, "reason": "score_threshold"}
 ```
+
+</details>
 
 > [!TIP]
 > **Safe UX**: when merge score is in the gray zone (0.55–0.70), create a **linked incident** (related) instead of hard-merge. On-call sees "may be related" but still has 2 timelines — better than one wrong timeline.
@@ -1530,6 +1947,9 @@ On-call and postmortem need a shared language:
 | **SPLIT** | Separate a wrongly merged group | Post-ack evidence conflicts | `split_from=INC-…` + reason |
 | **SUPPRESS_ONLY** | Do not create a new incident | Belongs to open incident same scope | `parent_incident_id` |
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```python
 def record_correlation_decision(incident_id: str, decision: str, reason: str, actor: str):
     """
@@ -1544,6 +1964,8 @@ def record_correlation_decision(incident_id: str, decision: str, reason: str, ac
         "ts": "ISO-8601",
     }
 ```
+
+</details>
 
 **Additional KPIs** (beyond alerts-per-incident):
 

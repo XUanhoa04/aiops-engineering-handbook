@@ -54,6 +54,25 @@ After this chapter, return to [12 — Production](../13-production/README.md) to
 
 ---
 
+
+## How to read this chapter (concept-first)
+
+> [!IMPORTANT]
+> **Concepts first — code second**
+> From chapter 08 onward, prefer: **problem → idea → input data → algorithm/model → output → pros/cons → when to use**. Implementation lives under **See the code below** (click to expand). Goal: understand *why it works on AIOps telemetry*, not only copy-paste snippets.
+
+| Step | Question |
+|------|----------|
+| 1. Problem | What pain does this solve (noise, cascade, MTTR…)? |
+| 2. Idea | 2–3 sentence intuition, no formulas |
+| 3. Data in | Which metrics/logs/traces/events, windows, features? |
+| 4. Algorithm | Computation steps / model flow |
+| 5. Output | Event schema, score, rank, action proposal? |
+| 6. Trade-offs | Pros / cons / cost / explainability |
+| 7. When | When to use — and when **not** to |
+
+---
+
 ## 1. How to read a postmortem as an engineer
 
 ### 1.1 The reading goal is not “who was wrong”
@@ -287,10 +306,10 @@ flowchart TD
     API --> SHD[SHD admin console dependency]
     SHD --> COMMS[Status update delayed\ncustomer confusion]
 
-    style CMD fill:#b71c1c,color:#fff
-    style IDX fill:#e65100,color:#fff
-    style API fill:#e65100,color:#fff
-    style COMMS fill:#6a1b9a,color:#fff
+    style CMD fill:#fecaca,color:#1e293b
+    style IDX fill:#ffedd5,color:#1e293b
+    style API fill:#ffedd5,color:#1e293b
+    style COMMS fill:#f3e8ff,color:#1e293b
 ```
 
 Cascade mechanisms:
@@ -446,10 +465,10 @@ flowchart TD
     EMPTY --> TOOL[Some tooling/diagnostics impaired]
     TOOL --> MTTD[Longer diagnose / fix loop]
 
-    style RACE fill:#b71c1c,color:#fff
-    style EMPTY fill:#e65100,color:#fff
-    style DDB fill:#e65100,color:#fff
-    style SLOW fill:#6a1b9a,color:#fff
+    style RACE fill:#fecaca,color:#1e293b
+    style EMPTY fill:#ffedd5,color:#1e293b
+    style DDB fill:#ffedd5,color:#1e293b
+    style SLOW fill:#f3e8ff,color:#1e293b
 ```
 
 Important mechanisms:
@@ -606,10 +625,10 @@ flowchart TD
     OOB --> PHYS[Physical access friction\nbadge/tools irony]
     PHYS --> SLOW[Longer MTTR]
 
-    style CHG fill:#b71c1c,color:#fff
-    style BB fill:#e65100,color:#fff
-    style BGP fill:#e65100,color:#fff
-    style PHYS fill:#6a1b9a,color:#fff
+    style CHG fill:#fecaca,color:#1e293b
+    style BB fill:#ffedd5,color:#1e293b
+    style BGP fill:#ffedd5,color:#1e293b
+    style PHYS fill:#f3e8ff,color:#1e293b
 ```
 
 ### 4.5 Detection gap
@@ -780,9 +799,9 @@ flowchart TD
     PUSH --> FLAP[Good/bad file oscillation]
     FLAP --> HYP[Wrong initial hypothesis: attack]
 
-    style PERM fill:#b71c1c,color:#fff
-    style FILE fill:#e65100,color:#fff
-    style PANIC fill:#e65100,color:#fff
+    style PERM fill:#fecaca,color:#1e293b
+    style FILE fill:#ffedd5,color:#1e293b
+    style PANIC fill:#ffedd5,color:#1e293b
 ```
 
 #### Detection gap
@@ -989,6 +1008,9 @@ flowchart TD
 
 ### 7.7 Policy snippet: remediation engine vs Kubernetes health
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```yaml
 # Example policy (illustrative) — attach to safety gate chapter 11
 preconditions:
@@ -1008,6 +1030,8 @@ preconditions:
     - "cluster_autoscaler_force_max"
     - "delete_namespace"
 ```
+
+</details>
 
 ### 7.8 Data plane still green — cognitive trap
 
@@ -1224,6 +1248,9 @@ Not collecting drama. Goal: a **pattern → control** map for your system.
 
 ### 11.2 Schema for each incident card
 
+<details>
+<summary><strong>See the code below — click to expand (read concepts first)</strong></summary>
+
 ```yaml
 id: INC-LIB-015
 title: "S3-2017 class — capacity tool over-delete"
@@ -1246,6 +1273,8 @@ design_changes_for_us:
 owners: ["platform", "sre"]
 last_game_day: "2026-03-01"
 ```
+
+</details>
 
 ### 11.3 Collection sources
 

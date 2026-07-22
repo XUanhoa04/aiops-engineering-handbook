@@ -116,8 +116,8 @@ flowchart LR
     C -.->|thường nhảy cóc| J
     C --> D --> E --> F --> G --> H --> I --> J
 
-    style GAP fill:#4a148c,color:#fff
-    style DONE fill:#1565c0,color:#fff
+    style GAP fill:#f3e8ff,color:#1e293b
+    style DONE fill:#dbeafe,color:#1e293b
 ```
 
 > [!WARNING]
@@ -202,9 +202,9 @@ flowchart TB
     LRN -.->|weak labels| FS
     S --> AUD
 
-    style DP fill:#1a237e,color:#fff
-    style IP fill:#4a148c,color:#fff
-    style AP fill:#e65100,color:#fff
+    style DP fill:#e0e7ff,color:#1e293b
+    style IP fill:#f3e8ff,color:#1e293b
+    style AP fill:#ffedd5,color:#1e293b
 ```
 
 | Chiều | Data Plane | Intelligence Plane |
@@ -282,8 +282,8 @@ flowchart TD
     MID --> NOTE3[Ch.07 Kafka bắt buộc]
     FULL --> NOTE4[Ownership AIOps + data quality on-call]
 
-    style FULL fill:#4a148c,color:#fff
-    style RAW fill:#1565c0,color:#fff
+    style FULL fill:#f3e8ff,color:#1e293b
+    style RAW fill:#dbeafe,color:#1e293b
 ```
 
 ### 3.2 Ma trận “đủ chưa?”
@@ -407,7 +407,7 @@ flowchart TD
     R5 --> R6[Inject pipeline_version + normalize_ts]
     R6 --> OUT[Normalized envelope]
 
-    style OUT fill:#2e7d32,color:#fff
+    style OUT fill:#dcfce7,color:#1e293b
 ```
 
 Config snippet (minh họa **WHY**, không phải blueprint copy-paste):

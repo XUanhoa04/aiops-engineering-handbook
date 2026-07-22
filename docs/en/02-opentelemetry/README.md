@@ -92,8 +92,8 @@ graph LR
         COL -->|config only| DD2[Datadog]
     end
 
-    style Before fill:#4a1942,color:#fff
-    style After fill:#0d4f8b,color:#fff
+    style Before fill:#fae8ff,color:#1e293b
+    style After fill:#dbeafe,color:#1e293b
 ```
 
 **Benefits**:
@@ -147,9 +147,9 @@ graph TD
     SDK -->|OTLP gRPC :4317\nOTLP HTTP :4318| Collector
     Collector --> Backends
 
-    style SDK fill:#1565c0,color:#fff
-    style Collector fill:#2e7d32,color:#fff
-    style Backends fill:#4a148c,color:#fff
+    style SDK fill:#dbeafe,color:#1e293b
+    style Collector fill:#dcfce7,color:#1e293b
+    style Backends fill:#f3e8ff,color:#1e293b
 ```
 
 ---
@@ -228,9 +228,9 @@ graph LR
 
     Receiver --> P1 --> P2 --> P3 --> P4 --> P5 --> Exporter
 
-    style Receiver fill:#1565c0,color:#fff
-    style Pipeline fill:#2e7d32,color:#fff
-    style Exporter fill:#4a148c,color:#fff
+    style Receiver fill:#dbeafe,color:#1e293b
+    style Pipeline fill:#dcfce7,color:#1e293b
+    style Exporter fill:#f3e8ff,color:#1e293b
 ```
 
 ### Collector Distributions

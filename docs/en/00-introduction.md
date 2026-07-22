@@ -156,9 +156,9 @@ graph TD
     FATIGUE --> MISS[Miss real incident]
     FATIGUE --> DELAY[MTTR: 90+ minutes]
 
-    style DEP fill:#e94560,color:#fff
-    style FATIGUE fill:#ff4444,color:#fff
-    style MISS fill:#ff0000,color:#fff
+    style DEP fill:#fecdd3,color:#1e293b
+    style FATIGUE fill:#fecaca,color:#1e293b
+    style MISS fill:#fecaca,color:#1e293b
 ```
 
 **After AIOps** — One incident with full context:
@@ -177,9 +177,9 @@ graph TD
     AUTO --> RESOLVED[Resolved in 3 minutes\nNo human woken]
     TICKET --> ENG[On-Call Engineer receives\n1 structured alert with root cause]
 
-    style DEP fill:#e94560,color:#fff
-    style RESOLVED fill:#00c851,color:#fff
-    style ENG fill:#00c851,color:#fff
+    style DEP fill:#fecdd3,color:#1e293b
+    style RESOLVED fill:#e2e8f0,color:#1e293b
+    style ENG fill:#e2e8f0,color:#1e293b
 ```
 
 ### Quantified Impact
@@ -402,12 +402,12 @@ graph LR
     L3 --> L4[Level 4\nCorrelated]
     L4 --> L5[Level 5\nAutonomous]
 
-    style L0 fill:#ff4444,color:#fff
+    style L0 fill:#fecaca,color:#1e293b
     style L1 fill:#ff8c00,color:#fff
     style L2 fill:#ffd700,color:#000
     style L3 fill:#90ee90,color:#000
-    style L4 fill:#00c851,color:#fff
-    style L5 fill:#0070cc,color:#fff
+    style L4 fill:#e2e8f0,color:#1e293b
+    style L5 fill:#e2e8f0,color:#1e293b
 ```
 
 ### Level 0 — Reactive ("We learn about failures from customers")
