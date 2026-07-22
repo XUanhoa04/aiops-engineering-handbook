@@ -43,6 +43,11 @@ theme:
   icon:
     repo: fontawesome/brands/github
 
+# Convert GitHub [!NOTE]/[!TIP]/… alerts → Material colored admonitions at build time
+# (source .md files stay GFM-compatible for GitHub raw viewing)
+hooks:
+  - hooks/gh_callouts.py
+
 plugins:
   - search:
       lang:
@@ -51,6 +56,7 @@ plugins:
 
 markdown_extensions:
   - admonition
+  - pymdownx.details
   - attr_list
   - def_list
   - footnotes
@@ -58,7 +64,6 @@ markdown_extensions:
   - tables
   - toc:
       permalink: true
-  - pymdownx.details
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
