@@ -108,26 +108,26 @@ Nếu có liên kết tương quan: kỹ sư chỉ nhận **1 incident duy nhấ
 ### What Alert Correlation Produces
 
 ```mermaid
-graph LR
+flowchart LR
     subgraph Input["Input: 50+ raw alerts"]
-        A1[payment error_rate high]
-        A2[payment latency high]
-        A3[payment cpu ×3 pods]
-        A4[order error_rate high]
-        A5[checkout SLO burn]
-        A6[...]
+        A1["payment error_rate high"]
+        A2["payment latency high"]
+        A3["payment cpu x3 pods"]
+        A4["order error_rate high"]
+        A5["checkout SLO burn"]
+        A6["..."]
     end
 
     subgraph Correlation["Alert Correlation Engine"]
-        DEDUP[Deduplication\nCollapse A3 ×3 pods → 1]
-        GROUP[Grouping\nBy service topology]
-        TOPO[Topology Analysis\nWhere did it start?]
-        CAUSAL[Causal Ordering\nTimestamp + dependency]
-        ENRICH[Enrichment\nAdd context, runbooks]
+        DEDUP["Deduplication<br/>Collapse A3 x3 pods to 1"]
+        GROUP["Grouping<br/>By service topology"]
+        TOPO["Topology Analysis<br/>Where did it start?"]
+        CAUSAL["Causal Ordering<br/>Timestamp + dependency"]
+        ENRICH["Enrichment<br/>Add context, runbooks"]
     end
 
     subgraph Output["Output: 1 incident group"]
-        INC[Incident Group\nroot_service: payment-service\nimpacted: [order, checkout, api-gateway]\ntype: database_connection_exhaustion\nseverity: P1\nrunbook: /runbooks/db-conn-pool\nrelated_traces: [4bf92f35...]\nrelated_logs: 23 ERROR entries]
+        INC["Incident Group<br/>root: payment-service<br/>impacted: order, checkout, api-gateway<br/>type: db connection exhaustion<br/>severity: P1<br/>runbook: db-conn-pool<br/>traces + 23 ERROR logs"]
     end
 
     Input --> Correlation --> Output
