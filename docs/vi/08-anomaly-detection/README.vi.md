@@ -1797,6 +1797,115 @@ Các số nên ghi cho replay này là:
 
 Case study này là mẫu acceptance test có thể tái sử dụng: thay dãy bằng failure mode thật của từng service, thêm negative control hợp lệ, rồi replay mỗi lần đổi feature, model, threshold hoặc suppression policy. Nếu không có replay bằng số, lời khẳng định “model mới tốt hơn” vẫn chỉ là cảm giác.
 
+### 25.8 Incident dài: freeze baseline nhưng không đóng băng normal traffic
+
+Vấn đề khó không phải phát hiện phút đầu mà là **không tự mù ở phút 40**. Rolling median/MAD hoặc EWMA cập nhật vô điều kiện sẽ đưa chính dữ liệu lỗi vào reference window. Khi hơn nửa window chứa lỗi, median trở thành incident level; residual về gần 0 và detector im dù customer impact còn nguyên.
+
+#### State machine của detector
+
+| State | Chấm điểm theo | Có học baseline không? | Chuyển tiếp |
+|-------|---------------|-------------------------|-------------|
+| Normal | Baseline active | Có, chỉ điểm quality tốt | Score/burn vượt gate → Suspect |
+| Suspect | Baseline trước onset | Capped update hoặc chưa freeze hoàn toàn | Persistence xác nhận → Firing; hết lệch → Normal |
+| Firing | **Frozen normal residual baseline** | Không cho residual incident vào active baseline | Impact giảm → Recovering |
+| Recovering | Frozen baseline + recovery gate | Chưa thaw | Ổn định đủ lâu → Resolved; relapse → Firing |
+| Resolved | Warm-start từ normal history/shadow đã guard | Thaw có kiểm soát | Quay Normal |
+
+Detector vẫn tính score/heartbeat ở Firing; “freeze baseline” không phải freeze output. Event đầu mở incident, các điểm sau cập nhật current, max severity, duration và active-until. Correlation Chapter 9 suppress notification trùng nhưng giữ incident active.
+
+#### Freeze residual, không freeze raw expected level
+
+Raw metric thay đổi hợp lệ theo traffic/giờ. Nếu latency expected là 120 ms ở 800 RPS và 180 ms ở 1.800 RPS, đóng băng raw baseline 120 sẽ gọi 180 là anomaly. Ta tách:
+
+**actual = expected(time, load, cohort) + residual**.
+
+Seasonal/load model đã học trước incident vẫn được phép trả expected theo covariate hiện tại; thứ bị freeze là phân phối residual normal (median/MAD) và model parameters có thể học fault. Với traffic 1.800 RPS, actual 185 ms có residual +5 và bình thường; actual 700 ms có residual +520 và vẫn firing. Không cập nhật model bằng actual 700 để nó học “ở high load thì 700 là normal”.
+
+Nếu load regime hoàn toàn mới ngoài training range, không extrapolate tự tin. Gắn `baseline_out_of_domain`, dựa SLO burn/static safety và giảm anomaly-only confidence. Human/change acceptance mới promote new normal sau khi impact khỏe.
+
+#### Median/MAD trước và trong incident
+
+Error rate normal theo phút: **[0,7; 0,8; 0,7; 0,9; 0,8; 0,7; 0,8; 0,7]%**. Median khoảng 0,75%, MAD khoảng 0,05–0,1 điểm phần trăm tùy quy ước. Fault bắt đầu: **[2,5; 6,0; 9,0; 10,5; 10,2; 10,8; 11,0; 10,7; …]**.
+
+Nếu window 30 phút tiếp tục trượt, sau khoảng 20–30 phút đa số mẫu là 10–11%; median tiến tới 10% và MAD quanh dao động incident. Điểm 10,7% không còn lạ. Với freeze tại onset đã xác nhận, reference median vẫn 0,75%; mọi điểm 10–11% có residual hơn 9 điểm phần trăm và detector giữ Firing.
+
+Không cần phát lại page mỗi phút. Output heartbeat có `state=firing`, `duration=35m`, `current=10,7%`, `expected=0,8%`, `baseline_version=pre-incident`, `baseline_frozen=true`. Nếu heartbeat mất do pipeline lag, correlation đánh data-quality unknown, không resolve.
+
+#### Dual baseline và anti-poisoning
+
+Có thể chạy shadow baseline để quan sát regime mới, nhưng shadow không có quyền clear incident. Shadow nhận covariate/healthy cohort hoặc capped residual; lưu drift. Sau recovery, active baseline không swap ngay sang shadow chứa fault. Chỉ promote nếu:
+
+- customer SLI/burn khỏe;
+- change được xác nhận hợp lệ;
+- reference và shadow khác do load/architecture thật, không do incident;
+- replay negative/positive pass;
+- có audit “accept new normal”.
+
+Freeze vô hạn cũng nguy hiểm sau migration hợp lệ. Vì vậy change-aware rebaseline là human/policy decision, không timeout “sau 30 phút coi là normal”.
+
+### 25.9 Multi-window burn-rate: giữ tín hiệu theo impact
+
+Anomaly score trả lời “lạ”; SLO burn-rate trả lời “đang tiêu error budget nhanh thế nào”. Incident dài nên giữ active khi customer impact/burn còn cao ngay cả nếu statistical detector degraded.
+
+Với availability SLO 99,9%, error budget là 0,1%. Error rate 5% có burn khoảng **50×**; 10% khoảng **100×**. Dùng cặp window:
+
+- Short window 5 phút bắt onset/escalation nhanh.
+- Long window 1 giờ xác nhận impact bền, chống spike một phút.
+- Có thể thêm 6 giờ/3 ngày cho slow burn, nhưng không chặn P1 fast path.
+
+Ví dụ error mỗi 5 phút **[0,1; 0,1; 5; 8; 10; 10; 9; 11; 10; 8; 6; 1; 0,2; 0,1]%**. Short burn vượt mạnh từ điểm 3; long burn tăng và giữ cao suốt episode. Khi error giảm 10→6%, anomaly severity giảm nhưng burn vẫn quá cao; incident không Recovering. Chỉ khi short và long recovery policy cùng dưới ngưỡng, customer SLI ổn định và detector residual normal mới chuyển recovery.
+
+Burn-rate không phụ thuộc baseline học incident nên là safety rail chống self-normalization. Nhưng cần minimum request volume/confidence: 1 lỗi trên 2 request là 50% nhưng chưa đủ page giống 5.000 lỗi/10.000 request. Dùng count/beta-binomial confidence hoặc volume gate.
+
+#### Legitimate load change
+
+Traffic tăng **[800, 1.000, 1.300, 1.600, 1.900] RPS**, error giữ **[0,7; 0,7; 0,8; 0,8; 0,9]%**, latency theo expected load **[120, 130, 145, 165, 182] ms**. Burn gần 1× hoặc thấp; residual latency chỉ vài ms. Không page dù raw CPU/latency tăng. Static capacity warning riêng có thể annotate nếu headroom thấp, nhưng không gọi customer incident.
+
+Trong fault, cùng traffic sequence nhưng error **[5; 7; 9; 10; 11]%**, latency **[400, 500, 620, 700, 760]**. Load-conditioned residual và burn cùng cao; freeze giữ firing. Khi traffic giảm, raw error count có thể giảm nhưng rate/burn còn cao; không resolve dựa count.
+
+### 25.10 Replay chứng minh ba yêu cầu
+
+Fault A ở `payment` kéo dài 60 phút. Fault B ở `auth-cache` bắt đầu phút 27 và hết phút 55. Mẫu 5 phút rút gọn:
+
+| Phút | Traffic payment RPS | Payment error | A state | Auth 401 | B state |
+|------|---------------------|---------------|---------|----------|---------|
+| −5 | 800 | 0,7% | Normal | 0,3% | Normal |
+| 0 | 900 | 2,5% | Suspect | 0,3% | Normal |
+| 5 | 1.050 | 8,2% | Firing | 0,4% | Normal |
+| 10 | 1.200 | 11,4% | Firing | 0,4% | Normal |
+| 20 | 1.500 | 12,2% | Firing | 0,5% | Normal |
+| 30 | 1.800 | 13,1% | Firing | 6,8% | Firing |
+| 40 | 1.850 | 13,0% | Firing | 8,1% | Firing |
+| 50 | 1.500 | 10,8% | Firing | 1,0% | Recovering |
+| 55 | 1.300 | 4,0% | Firing | 0,4% | Recovered |
+| 60 | 1.200 | 0,9% | Recovering | 0,4% | Normal |
+| 70 | 1.000 | 0,7% | Recovered | 0,3% | Normal |
+
+**Chứng minh continuous:** sau grace 5 phút, A ở Firing/Recovering từ phút 5 đến 70; active coverage 65/65 phút, silent gap 0. Rolling shadow có thể tiến tới incident level nhưng active reference không đổi. Recovery chỉ sau 10 phút stable, không khi error tạm giảm phút 55.
+
+**Chứng minh no load noise:** negative-control chạy cùng RPS/expected latency nhưng error baseline tạo 0 pageable anomaly. Trong replay fault, traffic/CPU seasonal không sinh incident mới; chúng chỉ là covariate/impact context. Metrics: `load_only_false_pages=0`.
+
+**Chứng minh overlapping fault:** auth-cache có detector state/baseline key riêng `(service,signal,failure_family)`, nên A không ảnh hưởng median/MAD của B. B fire trong tối đa 2 phút sau onset. Chapter 9 nhận B và mở incident riêng vì topology/failure signature khác. Metrics: `overlap_new_fault_recall=100%`, `overlap_detection_delay<page_SLO`, `false_merge=0`.
+
+#### Fault thứ hai cùng service
+
+Nếu payment TLS error xuất hiện phút 35, một detector error-rate tổng có thể chỉ thấy level đã cao. Cần feature/failure signature độc lập: TLS handshake failure rate normal 0, tăng lên 20%; log template/trace origin mới; per-signal state không bị error-rate baseline A che. Correlation Chapter 9 tạo sub-episode mới cùng service. “Per-service isolation” giải cross-service; **per-signal/failure-family isolation** giải same-service overlap.
+
+#### Failure injection và assertions
+
+Replay phải thêm duplicate, missing samples, late events, worker restart và load change. Assertions:
+
+- Active baseline version không đổi trong Firing.
+- Shadow baseline không có quyền clear.
+- Heartbeat/event active liên tục hoặc data-gap state explicit.
+- Burn-rate safety rail giữ active khi anomaly score giảm.
+- Recovery cần customer SLI + short/long gate + hysteresis.
+- Detector B latency/score không đổi khi A active.
+- No page từ load-only control.
+- Restart/state restore không warm-up rồi quên incident.
+
+Kết quả được lưu thành golden dataset. Mỗi lần đổi α, window, MAD floor, seasonal/load model, freeze/thaw hoặc suppression policy đều replay. Chỉ đồ thị đẹp không chứng minh được; các assertions trên mới chứng minh hệ đứng vững suốt incident dài.
+
 ---
 
 ## 26. Production Review

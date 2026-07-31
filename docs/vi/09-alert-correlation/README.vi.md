@@ -6,23 +6,23 @@
 
 ## Prerequisites
 
-- [07 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — sinh ra các sự kiện bất thường làm đầu vào tiêu thụ ở đây
+- [08 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — sinh ra các sự kiện bất thường làm đầu vào tiêu thụ ở đây
 - [03 — Prometheus](../03-prometheus/README.vi.md) — nguồn cảnh báo thông qua Alertmanager
-- [06 — Kafka](../07-kafka/README.vi.md) — lớp vận chuyển cho các sự kiện bất thường
+- [07 — Kafka](../07-kafka/README.vi.md) — lớp vận chuyển cho các sự kiện bất thường
 
 ## Related Documents
 
-- [09 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — nhận các nhóm cảnh báo tương quan làm đầu vào
-- [10 — LLM Agent](../11-llm-agent/README.vi.md) — sử dụng ngữ cảnh tương quan để điều tra sự cố
+- [10 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — nhận các nhóm cảnh báo tương quan làm đầu vào
+- [11 — LLM Agent](../11-llm-agent/README.vi.md) — sử dụng ngữ cảnh tương quan để điều tra sự cố
 - [03 — Prometheus](../03-prometheus/README.vi.md) — phân nhóm cảnh báo trên Alertmanager (mức độ liên kết đơn giản)
-- [12 — Production Operations](../13-production/README.vi.md) — SLO correlation engine, storm drills
-- [13 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md) — correlation / incident grouping ở quy mô hyperscaler
-- [14 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md) — multi-region cascade, payment fan-out storms
-- [15 — Famous Incidents](../16-famous-incidents/README.vi.md) — case study alert storm và correlated outages
+- [13 — Production Operations](../13-production/README.vi.md) — SLO correlation engine, storm drills
+- [14 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md) — correlation / incident grouping ở quy mô hyperscaler
+- [15 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md) — multi-region cascade, payment fan-out storms
+- [16 — Famous Incidents](../16-famous-incidents/README.vi.md) — case study alert storm và correlated outages
 
 ## Next Reading
 
-Sau chương này, hãy chuyển sang [09 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md).
+Sau chương này, hãy chuyển sang [10 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md).
 
 ---
 
@@ -30,11 +30,11 @@ Sau chương này, hãy chuyển sang [09 — Root Cause Analysis](../10-root-ca
 
 1. [Why Alert Correlation?](#1-why-alert-correlation)
 2. [Correlation Architecture](#2-correlation-architecture)
-3. [Stage 1 — Deduplication](#3-stage-1--deduplication)
-4. [Stage 2 — Grouping](#4-stage-2--grouping)
-5. [Stage 3 — Topology-Aware Correlation](#5-stage-3--topology-aware-correlation)
-6. [Stage 4 — Causal Ordering](#6-stage-4--causal-ordering)
-7. [Stage 5 — Alert Enrichment](#7-stage-5--alert-enrichment)
+3. [Stage 1 — Deduplication](#3-stage-1-deduplication)
+4. [Stage 2 — Grouping](#4-stage-2-grouping)
+5. [Stage 3 — Topology-Aware Correlation](#5-stage-3-topology-aware-correlation)
+6. [Stage 4 — Causal Ordering](#6-stage-4-causal-ordering)
+7. [Stage 5 — Alert Enrichment](#7-stage-5-alert-enrichment)
 8. [Correlation Algorithms Deep Dive](#8-correlation-algorithms-deep-dive)
 9. [Service Dependency Graph](#9-service-dependency-graph)
 10. [Temporal Correlation](#10-temporal-correlation)
@@ -46,17 +46,17 @@ Sau chương này, hãy chuyển sang [09 — Root Cause Analysis](../10-root-ca
 16. [Scaling](#16-scaling)
 17. [Security](#17-security)
 18. [Cost](#18-cost)
-19. [Tư duy sâu: Topology stale, Time-window, Cascade vs Multi-failure, Storm UX](#19-tư-duy-sâu-topology-stale-time-window-cascade-vs-multi-failure-storm-ux)
+19. [Tư duy sâu: Topology stale, Time-window, Cascade vs Multi-failure, Storm UX](#19-tu-duy-sau-topology-stale-time-window-cascade-vs-multi-failure-storm-ux)
 20. [Production Review](#20-production-review)
 
 ---
 
 
-## Cách đọc chapter này (concept-first)
+## Cách đọc chapter này: từ event stream đến incident có vòng đời
 
 > [!IMPORTANT]
-> **Đọc concept trước — code để sau**
-> Từ chapter 08 trở đi, handbook ưu tiên: **vấn đề → ý tưởng → input data → thuật toán/model → output → ưu/nhược → khi nào dùng**. Phần implementation nằm trong khối **See the code below** (bấm mới mở). Mục tiêu: bạn hiểu *tại sao và hoạt động ra sao trên telemetry AIOps*, không chỉ copy-paste.
+> **Chương này cố ý không chứa code triển khai.**
+> Correlation engine production không phải hàm “group alerts trong 5 phút”. Nó quản lý một incident sống hàng chục phút: nhận evidence mới, giữ symptom đang firing, tách fault chồng, liên kết nhưng không merge khi còn mơ hồ, và chỉ resolve sau khi mọi recovery gate quan trọng đã qua.
 
 | Bước đọc | Câu hỏi |
 |----------|---------|
@@ -67,6 +67,21 @@ Sau chương này, hãy chuyển sang [09 — Root Cause Analysis](../10-root-ca
 | 5. Output | Schema sự kiện, score, rank, action proposal? |
 | 6. Trade-off | Ưu / nhược / chi phí / giải thích được không? |
 | 7. When | Dùng khi nào — và khi nào **đừng** dùng |
+
+### Hợp đồng đầu ra của correlation engine
+
+Với mỗi event, engine phải đưa ra một quyết định có thể audit:
+
+| Decision | Nghĩa | Khi dùng |
+|----------|-------|----------|
+| Deduplicate | Cùng symptom identity; tăng occurrence | Cùng alert/service/scope, khác pod hoặc lần evaluate |
+| Merge | Cùng một incident timeline và commander | Có path/failure-domain + thời gian + signal tương thích |
+| Link | Hai incident riêng nhưng liên quan | Có shared context, chưa đủ chứng minh cùng fault |
+| Split | Tách group đã merge khi evidence mới mâu thuẫn | Graph stale, root khác, recovery độc lập |
+| Suppress-only | Event thuộc incident mở; không page lại | Cùng symptom episode đang active |
+| Open-new | Fault độc lập hoặc regression mới | Service/failure-domain khác, onset mới, không được incident cũ giải thích |
+
+“Suppress” không có nghĩa vứt event. Occurrence, severity, affected scope và timeline vẫn cập nhật. Một incident 60 phút chỉ page một lần nhưng phải hiện **vẫn đang tác động**, có heartbeat và escalation nếu xấu đi.
 
 ---
 
@@ -83,23 +98,8 @@ Sau chương này, hãy chuyển sang [09 — Root Cause Analysis](../10-root-ca
 
 Một sự cố đơn lẻ của dịch vụ microservice có thể kích hoạt chuỗi cảnh báo dây chuyền lên tới hàng trăm cảnh báo:
 
-```
-Nguyên nhân gốc rễ: payment-service bị cạn kiệt kết nối database connection pool
+Ví dụ DB pool cạn lúc 10:00 tạo mỗi phút: 10 pod payment timeout, 6 pod checkout error, 3 gateway latency, hai SLO burn alert và một log-rate anomaly. Sau 30 phút có hơn 600 event nhưng chỉ một fault episode. Correlation tốt không biến 600 thành im lặng; nó giữ một incident với `occurrence_count=600`, 21 entity bị ảnh hưởng, severity timeline và trạng thái firing liên tục.
 
-Chuỗi cảnh báo kích hoạt (trong vòng 2 phút):
-1.  ALERT: payment-service error_rate > 5% [payment-service]
-2.  ALERT: payment-service latency_p99 > 2s [payment-service]
-3.  ALERT: payment-service cpu_usage > 80% [payment-service-pod-1]
-4.  ALERT: payment-service cpu_usage > 80% [payment-service-pod-2]
-5.  ALERT: payment-service cpu_usage > 80% [payment-service-pod-3]
-6.  ALERT: order-service error_rate > 5% [order-service] ← tác động downstream
-7.  ALERT: order-service latency_p99 > 3s [order-service]
-8.  ALERT: checkout-service SLO burn rate 14x [checkout-service] ← tác động downstream
-9.  ALERT: checkout-service error_rate > 10% [checkout-service]
-10. ALERT: api-gateway error_rate > 3% [api-gateway] ← tác động downstream
-...
-(Tổng số hơn 50+ cảnh báo khác nhau, đều bắt nguồn từ 1 nguyên nhân gốc rễ)
-```
 
 Nếu không có liên kết tương quan: kỹ sư sẽ nhận hơn 50+ thông báo PagerDuty đổ về liên tục. Tổng thời gian để tìm hiểu và hiểu vấn đề mất khoảng 20–40 phút.
 
@@ -107,99 +107,34 @@ Nếu có liên kết tương quan: kỹ sư chỉ nhận **1 incident duy nhấ
 
 ### What Alert Correlation Produces
 
-```mermaid
-flowchart LR
-    subgraph Input["Input: 50+ raw alerts"]
-        A1["payment error_rate high"]
-        A2["payment latency high"]
-        A3["payment cpu x3 pods"]
-        A4["order error_rate high"]
-        A5["checkout SLO burn"]
-        A6["..."]
-    end
-
-    subgraph Correlation["Alert Correlation Engine"]
-        DEDUP["Deduplication<br/>Collapse A3 x3 pods to 1"]
-        GROUP["Grouping<br/>By service topology"]
-        TOPO["Topology Analysis<br/>Where did it start?"]
-        CAUSAL["Causal Ordering<br/>Timestamp + dependency"]
-        ENRICH["Enrichment<br/>Add context, runbooks"]
-    end
-
-    subgraph Output["Output: 1 incident group"]
-        INC["Incident Group<br/>root: payment-service<br/>impacted: order, checkout, api-gateway<br/>type: db connection exhaustion<br/>severity: P1<br/>runbook: db-conn-pool<br/>traces + 23 ERROR logs"]
-    end
-
-    Input --> Correlation --> Output
-
-    style Input fill:#fecaca,color:#1e293b
-    style Correlation fill:#f3e8ff,color:#1e293b
-    style Output fill:#dcfce7,color:#1e293b
-```
+Output là incident aggregate có identity ổn định, member events, first/last seen, active symptoms, recovered symptoms, topology paths, candidate roots, related incidents, decision log, lifecycle state và evidence quality. Incident ID không đổi chỉ vì alert tạm xanh một phút; nó chỉ resolve khi recovery policy thỏa.
 
 ---
 
 ## 2. Correlation Architecture
 
-```mermaid
-flowchart TD
-    subgraph Sources["Alert Sources"]
-        AM[Alertmanager\nwebhook → Kafka]
-        AD[Anomaly Detector\nKafka: aiops-anomalies]
-        CD[Custom Detectors\nKafka: aiops-anomalies]
-    end
+Engine có sáu stateful layer: normalize identity; dedup episode; group theo entity/failure signature; merge/link theo topology và time; quản lý lifecycle; enrich/publish. State partition theo tenant+service/failure-domain để một incident nóng không làm mất isolation của service khác.
 
-    subgraph Pipeline["Correlation Pipeline"]
-        CONS[Kafka Consumer\naiops-anomalies]
-        
-        subgraph Window["Time Window Buffer (5 min)"]
-            BUFF[In-memory Buffer\nRedis Sorted Set by timestamp]
-        end
-        
-        subgraph Stages["Correlation Stages"]
-            S1[Stage 1: Deduplication\nSame metric, same service, same time]
-            S2[Stage 2: Grouping\nBy service + alert type]
-            S3[Stage 3: Topology Correlation\nService dependency graph]
-            S4[Stage 4: Causal Ordering\nTimestamp + dependency distance]
-            S5[Stage 5: Enrichment\nRunbook + trace + log links]
-        end
-    end
+### Event time, processing time và revision
 
-    subgraph Output["Output"]
-        PUB[Kafka Publisher\naiops-correlated-alerts]
-        INCIDENT[Incident Store\nPostgres / DynamoDB]
-        GRAFANA[Grafana Annotations]
-        WEBHOOK[Webhook → PagerDuty / Slack]
-    end
+Event 10:02 có thể tới lúc 10:05. Correlation dùng event time để đặt timeline, processing time để đo lag. Window không đóng cứng rồi quên; nó cho allowed lateness và revision. Late trace chứng minh hai group cùng cascade có thể chuyển LINK→MERGE, nhưng decision log phải ghi lý do. Late event không được hồi sinh incident đã resolve sau retention mà không tạo regression/reopen policy rõ.
 
-    Sources --> CONS --> BUFF --> Stages
-    S1 --> S2 --> S3 --> S4 --> S5
-    S5 --> PUB --> INCIDENT
-    S5 --> GRAFANA
-    S5 --> WEBHOOK
+### Incident state machine
 
-    style Sources fill:#dbeafe,color:#1e293b
-    style Pipeline fill:#dcfce7,color:#1e293b
-    style Output fill:#ffedd5,color:#1e293b
-```
+| State | Ý nghĩa | Chuyển trạng thái |
+|-------|---------|-------------------|
+| Candidate | Chưa đủ persistence/impact | thêm event xác nhận hoặc hết TTL |
+| Open | Đã notify, đang impact | symptom tiếp tục, escalation, link/split |
+| Mitigating | Có action/change khắc phục | vẫn giữ open cho tới recovery gate |
+| Recovering | SLI về baseline nhưng chưa đủ ổn định | relapse quay Open |
+| Resolved | Recovery đủ lâu và không còn critical member | có regression mới trong reopen window |
+| Closed | Hết reopen/late-event retention | chỉ attach evidence lịch sử |
+
+Baseline detector và incident lifecycle là hai state khác nhau. Detector có thể tiếp tục gửi heartbeat hoặc active flag; correlation không resolve chỉ vì không nhận event mới nếu detector/data pipeline đang degraded.
 
 ### Data Flow Timing
 
-```
-Cảnh báo kích hoạt trong Prometheus           t=0s
-Alertmanager webhook gửi đi                   t=15s (evaluation interval)
-Kafka nhận được cảnh báo                      t=16s
-Cửa sổ tương quan (correlation window) mở     t=16s
-Cửa sổ tương quan đóng                        t=5 phút (có thể cấu hình)
-Deduplication + grouping hoàn tất             t=5 phút + 200ms
-Topology correlation hoàn tất                 t=5 phút + 1s
-Causal ordering hoàn tất                      t=5 phút + 1.5s
-Enrichment (truy vấn Loki/Tempo) hoàn tất     t=5 phút + 5s
-Incident được publish                         t=5 phút + 6s
-Thông báo PagerDuty gửi đi                    t=5 phút + 7s
-
-Tổng cộng: 5-6 phút từ khi cảnh báo đầu tiên kích hoạt cho đến khi sinh ra một incident cấu trúc thống nhất duy nhất
-```
+Mục tiêu minh họa: t+0 nhận event đầu; t+1s dedup/group; t+3s topology candidate; t+5s mở incident skeleton; t+15s enrichment; evidence muộn tạo revision. Latency page không chờ causal analysis sâu. Khi backend Loki/Tempo down, skeleton vẫn đi với `partial=true`.
 
 ---
 
@@ -225,16 +160,17 @@ Deduplication chịu trách nhiệm loại bỏ **các cảnh báo trùng lặp 
 
 ### Cách hoạt động (các bước)
 
-```
-1. fingerprint = hash(alertname, service, namespace, severity)  — bỏ pod/instance
-2. Tra key Redis/in-memory theo fingerprint
-3. Miss → lưu first_seen + occurrence_count=1 + affected_pods; emit sự kiện mới
-4. Hit trong TTL → occurrence_count++; gộp pod; không emit page mới
-5. Hết TTL → sự kiện khớp tiếp theo mở “first” mới (hoặc attach incident đang mở — late-join)
-```
+Enrichment chạy theo budget và priority. Metric impact/current-vs-baseline, recent change và topology path đi trước; top log template/trace exemplar sau; runbook cuối. Mỗi artifact có freshness, coverage và query link. Không copy 200 log lines vào page. Khi evidence mới đổi failure signature, engine được split/re-rank incident thay vì coi enrichment chỉ trang trí.
+1. Canonicalize service, signal, failure mode, namespace/tenant và direction.
+2. Tạo fingerprint chỉ từ field ổn định; giữ pod/instance/version làm scope metadata.
+3. Tìm episode active cùng key. Nếu có, tăng occurrence và cập nhật last_seen/severity/scope.
+4. Nếu event biểu diễn **recovery**, cập nhật member state chứ không tạo alert mới.
+5. Nếu key giống nhưng episode trước đã resolve ngoài reopen window, mở episode mới.
+6. Nếu một field bị strip có khả năng phân biệt fault (region, dependency, error class), không dedup mù; đưa vào split dimension hoặc giữ subkey.
 
 ### Output / on-call thấy gì
 
+Card tối thiểu nói: incident đang open bao lâu; customer impact/burn; active/recovered symptoms; candidate origin và topology path; change gần; 1–3 evidence cụ thể; related incident; quyết định merge/link cùng confidence; data gaps; owner/runbook. Với incident dài, card có timeline delta “15 phút qua error 8→12%, thêm auth-cache incident riêng”, không spam lại toàn nội dung.
 | Trường | Ví dụ | Ý nghĩa |
 |--------|-------|---------|
 | `dedup_key` | `dedup:a3f2…` | Định danh ổn định của symptom |
@@ -259,111 +195,24 @@ On-call **không** nhận 12 page cho một HighCPU — nhận **một** dòng v
 
 ### Types of Duplicates
 
-```
-Loại 1: Re-fire (cùng một cảnh báo, cùng nhãn, lặp lại sau mỗi chu kỳ đánh giá)
-  alert: ServiceHighErrorRate{service="payment"} kích hoạt ở các mốc t=0, t=15s, t=30s...
-  → Chỉ giữ lại thông báo đầu tiên, tắt tiếng các thông báo sau cho đến khi sự cố được khắc phục
+| Loại | Ví dụ | Xử lý |
+|------|-------|-------|
+| Re-evaluation | Cùng HighError mỗi 30 giây | Một episode, occurrence tăng |
+| Replica fan-out | 12 pod cùng dependency timeout | Một service symptom, giữ pod_count |
+| Dual detector | Static SLO + anomaly detector cùng error rate | Merge evidence family, không hai vote độc lập |
+| Alias | `payment-api` và `pay-svc` cùng workload | Entity resolver trước fingerprint |
+| Near duplicate | latency high và SLO burn cùng service | Không dedup; group vì semantics khác |
 
-Loại 2: Trùng lặp ở cấp độ Pod (cùng một lỗi xuất hiện trên nhiều pods chạy song song)
-  alert: HighCPU{pod="payment-svc-abc"} + HighCPU{pod="payment-svc-def"} + ...
-  → Hợp nhất thành: HighCPU{service="payment-svc", pod_count=3}
+### Case: dedup quá mạnh che fault thứ hai
 
-Loại 3: Trùng lặp giữa Alert + Anomaly
-  Cảnh báo Prometheus: error_rate > 5%
-  Bộ phát hiện Anomaly detector: cùng metric đó có anomaly score = 0.9
-  → Gộp chung thành một sự kiện, tích hợp bối cảnh ngữ cảnh
-```
+Payment có error class `DB_TIMEOUT` từ 10:00, sau đó `TLS_CERT_EXPIRED` từ 10:25. Nếu fingerprint chỉ là `(HighError,payment)`, fault thứ hai bị cộng occurrence vào episode đầu và không bao giờ tạo candidate mới. Fingerprint cần failure signature/error family hoặc change-point check. Hai symptom cùng service nhưng origin khác phải thành hai sub-episodes, có thể thuộc hai incident.
 
-### Deduplication Implementation
+Ngược lại, đưa `pod` vào key tạo 30 episode khi DB chung lỗi. Quy tắc: field mô tả **instance bị ảnh hưởng** là aggregation metadata; field mô tả **failure mode/failure domain** có thể là identity.
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+### Dedup trong incident dài
 
-```python
-import hashlib
-import json
-import time
-from typing import Optional
-import redis
+TTL không phải thời lượng tối đa incident. Mỗi heartbeat làm `last_seen` tiến lên, nhưng `first_seen` giữ nguyên. Nếu event mất ba phút vì scrape gap, incident không tự resolve nếu active-state chưa nhận recovery và data freshness đỏ. Cần hai timer: dedup quiet period và lifecycle recovery gate. Trộn chúng tạo “khoảng câm” giữa incident dài.
 
-class AlertDeduplicator:
-    def __init__(
-        self,
-        redis_client: redis.Redis,
-        dedup_window_seconds: int = 300,    # Cửa sổ khử trùng lặp 5 phút
-        pod_collapse_labels: list = None,
-    ):
-        self.redis = redis_client
-        self.window = dedup_window_seconds
-        self.pod_labels = pod_collapse_labels or ["pod", "instance", "pod_name"]
-
-    def _make_dedup_key(self, alert: dict) -> str:
-        """
-        Tạo fingerprint cho cảnh báo, bỏ qua các chi tiết cụ thể của pod.
-        Hai cảnh báo có cùng fingerprint được coi là trùng lặp.
-        """
-        # Loại bỏ các nhãn ở cấp độ pod để gộp các cảnh báo pod trùng lặp
-        labels = {
-            k: v for k, v in alert.get("labels", {}).items()
-            if k not in self.pod_labels
-        }
-        
-        fingerprint_data = {
-            "alertname": alert.get("alertname") or alert.get("metric_name"),
-            "service": labels.get("service") or labels.get("job"),
-            "namespace": labels.get("namespace"),
-            "severity": labels.get("severity"),
-        }
-        
-        fingerprint_json = json.dumps(fingerprint_data, sort_keys=True)
-        return f"dedup:{hashlib.md5(fingerprint_json.encode()).hexdigest()}"
-
-    def is_duplicate(self, alert: dict) -> tuple[bool, Optional[dict]]:
-        """
-        Trả về bộ giá trị (is_duplicate, original_alert_if_exists)
-        """
-        key = self._make_dedup_key(alert)
-        
-        existing = self.redis.get(key)
-        
-        if existing:
-            original = json.loads(existing)
-            # Cập nhật số lượng pod lỗi nếu đây là trùng lặp ở cấp độ pod
-            if self._is_pod_duplicate(alert, original):
-                self._increment_pod_count(key, original)
-            return True, original
-        
-        # Lần xuất hiện đầu tiên — lưu trữ lại
-        alert_with_meta = {
-            **alert,
-            "first_seen": time.time(),
-            "occurrence_count": 1,
-            "affected_pods": self._extract_pod_labels(alert),
-        }
-        self.redis.setex(key, self.window, json.dumps(alert_with_meta))
-        return False, None
-
-    def _is_pod_duplicate(self, alert: dict, original: dict) -> bool:
-        """Kiểm tra xem cảnh báo này có phải từ một pod khác của cùng một service không."""
-        for pod_label in self.pod_labels:
-            if (pod_label in alert.get("labels", {}) and
-                alert["labels"][pod_label] != original.get("labels", {}).get(pod_label)):
-                return True
-        return False
-
-    def _increment_pod_count(self, key: str, original: dict):
-        original["occurrence_count"] = original.get("occurrence_count", 1) + 1
-        self.redis.setex(key, self.window, json.dumps(original))
-
-    def _extract_pod_labels(self, alert: dict) -> list:
-        return [
-            alert["labels"][label]
-            for label in self.pod_labels
-            if label in alert.get("labels", {})
-        ]
-```
-
-</details>
 
 ---
 
@@ -389,25 +238,17 @@ Sau khi khử trùng lặp, gom nhóm các cảnh báo còn lại dựa trên **
 
 ### Cách hoạt động (các bước)
 
-```
-1. Ưu tiên group_key = labels.service (fallback: job → "unknown")
-2. Đưa alert vào AlertGroup[service]; theo dõi alert_types[], max severity
-3. Orphan không có service → group TIME_WINDOW tạm
-4. Chưa merge service khác nhau (cần topology score)
-5. Emit danh sách AlertGroup cho Stage 3
-```
+1. Gom event dedup theo canonical service/workload và time proximity ngắn để tạo service symptom group.
+2. Tách theo failure family: resource saturation, dependency error, deploy regression, data-quality; không trộn chỉ vì cùng service.
+3. Giữ direction và episode: traffic drop khác latency spike; recovery khác fault mới.
+4. Tính group severity từ customer impact/burn, không chỉ max member.
+5. Group mới được so với incident active: explained-by, same-domain, temporal fit và contradiction.
+6. Nếu score cao và không veto → merge; trung bình → link; thấp hoặc independent signature → open-new.
 
 ### Output / on-call thấy gì
 
 Chưa phải full incident card — intermediate:
 
-```
-group_id: svc-payment-…
-services_affected: [payment-service]
-alert_types: [HighErrorRate, HighLatency, HighCPU]
-severity: critical
-alerts: […3–15 members đã dedup…]
-```
 
 ### Ưu / nhược + khi nào dùng
 
@@ -424,97 +265,20 @@ alerts: […3–15 members đã dedup…]
 
 ### Grouping Dimensions
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+| Dimension | Dùng để | Rủi ro |
+|-----------|---------|--------|
+| Service/workload | Nén multi-signal cùng component | Rename/alias làm split |
+| Failure signature | Tách TLS, DB timeout, OOM | Parser quá chi tiết làm fragment |
+| Region/AZ/tenant | Tách failure domain | Global root có thể bị chia quá sớm |
+| Version/change cohort | Nhìn canary regression | Rollout lan dần cần late merge/link |
+| Direction | Tách drop/spike/recovery | Cascade có cả tăng retry và giảm success |
+| Time episode | Tách regression | Window quá dài over-merge |
 
-```python
-from dataclasses import dataclass, field
-from typing import List, Dict
-from enum import Enum
-import time
+### Per-service isolation: incident đầu không che incident sau
 
-class GroupingStrategy(Enum):
-    SERVICE = "service"           # Toàn bộ cảnh báo từ cùng một service
-    NAMESPACE = "namespace"       # Toàn bộ cảnh báo từ cùng một k8s namespace
-    TOPOLOGY = "topology"         # Cảnh báo liên kết theo topo kiến trúc dịch vụ
-    ALERT_TYPE = "alert_type"     # Cùng loại lỗi (error_rate, latency, v.v.)
-    TIME_WINDOW = "time_window"   # Cảnh báo xuất hiện trong cùng cửa sổ thời gian
+State không có một “global incident đang mở”. Mỗi service/failure-domain giữ sub-episode riêng, sau đó topology layer quyết định merge/link. Khi DB incident đang mở, auth-cache anomaly mới vẫn qua detector/dedup/group bình thường; suppression lookup theo `parent_incident_id + explained scope`, không theo “cluster đang P1”.
 
-@dataclass
-class AlertGroup:
-    group_id: str
-    strategy: GroupingStrategy
-    alerts: List[dict] = field(default_factory=list)
-    created_at: float = field(default_factory=time.time)
-    
-    # Các metadata tính toán được
-    services_affected: List[str] = field(default_factory=list)
-    alert_types: List[str] = field(default_factory=list)
-    severity: str = "unknown"
-    
-    def add_alert(self, alert: dict):
-        self.alerts.append(alert)
-        service = alert.get("labels", {}).get("service")
-        if service and service not in self.services_affected:
-            self.services_affected.append(service)
-        alert_type = alert.get("alertname", "unknown")
-        if alert_type not in self.alert_types:
-            self.alert_types.append(alert_type)
-        # Thiết lập severity ở mức cao nhất
-        severities = {"critical": 4, "warning": 3, "info": 2, "unknown": 1}
-        if severities.get(alert.get("labels", {}).get("severity", ""), 0) > \
-           severities.get(self.severity, 0):
-            self.severity = alert["labels"].get("severity", "unknown")
-
-
-class AlertGrouper:
-    def __init__(self, time_window_seconds: int = 300):
-        self.window = time_window_seconds
-        self.groups: Dict[str, AlertGroup] = {}
-
-    def group(self, alerts: List[dict]) -> List[AlertGroup]:
-        """
-        Quy trình phân nhóm theo nhiều chiến lược ưu tiên.
-        """
-        # Chiến lược 1: Phân nhóm theo service (rõ ràng và phổ biến nhất)
-        service_groups = self._group_by_service(alerts)
-        
-        # Chiến lược 2: Phân nhóm các nhóm service liên quan theo topo kiến trúc
-        # (được xử lý tại Stage 3 — Topology Correlation)
-        
-        # Chiến lược 3: Xử lý các cảnh báo không thuộc về một service cụ thể nào
-        ungrouped = [a for a in alerts if not a.get("labels", {}).get("service")]
-        misc_group = self._group_by_time_window(ungrouped)
-        
-        return list(service_groups.values()) + ([misc_group] if misc_group.alerts else [])
-
-    def _group_by_service(self, alerts: List[dict]) -> Dict[str, AlertGroup]:
-        groups = {}
-        for alert in alerts:
-            service = (
-                alert.get("labels", {}).get("service") or
-                alert.get("labels", {}).get("job") or
-                "unknown"
-            )
-            if service not in groups:
-                groups[service] = AlertGroup(
-                    group_id=f"svc-{service}-{int(time.time())}",
-                    strategy=GroupingStrategy.SERVICE,
-                )
-            groups[service].add_alert(alert)
-        return groups
-
-    def _group_by_time_window(self, alerts: List[dict]) -> AlertGroup:
-        group = AlertGroup(
-            group_id=f"time-{int(time.time())}",
-            strategy=GroupingStrategy.TIME_WINDOW,
-        )
-        for alert in alerts:
-            group.add_alert(alert)
-        return group
-```
-
-</details>
+Ví dụ 10:00 payment DB timeout; 10:22 auth 401 do cache eviction. Payment incident cover topology `{ledger-db,payment,checkout,web}`. Auth-cache thuộc component `{auth-cache,auth}` không có active path/shared resource; overlap time không đủ. Engine mở INC-B, có thể link `same_region/time` với INC-A nhưng không merge. Global maintenance silence hoặc catch-all `incident_open=true` sẽ bỏ lọt B.
 
 ---
 
@@ -530,7 +294,7 @@ class AlertGrouper:
 | **Ý tưởng** | Nếu A gọi B và cả hai alert trong cửa sổ correlation, chúng có khả năng chung một incident; đi theo cạnh (và node infra dùng chung: DB, Kafka, cache) để merge group và ước lượng impact radius. |
 
 > [!WARNING]
-> Topology correlation chỉ tốt bằng độ tươi của graph. **Graph stale còn tệ hơn không có graph** (false merge / đảo root). Xem [§19.1](#191-topology-stale-graph--worse-than-no-graph).
+> Topology correlation chỉ tốt bằng độ tươi của graph. **Graph stale còn tệ hơn không có graph** (false merge / đảo root). Xem [§19.1](#191-topology-stale-graph-te-hon-la-khong-co-graph).
 
 ### Input từ AIOps data plane
 
@@ -544,36 +308,26 @@ class AlertGrouper:
 
 ### Cách hoạt động (các bước)
 
-```
-1. Load graph; nếu age > max_age hoặc coverage thấp → degrade (chỉ temporal/label)
-2. Với mỗi service đỏ, expand upstream (caller) và downstream (callee) tới max_depth
-3. Score cặp (group_i, group_j): topology_distance, shared_infra, edge weight
-4. Merge nếu score ≥ threshold VÀ không multi-failure veto (xem §19.3)
-5. Vùng xám → LINK (related), không hard MERGE
-6. impact_radius = ancestors của root giả thuyết
-```
+1. Lấy service groups và graph snapshot theo incident time.
+2. Chỉ kích hoạt edge có traffic/span trong cửa sổ; edge catalog không hoạt động không được nối group.
+3. Tìm path có hướng trong hop limit và shared resource/failure domain.
+4. Tính merge score từ path strength, edge traffic, onset lag phù hợp, failure signature compatibility và shared change.
+5. Áp veto: component tách rời, error family mâu thuẫn, recovery độc lập, two scoped changes khác nhau, graph stale/low coverage.
+6. Merge khi score vượt ngưỡng và không veto; nếu mơ hồ thì link để giữ hai timeline.
+7. Re-evaluate khi graph/evidence mới đến; split phải giữ audit và notification continuity.
 
-```mermaid
-flowchart LR
-    subgraph Red["Service đỏ trong window"]
-        GW[api-gateway]
-        ORD[order]
-        PAY[payment]
-    end
-    subgraph Graph["Graph tươi"]
-        GW2[api-gateway] --> ORD2[order]
-        ORD2 --> PAY2[payment]
-        PAY2 --> DB[(payment-db)]
-    end
-    Red --> Merge[Merge score ≥ 0.6]
-    Graph --> Merge
-    Merge --> Inc[Một incident · impact radius]
+### Case bằng số: cascade thật
 
-    style Red fill:#fecaca,color:#1e293b
-    style Graph fill:#dbeafe,color:#1e293b
-    style Merge fill:#dcfce7,color:#1e293b
-    style Inc fill:#ffedd5,color:#1e293b
-```
+Graph `web→checkout→payment→ledger-db`. Onset: ledger pool wait 10:00:10, payment timeout 10:00:32, checkout error 10:00:51, web success drop 10:01:05. Active edge traffic lần lượt 600, 900, 1.100 RPS; failure signature dependency timeout tương thích. Path strength 0,95, temporal fit 0,88, signature 0,9, shared trace 0,92; merge score cao. Bốn groups thành một incident nhưng member state riêng, để recovery propagate DB→payment→checkout.
+
+### Case bằng số: cùng thời gian nhưng độc lập
+
+Payment DB timeout 10:00 và search index lag 10:01 sau batch. Catalog có cả hai sau API gateway, nhưng không có path giữa chúng; change IDs khác; signatures `pool_timeout` và `index_refresh_lag`; recovery payment 10:20, search 10:45. Temporal score 0,9 không thắng topology/signature veto. Engine mở hai incident và có thể link “same customer journey” cho commander, không merge.
+
+### Downstream weighting không được biến thành merge oracle
+
+Shared gateway có 200 downstream nên blast radius lớn nhưng thường là symptom. Impact weighting dùng để severity/routing, không chứng minh common root. Edge activation, direction và origin evidence quyết định merge. Một low-traffic internal DB gây 30 batch alerts có node count lớn nhưng business impact thấp; một payment path ba node có revenue weight cao. Card hiển thị cả affected count và weighted impact, tránh score bí ẩn.
+
 
 ### Output / on-call thấy gì
 
@@ -600,159 +354,11 @@ flowchart LR
 
 ### Service Dependency Graph Sources
 
-```mermaid
-graph TD
-    subgraph Sources["Dependency Graph Sources"]
-        OTEL[OpenTelemetry Traces\nSpan → parent service calls]
-        ISTIO[Istio Service Mesh\nTraffic topology]
-        KUBE[Kubernetes Services\nService → Endpoints]
-        MANUAL[Manual Configuration\nCMDB / Backstage catalog]
-    end
-
-    subgraph Graph["Service Graph (Redis Graph / NetworkX)"]
-        A[api-gateway] -->|calls| B[order-service]
-        B -->|calls| C[payment-service]
-        B -->|calls| D[inventory-service]
-        C -->|calls| E[payment-db]
-        D -->|calls| F[inventory-db]
-    end
-
-    Sources --> Graph
-
-    style Sources fill:#dbeafe,color:#1e293b
-    style Graph fill:#dcfce7,color:#1e293b
-```
+Ưu tiên trace/service-mesh runtime cho active call edge; catalog/CMDB bổ sung database, queue, DNS, region và data pipeline. Mỗi edge có source, direction, first/last seen, request rate, error rate, confidence và age. Xung đột direction không tự chọn; degrade/link cho đến khi xác minh.
 
 ### Building the Dependency Graph from Traces
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-import networkx as nx
-from collections import defaultdict
-import json
-
-class ServiceDependencyGraph:
-    def __init__(self):
-        self.graph = nx.DiGraph()
-        self.call_counts = defaultdict(lambda: defaultdict(int))
-        self.error_rates = defaultdict(lambda: defaultdict(float))
-
-    def update_from_span_metrics(self, span_metrics: list):
-        """
-        Cập nhật sơ đồ phụ thuộc từ SpanMetrics (sinh ra bởi OTel Collector).
-        SpanMetrics cung cấp thông tin các cuộc gọi dịch vụ service-to-service.
-        """
-        for metric in span_metrics:
-            caller = metric.get("client_service")
-            callee = metric.get("server_service")
-            
-            if caller and callee and caller != callee:
-                self.graph.add_edge(
-                    caller, callee,
-                    weight=metric.get("call_rate", 0),
-                    error_rate=metric.get("error_rate", 0),
-                    latency_p99=metric.get("latency_p99", 0),
-                )
-                self.call_counts[caller][callee] += 1
-
-    def find_upstream_services(self, service: str, max_depth: int = 3) -> list:
-        """
-        Tìm kiếm các dịch vụ upstream thực hiện gọi tới dịch vụ hiện tại.
-        Các dịch vụ này có thể đang biểu hiện lỗi cascading lan truyền.
-        """
-        upstream = []
-        for depth in range(1, max_depth + 1):
-            for path in nx.all_simple_paths(
-                self.graph, source=None, target=service, cutoff=depth
-            ):
-                upstream.extend(path[:-1])  # Loại bỏ chính dịch vụ đích
-        return list(set(upstream))
-
-    def find_downstream_services(self, service: str, max_depth: int = 3) -> list:
-        """
-        Tìm kiếm các dịch vụ downstream được gọi bởi dịch vụ hiện tại (các dependencies).
-        Các dịch vụ này có thể là nguyên nhân gốc rễ gây ra lỗi cho dịch vụ hiện tại.
-        """
-        if service not in self.graph:
-            return []
-        
-        downstream = []
-        for node in nx.descendants(self.graph, service):
-            try:
-                path_length = nx.shortest_path_length(self.graph, service, node)
-                if path_length <= max_depth:
-                    downstream.append({"service": node, "distance": path_length})
-            except nx.NetworkXNoPath:
-                pass
-        
-        return sorted(downstream, key=lambda x: x["distance"])
-
-    def get_impact_radius(self, root_service: str) -> dict:
-        """
-        Tính toán bán kính ảnh hưởng của một dịch vụ bị lỗi:
-        các dịch vụ nào khác sẽ bị ảnh hưởng?
-        """
-        directly_dependent = list(self.graph.predecessors(root_service))  # Các callers trực tiếp
-        all_dependent = list(nx.ancestors(self.graph, root_service))       # Toàn bộ callers liên quan
-        
-        return {
-            "root_service": root_service,
-            "directly_dependent": directly_dependent,
-            "all_dependent": all_dependent,
-            "impact_score": len(all_dependent) / max(1, len(self.graph.nodes)),
-        }
-
-    def correlate_alerts_by_topology(
-        self,
-        alert_groups: list,
-        max_correlation_distance: int = 3,
-    ) -> list:
-        """
-        Hợp nhất các nhóm cảnh báo đối với các dịch vụ có liên kết topology.
-        Nếu payment-service bị lỗi VÀ order-service bị lỗi,
-        và order-service gọi sang payment-service → hợp nhất thành 1 incident duy nhất.
-        """
-        correlated_groups = []
-        processed = set()
-
-        for group in alert_groups:
-            if group.group_id in processed:
-                continue
-
-            related_groups = [group]
-            services = set(group.services_affected)
-
-            for other_group in alert_groups:
-                if other_group.group_id == group.group_id:
-                    continue
-                if other_group.group_id in processed:
-                    continue
-
-                # Kiểm tra mối quan hệ topo giữa các dịch vụ của nhóm hiện tại
-                # và các dịch vụ của nhóm khác
-                for svc_a in services:
-                    for svc_b in other_group.services_affected:
-                        try:
-                            distance = nx.shortest_path_length(
-                                self.graph, svc_a, svc_b
-                            )
-                            if distance <= max_correlation_distance:
-                                related_groups.append(other_group)
-                                services.update(other_group.services_affected)
-                                processed.add(other_group.group_id)
-                                break
-                        except (nx.NetworkXNoPath, nx.NodeNotFound):
-                            pass
-
-            processed.add(group.group_id)
-            correlated_groups.append(related_groups)
-
-        return correlated_groups
-```
-
-</details>
+Aggregate nhiều trace thành edge theo window, không thêm edge từ một trace debug hiếm. Tail sampling thiên về error nên call-rate phải lấy metric khác hoặc hiệu chỉnh. Async Kafka không có parent span trực tiếp vẫn cần producer→topic→consumer data edge; nếu thiếu, cascade chậm qua queue dễ bị under-merge.
 
 ---
 
@@ -781,28 +387,25 @@ Từ một nhóm cảnh báo tương quan, xác định service nào là **nguy�
 
 ### Cách hoạt động (các bước)
 
-```
-1. Map service → first_alert_timestamp
-2. earliest = min; simultaneous = trong ±tolerance của earliest
-3. Score service simultaneous theo “bao nhiêu service phụ thuộc tôi” / depth
-4. root_hypothesis = score topology cao nhất trong simultaneous (không luôn là leaf sớm nhất)
-5. Rank mọi service theo khoảng cách graph từ root → causal_chain
-6. Graph stale → bỏ ưu tiên topology; đánh dấu confidence giảm
-```
+1. Dùng onset **interval** đã bù detector delay/clock skew, không sort `alert.created_at`.
+2. Trong các onset không chồng nhau, upstream/callee đỏ trước là evidence propagation; interval chồng nhau coi near-simultaneous.
+3. Dùng direction graph: callee failure có thể lan tới caller; caller overload cũng có thể lan xuống, nên giữ signature/load evidence.
+4. Node giải thích được nhiều downstream active nhận root-candidate weight; node chỉ đỏ sau retry/cancellation nhận symptom penalty.
+5. Recovery order cập nhật role: root hồi trước downstream củng cố; recovery độc lập gợi ý split/multi-failure.
+6. Không “chốt root” tại Chapter 9; xuất ordered candidates và uncertainty cho RCA Chapter 10.
+
+### “Đỏ trước” dùng để loại tương quan sai
+
+Nếu checkout onset chắc chắn 10:00–10:00:10, payment onset 10:04–10:04:20 và giả thuyết là payment gây checkout qua call path, thời gian phản bác: effect không thể trước cause bốn phút, trừ telemetry/latent state có giải thích. Engine hạ merge/cause edge hoặc tìm cached/config trigger.
+
+Nếu payment alert đến 10:04 nhưng raw onset interval 09:59–10:01 do detector persistence, interval chồng checkout; không loại. Timestamp chính xác giả từ pipeline không chính xác là nguồn false split phổ biến.
+
+### Retry đảo độ đỏ
+
+DB chậm làm payment retry tăng; payment CPU đỏ hơn DB và alert sớm hơn vì detector CPU nhạy. Causal ordering dùng trace origin, retry signature và raw onset để đặt DB candidate trước. Nếu chỉ max severity + alert time, engine gắn tiêu đề “payment CPU → DB” sai và enrichment dẫn on-call scale payment, khuếch đại DB.
 
 ### Output / on-call thấy gì
 
-```
-root_cause: payment-service
-root_cause_candidates: [payment-service, payment-db]
-causal_chain:
-  - payment-service  role=root_cause   rank=0
-  - order-service    role=symptom      rank=1
-  - api-gateway      role=symptom      rank=2
-evidence:
-  temporal: payment alerted first at …
-  topological: 4 services depend on payment
-```
 
 Tiêu đề incident actionable: `payment-service … → cascade to order, gateway` thay vì `many alerts`.
 
@@ -821,103 +424,7 @@ Tiêu đề incident actionable: `payment-service … → cascade to order, gate
 
 ### Algorithm: Topological + Temporal Analysis
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-from datetime import datetime
-from typing import List, Tuple
-import networkx as nx
-
-def determine_causal_order(
-    correlated_alerts: List[dict],
-    dependency_graph: ServiceDependencyGraph,
-    time_tolerance_seconds: int = 120,  # Cảnh báo kích hoạt lệch nhau trong khoảng 2 phút được coi là "đồng thời"
-) -> dict:
-    """
-    Xác định thứ tự nhân quả dựa trên hai tín hiệu:
-    1. Vị trí trên topology (các dịch vụ downstream bị lỗi SAU dịch vụ upstream)
-    2. Thứ tự thời gian (cảnh báo xuất hiện đầu tiên thường phản ánh nguyên nhân gốc rễ)
-    
-    Trả về danh sách xếp hạng các dịch vụ từ nguyên nhân gốc rễ tới triệu chứng.
-    """
-    
-    # Xây dựng ánh xạ dịch vụ sang mốc thời gian cảnh báo đầu tiên của nó
-    service_first_alert = {}
-    for alert in correlated_alerts:
-        service = alert.get("labels", {}).get("service", "unknown")
-        alert_time = alert.get("starts_at") or alert.get("timestamp")
-        
-        if isinstance(alert_time, str):
-            alert_time = datetime.fromisoformat(alert_time.replace("Z", "+00:00"))
-        
-        if service not in service_first_alert or alert_time < service_first_alert[service]:
-            service_first_alert[service] = alert_time
-
-    if not service_first_alert:
-        return {"root_cause_candidates": [], "evidence": "no_service_data"}
-
-    # Tìm dịch vụ bị cảnh báo SỚM NHẤT (bằng chứng thời gian)
-    earliest_service = min(service_first_alert, key=service_first_alert.get)
-    earliest_time = service_first_alert[earliest_service]
-
-    # Tìm các dịch vụ bị cảnh báo trong khoảng dung sai thời gian của dịch vụ sớm nhất
-    # (chúng xuất hiện gần như đồng thời và bất kỳ dịch vụ nào cũng có thể là nguyên nhân)
-    simultaneous = [
-        svc for svc, ts in service_first_alert.items()
-        if abs((ts - earliest_time).total_seconds()) <= time_tolerance_seconds
-    ]
-
-    # Trong số các dịch vụ đồng thời, ưu tiên dịch vụ nằm ở vị trí DOWNSTREAM NHẤT trên topo
-    # (vị trí sâu nhất trong dependency graph = dịch vụ bị gọi, không phải dịch vụ gọi đi)
-    def get_topology_score(service: str) -> int:
-        """
-        Điểm số = số lượng dịch vụ khác được gọi bởi dịch vụ này
-        Điểm số càng cao = càng có nhiều khả năng là nguyên nhân (nhiều caller phụ thuộc vào nó)
-        """
-        if service not in dependency_graph.graph:
-            return 0
-        return len(list(dependency_graph.graph.successors(service)))
-
-    root_cause_candidates = sorted(
-        simultaneous,
-        key=get_topology_score,
-        reverse=True,
-    )
-
-    # Xếp hạng tất cả các dịch vụ theo khoảng cách nhân quả tính từ nguyên nhân gốc rễ
-    root = root_cause_candidates[0] if root_cause_candidates else earliest_service
-    
-    service_ranking = []
-    for service, ts in service_first_alert.items():
-        try:
-            distance = nx.shortest_path_length(
-                dependency_graph.graph, root, service
-            )
-        except (nx.NetworkXNoPath, nx.NodeNotFound):
-            distance = 999  # Không có đường đi = nhiều khả năng là lỗi độc lập
-
-        service_ranking.append({
-            "service": service,
-            "causal_rank": distance,
-            "first_alert_time": ts.isoformat(),
-            "role": "root_cause" if service == root else "symptom",
-        })
-
-    service_ranking.sort(key=lambda x: x["causal_rank"])
-
-    return {
-        "root_cause_candidates": root_cause_candidates,
-        "root_cause": root,
-        "causal_chain": service_ranking,
-        "evidence": {
-            "temporal": f"{earliest_service} bị cảnh báo đầu tiên vào lúc {earliest_time}",
-            "topological": f"{root} được phụ thuộc bởi {len(list(dependency_graph.graph.predecessors(root)))} dịch vụ",
-        },
-    }
-```
-
-</details>
+Đây là heuristic ordering, không causal proof. Với shared AZ/DNS, service graph tạo nhiều leaf đỏ và không có path; engine phải sinh shared-infra candidate hoặc multi-failure, không chọn ngẫu nhiên service sâu nhất. Kết quả luôn kèm graph age, interval uncertainty và contradictions.
 
 ---
 
@@ -945,26 +452,9 @@ Enrichment bổ sung **ngữ cảnh** để incident gộp lại **hành động
 
 ### Cách hoạt động (các bước)
 
-```
-1. Chặn time range (vd. now-30m → now) quanh incident start
-2. Fan-out query async: logs, traces, metrics, deploys, runbook search
-3. Soft-fail từng nguồn (partial enrichment > card rỗng)
-4. Giới hạn payload (top N error, 1–3 trace id) cho UX page
-5. Publish incident enriched → Kafka aiops-correlated-alerts + Pager/Slack
-```
 
 ### Output / on-call thấy gì
 
-```
-title: payment-service db pool → cascade (9 services)
-root: payment-service · confidence 0.84 · graph_age 4m
-metrics: error_rate 12% · pool 20/20 · burn 14x
-logs: 847× "connection pool exhausted" (Loki link)
-traces: 4bf92f35… (Tempo)
-changes: deploy payment@2.14.3 (8m ago)
-runbook: /runbooks/db-conn-pool
-suppressed_alerts: 63
-```
 
 ### Ưu / nhược + khi nào dùng
 
@@ -979,137 +469,6 @@ suppressed_alerts: 63
 | Luôn với P1/P2 pageable | Loki/Tempo down — ship skeleton + banner |
 | Trước LLM investigation | Enrichment vượt page SLO — attach sâu sau |
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-import aiohttp
-import asyncio
-import time
-from typing import Optional
-
-class AlertEnricher:
-    def __init__(
-        self,
-        prometheus_url: str,
-        loki_url: str,
-        tempo_url: str,
-        runbook_index_url: str,
-    ):
-        self.prometheus_url = prometheus_url
-        self.loki_url = loki_url
-        self.tempo_url = tempo_url
-        self.runbook_url = runbook_index_url
-
-    async def enrich(
-        self,
-        incident: dict,
-        time_range_minutes: int = 30,
-    ) -> dict:
-        """
-        Thực hiện truy vấn làm giàu thông tin song song từ nhiều nguồn.
-        """
-        root_service = incident.get("root_cause", "unknown")
-        
-        # Chạy đồng thời toàn bộ các tác vụ truy vấn ngữ cảnh
-        enrichment_tasks = await asyncio.gather(
-            self._get_recent_errors(root_service, time_range_minutes),
-            self._get_related_traces(root_service, time_range_minutes),
-            self._get_metric_context(root_service, time_range_minutes),
-            self._get_runbook(incident),
-            self._get_recent_deployments(root_service),
-            return_exceptions=True,
-        )
-
-        (error_logs, traces, metric_context, runbook, deployments) = enrichment_tasks
-
-        # Trích xuất dữ liệu an toàn (bỏ qua nếu có task lỗi)
-        incident["enrichment"] = {
-            "error_log_count": len(error_logs) if isinstance(error_logs, list) else 0,
-            "sample_errors": error_logs[:5] if isinstance(error_logs, list) else [],
-            "related_trace_ids": traces if isinstance(traces, list) else [],
-            "metric_context": metric_context if isinstance(metric_context, dict) else {},
-            "runbook_url": runbook if isinstance(runbook, str) else None,
-            "recent_deployments": deployments if isinstance(deployments, list) else [],
-        }
-
-        return incident
-
-    async def _get_recent_errors(self, service: str, minutes: int) -> list:
-        """Truy vấn Loki lấy các logs ERROR gần đây từ dịch vụ."""
-        query = f'{{service="{service}"}} |= "ERROR" | json | line_format "{{.message}}"'
-        
-        async with aiohttp.ClientSession() as session:
-            params = {
-                "query": query,
-                "limit": 20,
-                "start": f"{int((time.time() - minutes * 60) * 1e9)}",
-                "end": f"{int(time.time() * 1e9)}",
-            }
-            async with session.get(
-                f"{self.loki_url}/loki/api/v1/query_range",
-                params=params,
-                timeout=aiohttp.ClientTimeout(total=5),
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    return [
-                        entry[1] for stream in data.get("data", {}).get("result", [])
-                        for entry in stream.get("values", [])
-                    ]
-        return []
-
-    async def _get_related_traces(self, service: str, minutes: int) -> list:
-        """Truy vấn Tempo lấy các traces có lỗi gần đây của dịch vụ."""
-        async with aiohttp.ClientSession() as session:
-            params = {
-                "q": f'{{resource.service.name="{service}"}} && status=error',
-                "limit": 5,
-                "start": f"{int(time.time() - minutes * 60)}",
-                "end": f"{int(time.time())}",
-            }
-            async with session.get(
-                f"{self.tempo_url}/api/search",
-                params=params,
-                timeout=aiohttp.ClientTimeout(total=5),
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    return [t["traceID"] for t in data.get("traces", [])]
-        return []
-
-    async def _get_runbook(self, incident: dict) -> Optional[str]:
-        """Tìm kiếm tài liệu hướng dẫn xử lý (runbook) phù hợp với loại sự cố này."""
-        alert_types = incident.get("alert_types", [])
-        root_service = incident.get("root_cause", "")
-        
-        # Truy vấn hệ thống lưu trữ runbook nội bộ (hệ thống RAG - chi tiết tại Ch10)
-        async with aiohttp.ClientSession() as session:
-            payload = {
-                "query": f"{root_service} {' '.join(alert_types)}",
-                "top_k": 1,
-            }
-            async with session.post(
-                f"{self.runbook_url}/api/v1/search",
-                json=payload,
-                timeout=aiohttp.ClientTimeout(total=3),
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    return data.get("results", [{}])[0].get("url")
-        return None
-
-    async def _get_recent_deployments(self, service: str) -> list:
-        """Truy vấn kiểm tra xem có đợt triển khai mới nào gần đây không."""
-        # Lấy thông tin từ Kubernetes events hoặc từ hệ thống quản lý CI/CD deployment
-        return []
-
-    async def _get_metric_context(self, service: str, minutes: int) -> dict:
-        """Truy vấn các chỉ số cơ bản của service từ Prometheus."""
-        return {}
-```
-
-</details>
 
 ---
 
@@ -1119,188 +478,45 @@ Bên cạnh quan hệ topology, một số thuật toán bổ sung giúp nâng c
 
 ### Algorithm 1: Temporal Sliding Window
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Window chỉ sinh **candidate pairs**, không quyết định merge. Event A 10:00 và B 10:04 trong window 5 phút có temporal proximity cao; nếu graph/signature mâu thuẫn, vẫn split. Cascade qua queue có thể trễ 12 phút; fixed window 5 phút under-merge. Dùng adaptive window theo edge latency/failure class và late-link tốt hơn tăng global window lên 30 phút.
 
-```python
-from collections import deque
-import time
-
-class TemporalWindowCorrelator:
-    """
-    Liên kết tương quan các cảnh báo xuất hiện trong cùng một cửa sổ thời gian trượt.
-    Dựa trên thực tế rằng lỗi cascading lan truyền nhanh thường sinh ra các
-    cảnh báo lệch nhau chỉ từ 1-5 phút.
-    """
-    def __init__(self, window_seconds: int = 300):
-        self.window = window_seconds
-        # Lưu trữ danh sách sắp xếp theo timestamp: dạng deque của (timestamp, alert)
-        self.buffer: deque = deque()
-
-    def add_alert(self, alert: dict, timestamp: float = None) -> list:
-        """
-        Đưa cảnh báo mới vào cửa sổ. Trả về danh sách cảnh báo hiện có trong cửa sổ
-        (các ứng viên cho liên kết tương quan).
-        """
-        ts = timestamp or time.time()
-        self.buffer.append((ts, alert))
-        
-        # Loại bỏ các cảnh báo đã quá hạn khỏi cửa sổ
-        cutoff = ts - self.window
-        while self.buffer and self.buffer[0][0] < cutoff:
-            self.buffer.popleft()
-        
-        return [a for _, a in self.buffer]
-```
-
-</details>
+Case: DB error 10:00, payment 10:01, checkout 10:02 là cascade. Search batch fail 10:03 chỉ cùng thời gian. Time-only gộp cả bốn; topology+signature giữ search riêng. Window càng dài càng tăng recall pair nhưng giảm precision, nên measure human split rate.
 
 ### Algorithm 2: Label-Based Fingerprinting
 
 Hai cảnh báo được coi là có tương quan nếu chúng có tỷ lệ trùng lặp nhãn (label overlap) ở mức cao:
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Không đếm mọi label ngang nhau. `service`, `namespace`, `region`, `failure_family` có trọng số; `pod`, `instance`, `trace_id` thường không. Alert A `{service=payment, region=sg, error=db_timeout}` và B `{service=payment, region=sg, error=tls}` giống service/region nhưng failure family khác; nên cùng service group nhưng không dedup và có split veto. A với C `{service=checkout, region=sg, error=dependency_timeout}` khác service nhưng topology nối; label similarity thấp vẫn merge được.
 
-```python
-def label_similarity_score(alert_a: dict, alert_b: dict) -> float:
-    """
-    Tính độ tương đồng Jaccard giữa hai bộ nhãn cảnh báo.
-    Giá trị càng cao = càng tương đồng = khả năng có tương quan cao.
-    """
-    labels_a = set(f"{k}={v}" for k, v in alert_a.get("labels", {}).items()
-                   if k not in ["pod", "instance", "alertname"])
-    labels_b = set(f"{k}={v}" for k, v in alert_b.get("labels", {}).items()
-                   if k not in ["pod", "instance", "alertname"])
+Missing label không được biến thành wildcard. Bucket `service=unknown` có thể hút hàng nghìn event; quarantine/enrich trước hoặc group thận trọng theo source/job.
 
-    if not labels_a and not labels_b:
-        return 0.0
-    
-    intersection = len(labels_a & labels_b)
-    union = len(labels_a | labels_b)
-    
-    return intersection / union if union > 0 else 0.0
-```
-
-</details>
 
 ### Algorithm 3: Mutual Information (Statistical Correlation)
 
 Đối với các điểm số bất thường dạng chuỗi thời gian, sử dụng độ tương hỗ thông tin (mutual information) để phát hiện sự tương quan bất thường:
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+MI bắt quan hệ phi tuyến nhưng không có direction/causation và dễ cao vì seasonality chung. CPU checkout và RPS payment cùng tăng mỗi tối dù không fault. Tính trên residual đã loại seasonality, so với null/permutation và yêu cầu topology/change hỗ trợ. Với incident ngắn 8 điểm, MI không ổn định; không dùng nó phủ quyết evidence trực tiếp.
 
-```python
-from sklearn.metrics import mutual_info_score
-import numpy as np
+Chuỗi DB wait **[10,12,15,300,600,700]** và payment retry **[0,1,1,5,30,60]** liên hệ mạnh; temporal lag/trace giúp direction. Chuỗi campaign RPS **[100,200,300,400,500,600]** và CPU **[30,40,50,60,70,80]** cũng liên hệ mạnh nhưng hợp lệ. Statistical correlation là feature, không merge oracle.
 
-def compute_mutual_information(
-    anomaly_scores_a: np.ndarray,
-    anomaly_scores_b: np.ndarray,
-    bins: int = 10,
-) -> float:
-    """
-    Thông tin tương hỗ cao → hai metrics biểu hiện mô hình tương tự → có thể cùng chung nguyên nhân.
-    """
-    # Chia nhỏ điểm số liên tục thành các bins rời rạc
-    a_bins = np.digitize(anomaly_scores_a, np.linspace(0, 1, bins))
-    b_bins = np.digitize(anomaly_scores_b, np.linspace(0, 1, bins))
-    
-    return mutual_info_score(a_bins, b_bins)
-```
-
-</details>
 
 ---
 
 ## 9. Service Dependency Graph
 
+Graph production gồm call edge, async/data edge và failure-domain membership. Service-only graph bỏ DB/Kafka/DNS/AZ sẽ over-split shared outage. Node/edge đều versioned và query “as of incident time”.
 ### Building from OpenTelemetry Service Graph Metrics
 
 Trình sinh metrics của Tempo sản sinh ra các metrics dạng `traces_service_graph_*` mô tả thông tin phụ thuộc:
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```promql
-# Các cạnh liên kết dịch vụ (caller → callee)
-traces_service_graph_request_total{
-  client="order-service",
-  server="payment-service"
-}
-
-# Tỷ lệ lỗi giữa các dịch vụ
-rate(traces_service_graph_request_failed_total{
-  client="order-service",
-  server="payment-service"
-}[5m])
-/
-rate(traces_service_graph_request_total{
-  client="order-service",
-  server="payment-service"
-}[5m])
-```
-
-</details>
 
 ### Maintaining the Graph in Redis
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Storage implementation không quan trọng bằng semantics: atomic snapshot/version, TTL khác nhau theo source, edge activation window, confidence và tombstone. Khi service deploy đổi topology, giữ old/new overlap để trace late vẫn resolve. Không xóa cạnh chỉ vì 5 phút không traffic nếu đó là low-frequency payment path; chuyển inactive và không dùng merge cho current incident.
 
-```python
-import redis
-import json
-import time
+### Graph freshness và coverage gate
 
-class ServiceGraphStore:
-    """
-    Lưu trữ và duy trì sơ đồ phụ thuộc dịch vụ trên Redis để phục vụ truy vấn nhanh.
-    Được cập nhật định kỳ mỗi 5 phút từ các chỉ số SpanMetrics/ServiceGraph.
-    """
-    def __init__(self, redis_client: redis.Redis):
-        self.redis = redis_client
-        self.key_prefix = "service_graph:"
-        self.ttl = 3600 * 24  # TTL lưu trữ trong vòng 24 giờ
-
-    def update_edge(
-        self,
-        caller: str,
-        callee: str,
-        call_rate: float,
-        error_rate: float,
-        latency_p99_ms: float,
-    ):
-        edge_key = f"{self.key_prefix}edge:{caller}:{callee}"
-        self.redis.setex(
-            edge_key,
-            self.ttl,
-            json.dumps({
-                "caller": caller,
-                "callee": callee,
-                "call_rate": call_rate,
-                "error_rate": error_rate,
-                "latency_p99_ms": latency_p99_ms,
-                "updated_at": time.time(),
-            }),
-        )
-        # Lưu giữ danh sách kề adjacency list
-        self.redis.sadd(f"{self.key_prefix}callers:{callee}", caller)
-        self.redis.sadd(f"{self.key_prefix}callees:{caller}", callee)
-        self.redis.expire(f"{self.key_prefix}callers:{callee}", self.ttl)
-        self.redis.expire(f"{self.key_prefix}callees:{caller}", self.ttl)
-
-    def get_callers(self, service: str) -> list:
-        """Các dịch vụ nào thực hiện gọi tới dịch vụ này? (upstream services)"""
-        return list(self.redis.smembers(f"{self.key_prefix}callers:{service}"))
-
-    def get_callees(self, service: str) -> list:
-        """Dịch vụ này thực hiện cuộc gọi tới các dịch vụ nào khác? (downstream dependencies)"""
-        return list(self.redis.smembers(f"{self.key_prefix}callees:{service}"))
-```
-
-</details>
+Age 5 phút nhưng coverage 20% vẫn xấu; age 20 phút trên hệ ổn định có thể dùng được. Gate kết hợp age, fraction service có edge, active traffic represented và direction conflicts. Khi quality thấp, topology chỉ tạo LINK/possible path, không hard MERGE. Card phải hiện “graph covers 62% affected traffic”.
 
 ---
 
@@ -1310,57 +526,10 @@ class ServiceGraphStore:
 
 Tính tương quan chéo (cross-correlation) giúp nhận định độ lệch thời gian (time shift) giữa hai chuỗi bất thường. Độ lệch dương thể hiện bất thường của service A xuất hiện trước bất thường của service B — bằng chứng phản ánh A có thể là nguyên nhân gây ra B.
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Ví dụ A score **[0,0,1,4,8,7,5]**, B **[0,0,0,1,4,8,7]**; B giống A trễ một bước, phù hợp cascade. Nhưng detector A scrape 60 giây, B 15 giây có thể đảo lag. Resample/alignment, detector delay và confidence interval bắt buộc. Nếu series có autocorrelation mạnh, nhiều lag đều cao; dùng onset/trace hơn một peak correlation giả chính xác.
 
-```python
-import numpy as np
+Temporal correlation trong incident dài phải chạy trên residual/episode transition, không toàn level. Hai service cùng giữ score=1 suốt 40 phút có correlation không cung cấp thông tin; transition onset/recovery mới giúp.
 
-def cross_correlate_anomaly_series(
-    scores_a: np.ndarray,  # Điểm số bất thường của service A (10 phút gần đây, phân giải 1 phút)
-    scores_b: np.ndarray,  # Điểm số bất thường của service B
-    max_lag_steps: int = 10,  # Độ trễ tối đa ±10 phút
-) -> dict:
-    """
-    Tính toán tương quan chéo để tìm độ trễ nhân quả (causal lag) giữa hai chuỗi bất thường.
-    Trả về bước trễ (lag steps) mà tại đó độ tương quan đạt giá trị cực đại.
-    Độ trễ dương: A xuất hiện trước B → A có khả năng là nguyên nhân gây ra B.
-    """
-    n = len(scores_a)
-    correlations = []
-    
-    for lag in range(-max_lag_steps, max_lag_steps + 1):
-        if lag >= 0:
-            a_slice = scores_a[:n - lag] if lag < n else []
-            b_slice = scores_b[lag:]
-        else:
-            a_slice = scores_a[-lag:]
-            b_slice = scores_b[:n + lag] if -lag < n else []
-        
-        if len(a_slice) > 2 and len(b_slice) > 2:
-            corr = np.corrcoef(a_slice, b_slice)[0, 1]
-        else:
-            corr = 0.0
-        
-        correlations.append({"lag": lag, "correlation": corr if not np.isnan(corr) else 0.0})
-
-    best = max(correlations, key=lambda x: abs(x["correlation"]))
-    
-    return {
-        "best_lag_steps": best["lag"],
-        "best_correlation": best["correlation"],
-        "interpretation": (
-            f"Bất thường của Service A xuất hiện trước Service B khoảng {best['lag']} phút"
-            if best["lag"] > 0 else
-            f"Bất thường của Service B xuất hiện trước Service A khoảng {-best['lag']} phút"
-            if best["lag"] < 0 else
-            "Các dịch vụ có dấu hiệu bị ảnh hưởng đồng thời"
-        ),
-        "causal_evidence_strength": abs(best["correlation"]),
-    }
-```
-
-</details>
 
 ---
 
@@ -1368,61 +537,10 @@ def cross_correlate_anomaly_series(
 
 Đối với tên cảnh báo và mô tả cảnh báo thô, sử dụng độ tương đồng vector biểu diễn (embedding similarity) để tìm các cảnh báo có nội dung ngữ nghĩa liên quan (ngay cả khi nhãn của chúng không khớp):
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Semantic matching hữu ích cho alias như “connection pool exhausted” và “unable to acquire DB connection”, nhưng rất dễ merge các error chung “timeout”, “unavailable”. Chỉ dùng sau redaction, trong tenant/domain, cùng time/scope và như feature mềm. Template ID/error code đáng tin hơn embedding text.
 
-```python
-from sentence_transformers import SentenceTransformer
-import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
+Case: `payment: upstream timeout` và `checkout: payment unavailable` semantic+topology khớp. `search: Elasticsearch timeout` cùng chữ timeout nhưng graph/change khác; embedding 0,87 không được merge. Lưu exemplar và similarity contribution để human split audit.
 
-class SemanticAlertCorrelator:
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
-        # Load mô hình embedding gọn nhẹ (~80MB, tối ưu chạy tốt trên CPU)
-        self.model = SentenceTransformer(model_name)
-
-    def correlate(
-        self,
-        alerts: list,
-        similarity_threshold: float = 0.75,
-    ) -> list:
-        """
-        Tìm kiếm các cảnh báo có độ tương đồng ngữ nghĩa lớn (các cách viết lỗi khác nhau cho cùng một vấn đề).
-        """
-        if len(alerts) < 2:
-            return [[a] for a in alerts]
-
-        # Ghép thông tin mô tả để biểu diễn embedding
-        descriptions = [
-            f"{a.get('alertname', '')} {a.get('annotations', {}).get('summary', '')} "
-            f"{a.get('labels', {}).get('service', '')}"
-            for a in alerts
-        ]
-        
-        embeddings = self.model.encode(descriptions, batch_size=32)
-        sim_matrix = cosine_similarity(embeddings)
-
-        # Phân cụm cảnh báo theo độ tương đồng ngữ nghĩa
-        clusters = []
-        used = set()
-
-        for i, alert in enumerate(alerts):
-            if i in used:
-                continue
-            cluster = [alert]
-            used.add(i)
-            
-            for j in range(i + 1, len(alerts)):
-                if j not in used and sim_matrix[i][j] >= similarity_threshold:
-                    cluster.append(alerts[j])
-                    used.add(j)
-            
-            clusters.append(cluster)
-
-        return clusters
-```
-
-</details>
 
 ---
 
@@ -1430,89 +548,20 @@ class SemanticAlertCorrelator:
 
 Sau khi tính toán tương quan, áp dụng bộ quy tắc để gán độ nghiêm trọng (severity) và định tuyến xử lý sự cố:
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+### Merge score và veto
 
-```python
-from dataclasses import dataclass
-from typing import List, Callable
+Minh họa score: topology/path 0,30; failure signature 0,20; temporal fit 0,15; shared trace 0,15; shared change 0,10; statistical/semantic 0,10. Score ≥0,75 merge; 0,55–0,75 link; dưới 0,55 split. Nhưng veto thắng score: confirmed independent roots, incompatible tenant/region, onset effect trước cause vượt uncertainty, recovery độc lập hoặc security boundary.
 
-@dataclass
-class IncidentFormationRule:
-    name: str
-    condition: Callable[[dict], bool]
-    severity: str
-    title_template: str
-    auto_remediate: bool = False
+Không coi số trên là xác suất. Calibrate theo human split/merge/postmortem, version policy, log feature contributions. Nếu topology missing, redistribute weight có thể làm semantic chiếm quá lớn; tốt hơn hạ confidence và dùng LINK.
 
-FORMATION_RULES = [
-    IncidentFormationRule(
-        name="database_exhaustion",
-        condition=lambda inc: (
-            any("db" in svc or "database" in svc for svc in inc.get("services_affected", [])) and
-            inc.get("alert_types_present", {}).get("high_connections", False)
-        ),
-        severity="critical",
-        title_template="Lỗi cạn kiệt Database connection pool tại {root_cause} → ảnh hưởng cascading dây chuyền tới {impacted_count} dịch vụ",
-        auto_remediate=True,
-    ),
-    IncidentFormationRule(
-        name="deployment_regression",
-        condition=lambda inc: (
-            inc.get("enrichment", {}).get("recent_deployments") and
-            inc.get("root_cause") in [d.get("service") for d in inc.get("enrichment", {}).get("recent_deployments", [])]
-        ),
-        severity="critical",
-        title_template="Lỗi regression sau khi deploy tại {root_cause}: tỷ lệ lỗi tăng vọt sau khi triển khai phiên bản {deploy_version}",
-        auto_remediate=True,  # Cho phép kích hoạt tự động rollback
-    ),
-    IncidentFormationRule(
-        name="slo_burning_fast",
-        condition=lambda inc: any(
-            a.get("alertname", "").startswith("SLO") for a in inc.get("all_alerts", [])
-        ),
-        severity="critical",
-        title_template="Tốc độ tiêu thụ SLO burn rate ở mức nghiêm trọng: {root_cause} đang tiêu thụ ngân sách lỗi ở mức {burn_rate}x",
-        auto_remediate=False,
-    ),
-    IncidentFormationRule(
-        name="cascading_failure",
-        condition=lambda inc: len(inc.get("services_affected", [])) > 3,
-        severity="critical",
-        title_template="Lỗi dây chuyền Cascading failure: tác động tới {impacted_count} dịch vụ, lỗi gốc tại {root_cause}",
-        auto_remediate=False,
-    ),
-    IncidentFormationRule(
-        name="single_service_degraded",
-        condition=lambda inc: len(inc.get("services_affected", [])) == 1,
-        severity="warning",
-        title_template="Dịch vụ {root_cause} bị giảm hiệu năng: {primary_alert_type}",
-        auto_remediate=True,
-    ),
-]
+### Severity của incident
 
-def apply_formation_rules(incident: dict) -> dict:
-    """Áp dụng quy tắc khớp đầu tiên cho incident."""
-    for rule in FORMATION_RULES:
-        if rule.condition(incident):
-            incident["severity"] = rule.severity
-            incident["title"] = rule.title_template.format(
-                root_cause=incident.get("root_cause", "unknown"),
-                impacted_count=len(incident.get("services_affected", [])),
-                primary_alert_type=incident.get("alert_types", ["unknown"])[0],
-                burn_rate=incident.get("burn_rate", "unknown"),
-                deploy_version=incident.get("enrichment", {}).get(
-                    "recent_deployments", [{}]
-                )[0].get("version", "unknown"),
-            )
-            incident["matched_rule"] = rule.name
-            incident["auto_remediate"] = rule.auto_remediate
-            break
-    
-    return incident
-```
+Severity không phải max alert mù. Dùng SLO burn/customer impact, criticality, blast radius, duration và trajectory. CPU P1 false trong internal service không nâng incident; payment success burn nâng. Incident đang P2 có error tăng 2→15% hoặc thêm region phải escalate, nhưng không tạo incident mới nếu cùng fault.
 
-</details>
+### Lifecycle và reopen
+
+Open khi persistence/impact đạt gate; suppress member notifications nhưng giữ active. Recovering khi critical symptoms về baseline; resolve sau 5–15 phút ổn định tùy service. Reopen cùng incident nếu same failure signature tái phát trong 30 phút và root/action chưa đổi; mở regression child nếu recovery đã được xác nhận rồi failure mới khác signature/version.
+
 
 ---
 
@@ -1520,86 +569,15 @@ def apply_formation_rules(incident: dict) -> dict:
 
 ### Kafka Consumer Configuration
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```yaml
-# Triển khai correlation-engine
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: alert-correlation-engine
-  namespace: aiops
-spec:
-  replicas: 2
-  template:
-    spec:
-      containers:
-        - name: correlation-engine
-          image: aiops/correlation-engine:1.0.0
-          env:
-            - name: KAFKA_BROKERS
-              value: "kafka-1.kafka.svc:9092,kafka-2.kafka.svc:9092"
-            - name: INPUT_TOPIC
-              value: "aiops-anomalies"
-            - name: OUTPUT_TOPIC
-              value: "aiops-correlated-alerts"
-            - name: CONSUMER_GROUP
-              value: "correlation-engine-group"
-            - name: CORRELATION_WINDOW_SECONDS
-              value: "300"
-            - name: REDIS_URL
-              valueFrom:
-                secretKeyRef:
-                  name: correlation-secrets
-                  key: redis-url
-          resources:
-            requests:
-              cpu: "1"
-              memory: "2Gi"
-            limits:
-              cpu: "2"
-              memory: "4Gi"
-```
-
-</details>
+Partition key chỉ theo service làm per-service ordering tốt nhưng cascade cross-service nằm nhiều partition; correlation cần shared state/incident coordinator. Partition theo tenant+failure-domain nếu có, hoặc service stage gửi group tới topology coordinator partition theo candidate incident. Exactly-once notification dựa idempotency key `(incident_id,revision,channel)`, không dựa ảo tưởng transport exactly-once.
 
 ### Correlation Engine Configuration
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Các tham số phải versioned và thay đổi qua shadow/replay: dedup quiet, grouping window, allowed lateness, merge/link threshold, max hops, graph quality gate, recovery duration, reopen window, per-tenant budget. Không dùng một window/threshold cho batch, HTTP realtime và async queue. Config theo service tier/failure class nhưng có default an toàn.
 
-```yaml
-# config.yaml
-correlation:
-  window_seconds: 300              # Cửa sổ tương quan 5 phút
-  dedup_window_seconds: 300        # Cửa sổ khử trùng lặp 5 phút
-  max_group_size: 100              # Số lượng cảnh báo tối đa trong một nhóm
-  topology_max_depth: 3            # Số bước nhảy tối đa trên sơ đồ phụ thuộc cho liên kết
-  
-  weights:
-    topology: 0.40                 # Topology là tín hiệu mạnh nhất
-    temporal: 0.35                 # Khoảng cách gần nhau về thời gian
-    label_similarity: 0.25         # Tỷ lệ trùng lặp nhãn
-    
-  thresholds:
-    min_correlation_score: 0.60    # Điểm số tối thiểu để thực hiện gộp nhóm
-    min_label_similarity: 0.40     # Chỉ số Jaccard tối thiểu cho tương quan nhãn
-    max_causal_lag_minutes: 10     # Độ lệch thời gian tối đa giữa nguyên nhân và hệ quả
+### State durability
 
-enrichment:
-  enabled: true
-  timeout_seconds: 5
-  loki_url: "http://loki-query-frontend.observability.svc:3100"
-  tempo_url: "http://tempo-query-frontend.observability.svc:3200"
-  prometheus_url: "http://prometheus.observability.svc:9090"
-  
-incident:
-  min_alerts_for_incident: 2       # Cần tối thiểu 2 cảnh báo để hình thành 1 incident
-  auto_close_if_resolved_in: 300   # Tự động đóng nếu toàn bộ cảnh báo biến mất trong vòng 5 phút
-```
-
-</details>
+State gồm dedup episode, incident membership, active/recovery member, decision log và notification revision. Restart worker không được quên incident 45 phút đang mở rồi page lại 100 alerts. Checkpoint/event-sourcing cùng idempotent replay; state schema migration có compatibility. Khi Redis unavailable, degraded mode có thể giữ local cache nhưng phải tránh hai worker tạo hai incident; notification gate cần leader/idempotency store.
 
 ---
 
@@ -1620,60 +598,20 @@ incident:
 
 ## 15. Monitoring the Correlation Engine
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+| Nhóm | Metric cần xem |
+|------|---------------|
+| Input | event freshness, late rate, schema reject, source gaps |
+| Compression | raw events/incident, duplicate ratio, page reduction |
+| Quality | human split rate, human merge rate, postmortem purity/completeness |
+| Latency | first coherent incident, enrichment revision, notification |
+| Lifecycle | reopen rate, premature resolve, open-without-heartbeat, stale incident |
+| Isolation | new incident detection while another P1 open, cross-tenant merge = 0 |
 
-```promql
-# Throughput xử lý
-rate(aiops_correlation_alerts_received_total[5m])
-rate(aiops_correlation_incidents_created_total[5m])
-
-# Hiệu quả của tiến trình khử trùng lặp (Deduplication effectiveness)
-rate(aiops_correlation_duplicates_suppressed_total[5m])
-/
-rate(aiops_correlation_alerts_received_total[5m])
-
-# Chất lượng của tiến trình liên kết (Correlation quality)
-aiops_correlation_alerts_per_incident            # Kích thước nhóm cảnh báo (đẹp nhất đạt khoảng 5-20)
-aiops_correlation_time_to_first_incident_seconds # Thời gian từ lúc cảnh báo kích hoạt tới lúc incident được tạo
-
-# Consumer lag (sức khỏe pipeline)
-kafka_consumer_group_lag_sum{group="correlation-engine-group"}
-```
-
-</details>
+Compression cao không luôn tốt. 1.000 events/incident có thể là storm nén đúng hoặc over-merge toàn region. Pair với split rate, topology coverage và weighted symptoms. Synthetic drills bơm hai faults độc lập chồng nhau để kiểm tra engine tạo hai incident.
 
 ### Alerting Rules
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```yaml
-- alert: CorrelationEngineLagHigh
-  expr: kafka_consumer_group_lag_sum{group="correlation-engine-group"} > 5000
-  for: 5m
-  labels:
-    severity: critical
-
-- alert: CorrelationEngineDown
-  expr: up{job="correlation-engine"} == 0
-  for: 2m
-  labels:
-    severity: critical
-
-- alert: CorrelationEfficiencyLow
-  expr: |
-    rate(aiops_correlation_incidents_created_total[1h])
-    /
-    rate(aiops_correlation_alerts_received_total[1h]) > 0.5
-  for: 15m
-  labels:
-    severity: warning
-  annotations:
-    summary: "Hiệu năng liên kết tương quan thấp: có tới >50% số cảnh báo sinh ra incidents riêng lẻ (kỳ vọng: <20%)"
-```
-
-</details>
+Page platform khi correlation lag vượt page SLO, state unavailable gây duplicate notification, cross-tenant merge, no synthetic incident, hoặc raw-page bypass. Tạo ticket khi split/merge correction/calibration drift. Một incident mở 24 giờ có thể hợp lệ nhưng cần stale-owner escalation, không tự resolve.
 
 ---
 
@@ -1684,34 +622,10 @@ Dịch vụ correlation engine được thiết kế **có trạng thái** (lưu
 1. **Theo chiều dọc (Vertical)**: Tăng dung lượng bộ nhớ cấp phát để lưu trữ các cửa sổ tương quan lớn hơn
 2. **Theo chiều ngang (Horizontal) kết hợp phân vùng**: Định tuyến các cảnh báo của cùng một service về cùng một instance của correlation engine (áp dụng sticky partitioning theo nhãn service)
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Hot key là shared gateway/region incident với hàng triệu events. Dedup local/pre-aggregate trước coordinator; cap member samples nhưng giữ counts/histogram. Fairness theo tenant để một alert storm không làm chậm incident thứ hai. Topology lookup cached theo snapshot; semantic/MI chỉ chạy candidate pairs, không O(n²) toàn window.
 
-```yaml
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: correlation-engine-hpa
-spec:
-  scaleTargetRef:
-    kind: Deployment
-    name: alert-correlation-engine
-  minReplicas: 2
-  maxReplicas: 8
-  metrics:
-    - type: External
-      external:
-        metric:
-          name: kafka_consumer_group_lag_sum
-          selector:
-            matchLabels:
-              group: correlation-engine-group
-        target:
-          type: Value
-          value: "5000"
-```
+Rebalance consumer có thể đổi ownership giữa incident; state transfer/checkpoint và fencing ngăn hai owner update. Scale test phải gồm long-running incident qua deploy/rebalance, không chỉ throughput stateless.
 
-</details>
 
 ---
 
@@ -1723,6 +637,8 @@ spec:
 - Cơ sở dữ liệu lưu trữ incidents (Postgres/DynamoDB) được mã hóa bằng KMS
 - Kết nối webhook gửi tới PagerDuty sử dụng giao thức HTTPS đi kèm signing secret xác thực
 
+Correlation có nguy cơ leak tenant vì semantic/grouping trên text chung. Tenant là hard partition/veto, không similarity feature. Incident card redaction trước enrichment; trace/log link giữ auth. Human merge/split/silence là privileged action có audit, scope và expiry. Attacker có thể tạo cardinality labels làm state exhaustion; enforce quotas và normalize dynamic fields.
+
 ---
 
 ## 18. Cost
@@ -1733,6 +649,8 @@ spec:
 | Redis (ElastiCache r6g.large, cặp HA pair) | $480 |
 | Incident Store (RDS Postgres db.t4g.medium) | $55 |
 | **Tổng cộng** | **~$775/tháng** |
+
+Con số chỉ minh họa. Cost thực theo raw events/s, active episodes, graph candidate pairs, state retention và enrichment query. Dedup 100.000 events xuống 2.000 groups trước semantic/topology tiết kiệm chính. Theo dõi cost/1.000 events, state bytes/active incident, enrichment bytes và hot-tenant share. Đừng giảm cost bằng cách xóa member timeline cần audit; sample exemplar nhưng giữ aggregate.
 
 ---
 
@@ -1751,45 +669,11 @@ spec:
 | Missing shared dependency (DB/Kafka) | 2 service lỗi cùng lúc không merge | On-call nghĩ 2 outage | Thêm infra nodes (db, queue, cache) vào graph |
 | Multi-cluster mù | Cross-cluster cascade tách incident | MTTR tăng | Cluster-aware graph + shared resource edges |
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-class TopologyHealthGuard:
-    """
-    Chặn correlation dùng graph quá cũ hoặc quá thưa.
-    """
-    def __init__(self, max_age_seconds=900, min_edge_coverage=0.5):
-        self.max_age_seconds = max_age_seconds
-        self.min_edge_coverage = min_edge_coverage
-
-    def can_use_topology(self, graph_meta: dict, active_services: set) -> dict:
-        age = graph_meta["age_seconds"]
-        covered = len(graph_meta["services_with_edges"] & active_services) / max(1, len(active_services))
-
-        if age > self.max_age_seconds:
-            return {
-                "use_topology": False,
-                "reason": "stale_graph",
-                "fallback": ["temporal", "label_similarity", "semantic"],
-                "degrade_confidence": 0.15,
-            }
-        if covered < self.min_edge_coverage:
-            return {
-                "use_topology": True,
-                "reason": "sparse_graph",
-                "topology_weight_cap": 0.20,  # hạ weight topology
-                "fallback": ["temporal"],
-            }
-        return {"use_topology": True, "topology_weight": 0.40}
-```
-
-</details>
 
 > [!IMPORTANT]
 > Khi `stale_graph=true`, **tắt** causal ordering dựa topology; chỉ temporal clustering + hiển thị banner: *"Topology outdated — correlation confidence reduced"*. Đừng im lặng dùng graph thối.
 
-**Operational rule**: refresh graph mỗi 5–15 phút; metric `aiops_topology_graph_age_seconds`; page platform nếu age > 30 phút. Chi tiết multi-region graph: [14 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md).
+**Operational rule**: refresh graph mỗi 5–15 phút; metric `aiops_topology_graph_age_seconds`; page platform nếu age > 30 phút. Chi tiết multi-region graph: [15 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md).
 
 ### 19.2 Time-window tuning: quá ngắn vs quá dài
 
@@ -1804,24 +688,6 @@ class TopologyHealthGuard:
 > **Ý TƯỞNG**
 > Window không phải một số duy nhất. Dùng **two-phase window**: *fast path* 90s để page sớm với partial group; *late-join* thêm 5–10 phút để merge alert đến muộn vào incident đã mở — không tạo incident mới.
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```yaml
-correlation_windows:
-  fast_path:
-    seconds: 90
-    min_alerts: 2
-    action: create_or_update_incident
-  late_join:
-    seconds: 600
-    action: attach_to_open_incident_if_score_gt_0.7
-  hard_split:
-    # Nếu 2 nhóm không có topology path và delta_t > 180s → giữ tách
-    independent_gap_seconds: 180
-```
-
-</details>
 
 **Dấu hiệu window sai**:
 
@@ -1832,18 +698,6 @@ correlation_windows:
 
 Đây là failure mode nguy hiểm nhất của correlation: **gộp 2 outage độc lập thành 1**, khiến on-call chỉ sửa một nửa.
 
-```
-Timeline thật:
-  t=0    payment-db connection storm  (region A)
-  t=90s  CDN config push bad          (global)  ← độc lập
-
-Topology/temporal engine thấy:
-  payment ↓, checkout ↓, edge latency ↑ gần nhau về thời gian
-  → merge thành 1 incident "payment cascade"
-
-Hậu quả:
-  Team chỉ rollback payment pool; CDN vẫn hỏng 40 phút
-```
 
 **Tín hiệu cần SPLIT (không merge)**:
 
@@ -1853,41 +707,11 @@ Hậu quả:
 4. Blast radius geo khác nhau (1 region vs global)
 5. Semantic similarity title thấp + label Jaccard thấp dù temporal gần
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-def should_merge(group_a: dict, group_b: dict, graph, changes) -> dict:
-    topo_dist = graph.distance(group_a["root"], group_b["root"])  # inf if none
-    temporal_gap = abs(group_a["t0"] - group_b["t0"]).total_seconds()
-    same_failure_class = group_a["failure_class"] == group_b["failure_class"]
-    shared_change = changes.shared_root_cause(group_a, group_b)
-
-    score = 0.0
-    if topo_dist <= 3:
-        score += 0.4 * (1 - topo_dist / 3)
-    if temporal_gap < 120:
-        score += 0.3
-    elif temporal_gap < 300:
-        score += 0.15
-    if same_failure_class:
-        score += 0.15
-    if shared_change:
-        score += 0.25
-
-    # Hard veto: khác region-scope + không shared infra + gap > 60s
-    if group_a["scope"] != group_b["scope"] and not shared_change and temporal_gap > 60:
-        return {"merge": False, "reason": "independent_multi_failure_veto", "score": score}
-
-    return {"merge": score >= 0.60, "score": score, "reason": "score_threshold"}
-```
-
-</details>
 
 > [!TIP]
 > **UX an toàn**: khi score merge ở vùng xám (0.55–0.70), tạo **incident linked** (related) thay vì hard-merge. On-call thấy "có thể liên quan" nhưng vẫn có 2 timeline — tốt hơn 1 timeline sai.
 
-Case study multi-failure: [15 — Famous Incidents](../16-famous-incidents/README.vi.md).
+Case study multi-failure: [16 — Famous Incidents](../16-famous-incidents/README.vi.md).
 
 ### 19.4 Storm suppression UX cho con người
 
@@ -1905,18 +729,6 @@ Suppression kỹ thuật (dedup, silence) không đủ — cần **UX giúp não
 | Confidence | `Correlation confidence 0.82 (topology stale: no)` | Không có uncertainty |
 | Split control | `Split into independent incident` | Không sửa được false merge |
 
-```markdown
-## Incident INC-20481  ·  P1  ·  confidence 0.84
-**Root (hypothesis):** payment-service → payment-db connection pool
-**Impact:** checkout, order, api-gateway (9 services) · error budget burn 14x
-**Suppressed:** 63 raw alerts · 11 pods · 3 clusters signals
-**Topology:** fresh (age 4m) · path depth 2
-**Changes (15m):** deploy payment-service@2.14.3 (8m ago)
-**Runbook:** /runbooks/db-conn-pool
-**Related (not merged):** CDN latency region-EU (score 0.41)
-
-[Ack] [Page DB on-call] [Silence related 30m] [Mark false-merge / Split] [Open Grafana]
-```
 
 > [!WARNING]
 > **Anti-pattern storm UX**: forward nguyên webhook Alertmanager vào Slack. Storm 200 message = zero signal. Mọi pageable path phải đi qua **incident card** đã correlate.
@@ -1934,7 +746,7 @@ Suppression kỹ thuật (dedup, silence) không đủ — cần **UX giúp não
 > [!NOTE]
 > **Câu hỏi kiểm tra**: Bạn nhận 1 incident card với 80 suppressed alerts nhưng root là `api-gateway`. Bạn tin hay nghi? Dựa vào **signal nào** để quyết định split?
 
-Drill storm định kỳ trong game day: [12 — Production](../13-production/README.vi.md). Pattern Big Tech: [13 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md).
+Drill storm định kỳ trong game day: [13 — Production](../13-production/README.vi.md). Pattern Big Tech: [14 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md).
 
 ### 19.6 Decision log: merge / link / split
 
@@ -1947,25 +759,6 @@ On-call và postmortem cần ngôn ngữ chung:
 | **SPLIT** | Tách group đã merge sai | Post-ack evidence mâu thuẫn | `split_from=INC-…` + reason |
 | **SUPPRESS_ONLY** | Không tạo incident mới | Thuộc open incident cùng scope | `parent_incident_id` |
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-def record_correlation_decision(incident_id: str, decision: str, reason: str, actor: str):
-    """
-    Mọi merge/split thủ công phải audit — dùng để đo quality và train weights.
-    """
-    assert decision in {"merge", "link", "split", "suppress_only"}
-    return {
-        "incident_id": incident_id,
-        "decision": decision,
-        "reason": reason,
-        "actor": actor,  # "engine" | "human:alice"
-        "ts": "ISO-8601",
-    }
-```
-
-</details>
 
 **KPI bổ sung** (ngoài alerts-per-incident):
 
@@ -1977,6 +770,360 @@ def record_correlation_decision(incident_id: str, decision: str, reason: str, ac
 > [!IMPORTANT]
 > Nếu `human_split_rate` tăng sau khi nới window — bạn đang **mua under-noise bằng over-merge**. Trả lại quality bằng late-join + link, không phải hard-merge.
 
+### 19.7 Acceptance scenario: incident 60 phút và fault thứ hai nổ chồng
+
+Scenario này chứng minh correlation engine không tạo khoảng câm, không nhầm traffic hợp lệ và không để incident đầu che incident sau. Detector behavior ở Chapter 8 cung cấp active signal; Chapter 9 chứng minh cách quản lý episode/incident.
+
+#### Topology và normal traffic
+
+Topology active ban đầu:
+
+- `web → checkout → payment → ledger-db`.
+- `checkout → inventory`.
+- `auth → auth-cache`.
+- Cả hai cụm cùng region `sg-1`, nhưng không có request/data edge giữa ledger và auth-cache.
+
+Traffic checkout theo 5 phút trong giờ cao điểm bình thường: **[800, 900, 1.050, 1.200, 1.350, 1.500, 1.650, 1.800, 1.900, 1.850, 1.700, 1.500, 1.300] RPS**. CPU/payment latency tăng theo traffic nhưng error baseline vẫn 0,5–0,9%. Correlation không coi traffic change là incident member trừ khi detector phát signal health/burn hoặc traffic absence bất thường.
+
+#### Fault A: ledger pool exhaustion kéo dài
+
+Lúc 10:00 ledger pool wait tăng; payment/checkout error kéo dài tới 11:00. Dữ liệu mỗi 5 phút:
+
+| Time | RPS | Ledger wait ms | Payment error | Checkout error | Detector A |
+|------|-----|----------------|---------------|----------------|------------|
+| 09:55 | 800 | 12 | 0,7% | 0,8% | normal |
+| 10:00 | 900 | 180 | 2,5% | 1,8% | candidate |
+| 10:05 | 1.050 | 620 | 8,2% | 7,1% | firing |
+| 10:10 | 1.200 | 790 | 11,4% | 10,8% | firing |
+| 10:15 | 1.350 | 810 | 12,0% | 11,7% | firing |
+| 10:20 | 1.500 | 800 | 12,2% | 12,0% | firing |
+| 10:25 | 1.650 | 830 | 12,5% | 12,3% | firing |
+| 10:30 | 1.800 | 850 | 13,1% | 12,8% | firing |
+| 10:35 | 1.900 | 860 | 13,4% | 13,0% | firing |
+| 10:40 | 1.850 | 840 | 13,0% | 12,7% | firing |
+| 10:45 | 1.700 | 810 | 12,1% | 11,9% | firing |
+| 10:50 | 1.500 | 760 | 10,8% | 10,5% | firing |
+| 10:55 | 1.300 | 300 | 4,0% | 3,6% | recovering |
+| 11:00 | 1.200 | 25 | 0,9% | 0,8% | recovery candidate |
+| 11:10 | 1.000 | 15 | 0,7% | 0,7% | recovered |
+
+Detector không cần gửi page mỗi 5 phút; nó gửi state transition và heartbeat/active update. Dedup key ledger pool episode có first_seen 10:00, last_seen tiến liên tục, occurrence tăng. Correlation mở INC-A lúc 10:05 và giữ `Open` dù score/metric level trở nên phẳng 10:15–10:45. Incident age, active members và burn accumulation vẫn tăng.
+
+Nếu detector ngừng event vì baseline bị nuốt, correlation nhìn heartbeat freshness/data quality. Nó không tự resolve từ silence. Resolve cần explicit recovery hoặc raw SLI recovery gate. “Không có event mới” chỉ là unknown khi source unhealthy.
+
+#### Không page vì traffic hợp lệ đổi
+
+RPS tăng 900→1.900 rồi giảm là seasonal/campaign normal. Payment CPU tăng 55→86% tương ứng, nhưng expected-by-load là 84–88%; residual nhỏ và error đã là member của Fault A. Correlation card cập nhật traffic context và weighted impact, không mở “HighCPU incident”. Nếu static CPU alert vẫn đến, merge decision kiểm tra failure family/load relation: nó có thể là symptom/amplifier của INC-A hoặc informational member, không một page độc lập.
+
+Quan trọng: engine không dùng “incident đang mở” để suppress mọi signal payment. Nếu lúc 10:35 payment bắt đầu TLS handshake error khác DB timeout, failure signature veto tạo sub-episode mới dù cùng service. Suppression chỉ cho symptom được INC-A giải thích.
+
+#### Fault B nổ chồng lúc 10:27
+
+Auth-cache config maxmemory bị giảm sai lúc 10:26; eviction và auth 401 tăng:
+
+| Time | Auth-cache evictions/s | Auth 401 | Signature | Detector B |
+|------|-------------------------|----------|-----------|------------|
+| 10:25 | 2 | 0,4% | none | normal |
+| 10:27 | 80 | 1,5% | cache eviction | candidate |
+| 10:29 | 260 | 6,8% | cache eviction | firing |
+| 10:35 | 320 | 8,1% | cache eviction | firing |
+| 10:45 | 300 | 7,7% | cache eviction | firing |
+| 10:52 | 20 | 1,0% | rollback | recovering |
+| 10:58 | 2 | 0,4% | none | recovered |
+
+Per-service group B được tạo dù INC-A đang P1. So với INC-A:
+
+| Feature merge A–B | Giá trị | Ý nghĩa |
+|-------------------|---------|---------|
+| Temporal overlap | 1,0 | Hai fault cùng lúc, chỉ là candidate evidence |
+| Direct/active path | 0 | Không có edge ledger/payment ↔ auth-cache/auth |
+| Shared infra | same region, nhưng network signals khỏe | Link context yếu, không common root |
+| Failure signature | DB pool timeout vs cache eviction/401 | Mâu thuẫn |
+| Change | traffic/capacity vs scoped auth config | Hai trigger khác |
+| Recovery | B hồi 10:58; A còn tới 11:10 | Recovery độc lập |
+
+Temporal-only có thể merge vì B nằm trong window mở rộng của A. Topology/signature/change veto thắng: engine mở **INC-B** lúc 10:29. UI có thể link “overlapping in sg-1” cho incident commander nhưng giữ hai pages/owners nếu auth và payment khác team. Fix B không đóng A; fix A không resolve B.
+
+#### Notification behavior
+
+INC-A page một lần 10:05, update/escalate khi error vượt 10%/burn threshold, không page lại mỗi heartbeat. INC-B page riêng 10:29 vì new independent fault. On-call không nhận 600 raw alerts nhưng cũng không bị global suppression che B.
+
+Timeline incident A:
+
+- 10:00 candidate.
+- 10:05 open/page; members ledger, payment, checkout, web.
+- 10:20 still firing 20 phút; heartbeat update, không close.
+- 10:29 related INC-B link xuất hiện, không merge.
+- 10:40 still firing 35 phút; SLO burn escalates severity nếu cần.
+- 10:55 mitigating/recovering; vẫn open.
+- 11:00 metrics gần baseline nhưng chưa đủ recovery duration.
+- 11:10 resolve sau 10 phút stable.
+
+Timeline incident B:
+
+- 10:27 candidate.
+- 10:29 open/page riêng.
+- 10:50 rollback observed, mitigating.
+- 10:52 recovery candidate.
+- 10:58 resolve sau gate.
+
+#### Chứng minh không có khoảng câm
+
+Ta định nghĩa coverage cho mỗi phút customer impact của incident: incident phải ở Open/Mitigating/Recovering hoặc có explicit unknown banner; không được Resolved/absent. Fault A impact 10:00–11:00, detection grace đến 10:05. Từ 10:05–11:10 incident A luôn active; coverage 65/65 phút, silent gap 0. Fault B từ confirm 10:29–10:58 coverage 29/29.
+
+Một detector chỉ emit transition `firing` lúc 10:05 và không heartbeat vẫn có thể giữ incident open, nhưng correlation phải biết source lifecycle. Nếu Alertmanager gửi resolved event, use it; nếu anomaly topic stateless, detector cần active-until/heartbeat hoặc correlation re-query SLI. TTL dedup 5 phút không được đóng incident ở 10:10.
+
+#### Chứng minh không báo nhiễu vì load
+
+Trong replay, RPS có 12 transition và CPU có 10 điểm cao. Expected-by-load/seasonality xác nhận health relation, nên số incident do load hợp lệ = 0. Load chỉ cập nhật impact/capacity context. Fault A error/pool vẫn firing độc lập với baseline bị freeze; load giảm sau 10:35 không làm engine resolve sớm vì error còn 12–13%.
+
+Negative control: cùng RPS/CPU sequence ở ngày không có pool/error anomaly phải tạo 0 pageable incident. Nếu engine tạo HighCPU, lỗi nằm ở Chapter 8 detector/policy; Chapter 9 không nên che bằng global merge mà phải gửi feedback/failure-family rule.
+
+#### Chứng minh bắt fault chồng
+
+Acceptance không chỉ kiểm tra “B có event”. Nó yêu cầu:
+
+- Time-to-new-incident B từ detector firing 10:29 tới open < page SLO, ví dụ 5 giây.
+- B không trở thành member suppressed của A.
+- B có owner, severity và lifecycle riêng.
+- `related_incident_ids` có thể chứa A nhưng `merged_into` rỗng.
+- Fix/recovery B không thay đổi state A.
+- Postmortem root-set gồm ledger capacity và auth-cache config, correlation purity/completeness đạt.
+
+#### Regression C cùng service với A
+
+Biến thể khó hơn: 10:35 payment TLS cert hết hạn trong khi DB pool incident còn mở. Service giống, topology giống, time overlap; chỉ failure signature khác. Dedup `(payment,HighError)` sẽ che. Engine giữ subkey `dependency=db/family=pool_timeout` và `dependency=gateway/family=tls_handshake`. TLS event có new certificate change, trace origin handshake và không được DB root giải thích. Tạo INC-C hoặc linked child tùy owner/impact. Đây là lý do per-service isolation chưa đủ; cần per-service **failure-episode isolation**.
+
+#### Relapse hay incident mới
+
+Nếu A về baseline 11:10 rồi pool timeout tái phát 11:15 cùng signature/root, reopen INC-A trong window giúp giữ một postmortem. Nếu tái phát 14:00 sau stable/close và deploy khác, tạo new incident linked as recurrence. Reopen quá dài làm một lỗi hàng tuần thành incident bất tử; quá ngắn tạo page flapping. Hiệu chỉnh theo service recovery dynamics.
+
+#### Failure injection test
+
+Test tự động/replay inject event stream với out-of-order 90 giây, duplicate 10×, worker restart 10:30 và Redis failover 10:40. Kỳ vọng incident IDs/membership/lifecycle không đổi và notification idempotent. Sau rebalance, owner mới load state, không page INC-A lần hai. Fault B vẫn mở đúng partition/coordinator. Đây mới chứng minh engine stateful đứng vững, không chỉ thuật toán chạy trên file CSV.
+
+### 19.8 Các edge case correlation thường gặp
+
+#### Shared gateway over-merge toàn fleet
+
+Mọi service có edge tới API gateway, nên graph distance tối đa 2 giữa gần như mọi pair. Nếu coi gateway là nối incident, search batch và payment outage bị merge. Gateway/transit node cần low merge-specificity trừ khi chính gateway có origin signal. Path qua node ubiquitous bị penalize theo degree; shared DB/queue có semantics khác và active-error evidence.
+
+#### Maintenance window che fault ngoài scope
+
+Maintenance database payment 30 phút. Global silence theo namespace che auth-cache fault B. Suppression scope phải theo entity/failure-domain/topology descendants đã duyệt; alert ngoài path vẫn qua. Nếu maintenance action gây cascade ra descendants, merge vào maintenance incident nhưng customer-impact policy vẫn có thể page—planned không đồng nghĩa acceptable.
+
+#### Rolling deploy tạo incident fragment theo version
+
+v1 và v2 cùng service tồn tại 20 phút. Group theo version cứng tạo hai incidents cho shared DB outage; strip version che regression v2-only. Tạo service group với version cohorts: shared signature/trace origin merge; cohort delta giữ evidence và có thể split when new-only. Identity/lifecycle không đổi khi rollout fraction thay.
+
+#### Region fan-out và global root
+
+DNS global lỗi: region sg alert 10:00, eu 10:04, us 10:08 do cache TTL. Window 5 phút có thể split us. Shared DNS node, same signature và expected propagation delay cho late-link/merge. Ngược lại hai region deploy khác nhau cùng lỗi gần thời gian không tự global merge. Geo scope là evidence, không hard partition tuyệt đối.
+
+#### Flapping member trong incident ổn định
+
+Một pod alert resolve/fire mỗi phút; service SLO vẫn xấu liên tục. Member hysteresis giữ episode active, incident không close/reopen. Card hiển thị flap count và pod churn; notification không lặp. Nếu tất cả critical members hồi đủ gate mới Recovering. Flap detector có thể mở child operational issue nếu churn là fault riêng.
+
+#### Cardinality explosion
+
+Alert label URL chứa order ID tạo 100.000 fingerprints. Normalize route/template và quota new keys/tenant. Quarantine overflow thành aggregate `high_cardinality_input` thay vì drop im lặng. Không để attacker/noisy deploy làm Redis eviction mất state incident P1.
+
+#### Orphan event thiếu service
+
+Không nhét mọi orphan vào `unknown`. Dùng source job, namespace, owner, trace resource, workload mapping; nếu vẫn unknown, giữ small temporal buckets và link nhẹ. Một orphan security alert không được merge với application incident chỉ vì namespace/time. Data-quality ticket sửa enrichment.
+
+#### Human split trong khi events tiếp tục tới
+
+On-call split auth ra khỏi INC-A; engine phải lưu veto rule scoped episode để event auth tiếp theo không tự merge lại sau 30 giây. Split decision có reason/expiry; future incident mới được re-evaluate. Human correction là feedback nhưng không permanent global rule từ một click.
+
+#### Incident ownership chuyển khi root candidate đổi
+
+Ban đầu gateway team ack; evidence muộn chỉ DB. Đừng tạo incident mới chỉ để route. Update candidate/owner, page secondary/handoff có audit và giữ commander. Ownership change không làm mất ack/timeline. Nếu hai independent roots lộ ra, split và assign riêng.
+
+#### Recovery event đến trước firing vì reorder
+
+Kafka partitions/source khác có thể đưa resolved 10:05 trước firing event-time 10:04. State machine sắp event-time trong allowed lateness/revision; không đóng candidate chưa mở mù. Sau watermark, net episode interval được dựng. Notification dựa revision stable đủ, nhưng P1 fast path vẫn page và corrective revision sau.
+
+### 19.9 Đánh giá correlation mà không thưởng over-merge
+
+Một engine nén 10.000 alerts thành một incident đạt “99,99% suppression” nhưng hoàn toàn vô dụng. Ground truth correlation là partition các symptom episode thành incident thật; evaluation phải đo cả **purity** lẫn **completeness**.
+
+#### Ví dụ confusion ở cấp pair
+
+Ground truth có incident A gồm `{ledger,payment,checkout,web}` và incident B `{auth-cache,auth}`. Sáu group tạo 15 cặp có thể xét. Engine dự đoán một cluster duy nhất thì bắt đủ 7 cặp true-related nhưng còn merge 8 cặp A–B sai; pair recall 100%, precision 46,7%. Engine tách mọi group riêng có precision không xác định/cao nhưng recall 0. Chỉ alerts-suppressed không phân biệt hai cực đoan.
+
+BCubed precision/recall hoặc pairwise F1 đo partition; thêm impact weighting vì merge nhầm hai P1 nghiêm trọng hơn hai P3. Tuy nhiên metric aggregate chưa đủ: xem human split/merge và top failure class.
+
+#### Purity, completeness và notification harm
+
+- **Incident purity:** trong một predicted incident, bao nhiêu weighted symptom thật sự cùng fault?
+- **Incident completeness:** một fault thật đã gom được bao nhiêu weighted symptom?
+- **False-merge harm:** bao nhiêu lần owner sửa một root nhưng impact khác còn bị giấu trong cùng card?
+- **False-split burden:** một fault tạo bao nhiêu commander/pages?
+- **Duplicate page rate:** cùng episode page lại sau restart/rebalance/flap.
+- **New-fault latency while P1 open:** fault B được mở chậm bao lâu khi A đang active?
+- **Premature resolution:** incident đóng khi customer impact vẫn còn hoặc data source chỉ im lặng.
+
+Mục tiêu không chỉ split rate dưới 10%. Human có thể không split vì mệt; postmortem root/member mapping đáng tin hơn. Nếu commander chỉ fix nửa incident và đóng nhầm, đó là false merge dù UI không bấm split.
+
+#### Đánh giá theo thời điểm, không chỉ cluster cuối
+
+Final incident sau 20 phút có thể đúng nhờ human merge, nhưng page đầu đã spam năm team. Lưu snapshot t+5s, t+30s, trước first ack/action và final. Đo time-to-first-coherent-incident, time-to-stable-membership, membership churn và decision revisions. Một late-join đúng ở t+8 phút hữu ích cho postmortem nhưng không cứu page storm phút đầu.
+
+#### Long-incident coverage
+
+Với mỗi phút ground-truth impact, state phải Open/Mitigating/Recovering. Coverage = số phút được incident active bao phủ / tổng phút impact sau detection grace. Silent-gap count và longest silent gap là metric riêng. Một incident 60 phút có active 5 phút đầu + 5 phút cuối đạt detection hit nhưng coverage 16,7%, không pass.
+
+Recovery precision cũng cần: resolve trong khi error > SLO là false resolution; giữ incident open 2 giờ sau recovery là stale resolution. Đo resolve delay và relapse/reopen correctness.
+
+#### Overlap isolation score
+
+Tập replay có hai fault chồng. Pass khi cả hai incident được mở, membership không cross-contaminate vượt ngưỡng, owner/lifecycle độc lập và fix một cái không resolve cái kia. Báo `overlap_new_fault_recall`, `overlap_false_merge_rate`, `overlap_detection_delay`. Đây là metric bắt đúng yêu cầu “incident đầu không che incident sau”; fleet average bình thường có thể che failure này.
+
+#### Golden replay matrix
+
+| Scenario | Expected |
+|----------|----------|
+| 10× duplicate + 30 pod | Một symptom aggregate, pod_count/count đúng |
+| Cascade 4 hop trong 3 phút | Một incident, path đúng, page một lần |
+| Cascade async trễ 12 phút | Skeleton sớm, late-link/merge không page lại |
+| Hai root cùng phút | Hai incident hoặc LINK, không hard merge |
+| Fault B giữa incident A 60 phút | B open độc lập dưới SLO |
+| Traffic seasonal tăng gấp đôi | Không incident nếu health residual bình thường |
+| Graph stale/edge inactive | Confidence giảm, không hard merge từ edge đó |
+| Clock skew 90 giây | Không đảo causal ordering giả |
+| Worker restart/Redis failover | Incident ID/notification không duplicate |
+| Loki/Tempo down | Partial incident vẫn page, absence không làm veto |
+| Recovery flap | Một incident, hysteresis, không close/open storm |
+| Tenant A/B title giống nhau | Không bao giờ merge |
+
+Config/policy mới chỉ promote sau replay và shadow. Nếu nới window cải thiện cascade recall 8% nhưng overlap false merge tăng 12%, ưu tiên late-link/adaptive window chứ không chấp nhận aggregate F1 đẹp.
+
+### 19.10 Thiết kế lifecycle cho incident dài
+
+#### Heartbeat, active-until và query-back
+
+Có ba contract detector phổ biến:
+
+1. **Firing/resolved state:** nguồn gửi transition và định kỳ repeat; tốt nhất cho lifecycle.
+2. **Anomaly event có duration/active-until:** correlation gia hạn lease, nhưng hết lease khi source lag là unknown chứ chưa chắc recovery.
+3. **Stateless point event:** correlation phải query-back SLI/raw detector state để biết còn lỗi; không dùng TTL làm recovery.
+
+Contract được ghi theo source. Alertmanager resolved có nghĩa khác anomaly point. Normalize không được xóa semantics. Nếu source freshness fail, incident chuyển `evidence_degraded`, giữ open theo impact policy và page platform data-gap khi cần.
+
+#### Recovery quorum
+
+Incident A có ledger, payment, checkout, web. Ledger hồi nhưng checkout còn queue/backlog. Resolve khi root + customer SLI critical hồi đủ gate, không cần mọi informational CPU alert xanh. Định nghĩa critical members và expected propagation. Ví dụ ledger wait <50 ms 5 phút, payment error <1% 5 phút, checkout success >99% 10 phút; web latency P3 có thể attach sau.
+
+Quorum không phải majority: 3/4 xanh nhưng checkout customer SLI đỏ vẫn open. Ngược lại một pod CPU flapping không giữ P1 mãi nếu SLO khỏe. Policy theo role/impact.
+
+#### Severity trajectory và escalation
+
+Incident dài không spam nhưng phải escalate khi tình hình thay đổi có ý nghĩa: thêm region, burn rate vượt threshold, impacted tenant/value tăng, root confidence đổi, mitigation thất bại hoặc fault B liên quan xuất hiện. Update notification có revision/delta, không lặp card đầy đủ. Ack P2 không ngăn escalation P1 theo routing policy.
+
+Ví dụ error 3% ổn định 20 phút P2, rồi 15% và hai region ở phút 25: cùng incident, P1 escalation. Nếu error signature đổi TLS và chỉ one service, có thể incident C mới. Severity trajectory và identity/failure signature là hai quyết định khác.
+
+#### Sticky open có giới hạn
+
+Hysteresis chống flap nhưng incident không được bất tử. `stale open` nếu không active heartbeat lẫn recovery/data-quality trong thời hạn; engine re-query/escalate owner. Maintenance dài có planned end; quá end và còn impact chuyển unplanned. Maximum duration không auto-close, chỉ bắt review.
+
+#### Reopen versus recurrence
+
+Reopen cùng incident khi signature, root candidate, scope và temporal gap nhỏ; giữ counter `relapse_count`. New incident khi verified recovery đủ lâu, change/version khác hoặc failure domain khác. Link recurrence cho trend. Quy tắc minh họa: recovery gate 10 phút, reopen window 30 phút; nhưng batch ngày có thể khác. Replay service-specific.
+
+#### Suppression lease không phải global silence
+
+Mỗi incident phát lease gồm covered entity+failure signature+direction+scope. New event được suppress-only khi match lease và still-explained. Lease cập nhật khi topology membership đổi; human split tạo negative membership. Không cấp lease `namespace=*` cho P1 chỉ vì storm. Security/SLO hard rules có thể bypass suppression.
+
+#### Ownership và handoff
+
+Incident 60 phút qua shift change cần state, ack, actions, hypotheses và outstanding validation. Correlation card giữ commander/owner timeline. Root candidate đổi từ gateway sang DB thì handoff, không reset incident. Fault B khác owner mở riêng; link giúp commanders phối hợp mà không một team vô tình resolve cả hai.
+
+### 19.11 Production game-day chứng minh ba yêu cầu
+
+Một game-day hợp lệ chạy tối thiểu 90 phút:
+
+1. Inject Fault A 60 phút trên dependency chain, tăng/giảm normal traffic trong lúc fault.
+2. Ở phút 25 inject Fault B khác service/failure domain; phút 35 inject near-duplicate khác signature cùng service A nếu muốn mức khó.
+3. Restart correlation worker, rebalance Kafka, failover state store và delay một source 2 phút.
+4. Mitigate B trước A; tạo một recovery flap A; sau đó recover A.
+
+Pass/fail định lượng:
+
+| Requirement | Pass |
+|-------------|------|
+| Continuous detection | Silent gap 0 sau grace; incident A không resolve sớm; heartbeat/revision còn chạy |
+| Legitimate load | 0 page mới chỉ do RPS/CPU seasonal; load context không đổi identity |
+| Overlapping fault | B có incident ID/owner riêng dưới page SLO; không bị suppress/merge A |
+| Notification | A page một lần + delta escalation; B page một lần; không raw storm |
+| Durability | Restart/failover không đổi membership/duplicate notification |
+| Recovery | B resolve không ảnh hưởng A; A qua hysteresis; relapse reopen đúng |
+| Audit | Mọi merge/link/split/suppress có contribution, veto, policy version |
+
+Không chấp nhận demo dashboard thủ công. Lưu input event stream, expected partition/lifecycle và replay tự động trong CI/shadow. Cùng dataset chạy lại khi đổi fingerprint, window, graph source, threshold hoặc state schema.
+
+### 19.12 Decision walkthrough cho các tình huống dễ nhầm
+
+| Tình huống | Quyết định | Lý do |
+|------------|------------|-------|
+| 20 pod payment cùng DB timeout trong 30 giây | Dedup/group | Instance khác nhưng service, signature và origin chung |
+| Payment timeout rồi checkout unavailable theo active path | Merge | Signature/trace/time/path tương thích |
+| Payment DB timeout và search batch lag cùng phút | Open hai incident | Không path/shared root; failure family khác |
+| Hai region DNS fail lệch 8 phút theo cache TTL | Late merge/link global | Shared DNS + signature + expected propagation |
+| CPU payment cao trong DB retry storm | Member symptom INC-DB | Retry/order giải thích CPU; không page resource riêng |
+| CPU payment cao nhưng error/SLO khỏe khi campaign | Drop/annotate | Load hợp lệ, không actionable symptom |
+| TLS error mới trên payment giữa DB incident | Open/link child | Cùng service nhưng failure signature/origin/change mới |
+| Auth cache fault giữa payment P1 | Open incident riêng | Per-domain isolation; time overlap không đủ merge |
+| Topology stale 45 phút nói A→B | LINK tối đa | Graph quality không đủ hard merge |
+| Human split B khỏi A | Persist episode veto | Ngăn auto re-merge khi event tiếp tục |
+| Root hồi, downstream queue còn lag | Giữ A open/secondary state | Customer impact chưa recovery quorum |
+| Cùng fault tái phát 10 phút sau recovery | Reopen A | Same signature/root trong reopen window |
+| Fault tái phát hôm sau sau deploy mới | New linked recurrence | Episode mới, context/root có thể khác |
+| Detector im vì source lag | Keep unknown/open + data alert | Silence không phải recovery |
+
+#### Walkthrough: score cao nhưng vẫn không merge
+
+Payment và auth alerts có temporal 1,0, same region 1,0, semantic “timeout/unavailable” 0,8; weighted score sơ bộ 0,72 vượt merge threshold. Nhưng topology không có active path, change khác và trace origins nằm DB/cache riêng. Independent-root veto chuyển decision thành LINK/OPEN-NEW. Veto không phải hack sau score; nó biểu diễn ràng buộc an toàn mà một weighted average dễ làm chìm.
+
+#### Walkthrough: score thấp nhưng late evidence merge
+
+Producer checkout báo publish timeout 10:00; consumer fulfillment lag 10:12. Fixed temporal feature thấp, service labels khác, score 0,42 nên mở/link riêng ban đầu. Late data-edge `checkout→orders-topic→fulfillment`, topic partition under-replicated và event-time backlog cho thấy một cascade async. Revision có thể merge hoặc giữ LINK với shared root Kafka tùy commander. Page đầu không chờ 12 phút, nhưng final incident không bị fragment vĩnh viễn.
+
+#### Walkthrough: một event thuộc hai câu chuyện
+
+Gateway latency bị cả payment DB fault và search outage đóng góp theo route. Không duplicate gateway member vào hai incident như hai independent votes mà không provenance. Scope member theo route/tenant nếu có; nếu aggregate metric không tách được, link evidence “shared symptom ambiguous”, không dùng nó để merge hai roots. Customer-facing parent incident có thể link hai component incidents, trong khi remediation/lifecycle vẫn riêng.
+
+#### Walkthrough: merge đúng ban đầu, split đúng về sau
+
+Hai service lỗi cùng shared DB nên merge. Sau action DB, service A hồi nhưng B không; trace B mới cho cert failure. Engine split B từ thời điểm evidence phân kỳ, giữ lịch sử rằng trước đó decision hợp lý theo data available. Evaluation không phạt mọi revision như lỗi; đo time-to-correct-split và whether on-call được thông báo. Correlation là inference online, không cần giả vờ quyết định đầu bất biến.
+
+### 19.13 Vì sao “đang có P1 thì ngừng correlation mới” là thiết kế sai
+
+Một cách giảm storm dễ nghĩ là: khi incident mở cho nhóm service, tắt mọi incident mới tới lúc đóng. Cách này đạt suppression đẹp nhưng vi phạm trực tiếp yêu cầu bắt fault chồng. Service không có một failure state duy nhất; trong 60 phút nó có thể đồng thời DB timeout, cert expiry và disk full.
+
+Thay global lock bằng **explained-symptom lease**. Lease của INC-A mô tả:
+
+| Field | Ví dụ |
+|-------|-------|
+| Covered entities | ledger-db, payment, checkout, web |
+| Failure families | pool_wait, dependency_timeout, propagated_unavailable |
+| Direction | wait/error tăng, success giảm |
+| Topology paths | ledger→payment→checkout→web |
+| Scope | region sg, tenant all, versions v41/v42 |
+| Validity | active while root/customer SLI firing; review mỗi heartbeat |
+
+Event mới chỉ suppress-only khi được lease giải thích. `payment TLS_HANDSHAKE` không nằm failure family/path origin nên tạo candidate mới. `auth 401` ngoài entity/path nên không bị chặn. `checkout payment_unavailable` match và chỉ cập nhật INC-A. Nếu lease quá rộng, overlap replay fail.
+
+Lease cũng không biến maintenance thành silence. Planned DB maintenance có thể cover expected connection resets, nhưng SLO burn/customer impact vượt policy vẫn escalate; security signal luôn bypass. Mỗi lease có owner, reason, policy version và expiry/review—not wildcard vô thời hạn.
+
+Khi root candidate thay đổi, lease revision thu hẹp/mở rộng có audit. Human split tạo explicit exclusion. Khi incident Recovering, lease vẫn giữ symptom relapse nhưng độ nhạy new failure không giảm. Khi Resolved, lease hết; reopen matching dựa signature/window chứ không còn suppress global.
+
+Acceptance test riêng: trong INC-A, inject 100 duplicate member events, 1 new same-service signature và 1 other-service independent signature. Kỳ vọng 100 suppressed updates, hai candidates/incidents mới. Đây là kiểm tra đơn giản nhưng phát hiện phần lớn thiết kế correlation “non tay”.
+
+Proof artifact của test phải giữ event stream đầu vào, decision cho từng event, incident snapshots theo thời gian và notifications thực gửi. Dashboard cuối có hai incident là chưa đủ: có thể B từng bị suppress 20 phút rồi human mở tay. Assertions cần kiểm tra B được nhận diện dưới SLO, A không có silent gap, không duplicate page sau restart và recovery B không mutate A. Khi test fail, decision log phải chỉ ra feature/lease nào gây merge hoặc suppress sai để sửa policy có mục tiêu.
+
+Trong vận hành thật, sample một tỷ lệ event `suppress-only` vào audit stream. Postmortem có thể hỏi: “Có fault mới nào bị lease A nuốt không?”. Theo dõi distribution failure signature trong incident; signature mới tăng đột ngột là split candidate. Correlation không được tối ưu chỉ trên những gì đã page, vì false negative bị suppress sẽ không có ticket để làm label—một selection bias nguy hiểm.
+
 ---
 
 ## 20. Production Review
@@ -1985,9 +1132,9 @@ def record_correlation_decision(incident_id: str, decision: str, reason: str, ac
 
 **Các khoảng trống được phát hiện**:
 
-1. **Cơ chế nén và tắt tiếng cảnh báo trong thời gian xử lý sự cố**: Khi một incident đã được ghi nhận và đang xử lý, toàn bộ các cảnh báo liên đới kích hoạt sau đó cần được tự động tắt tiếng (tránh sinh ra các incidents trùng lặp mới). Hệ thống correlation engine cần theo dõi trạng thái các incidents đang mở và tạm dừng kích hoạt các liên kết tương quan mới cho cùng một nhóm service cho đến khi incident cũ được giải quyết.
+1. **Nén có phạm vi, không khóa cả service**: Khi incident đã mở, chỉ các symptom được root/path/failure signature hiện tại giải thích mới `suppress-only`. Không được tạm dừng toàn bộ correlation mới cho cùng nhóm service; làm vậy sẽ che incident chồng. Dùng explained-symptom lease và per-failure episode isolation.
 
-2. **Xử lý hiện tượng dao động cảnh báo (Alert flapping)**: Các dịch vụ liên tục thay đổi trạng thái kích hoạt và tắt cảnh báo trong thời gian ngắn (flapping) sẽ làm tràn ngập hệ thống với nhiều sự cố ảo. Cần bổ sung cơ chế phát hiện flapping: nếu một cảnh báo kích hoạt lại quá 3 lần trong vòng 15 phút, tiến hành tắt tiếng cảnh báo đó cho đến khi trạng thái hoạt động ổn định trở lại.
+2. **Flapping không đồng nghĩa silence**: Member flap được hysteresis/sticky-open và đếm, không page lặp. Nếu SLO vẫn xấu, incident giữ open; nếu signature mới xuất hiện, vẫn mở candidate. Không silence mù 15 phút.
 
 3. **Tương quan trên môi trường đa cluster (Multi-cluster correlation)**: Nếu hệ thống AIOps phục vụ giám sát trên nhiều Kubernetes clusters chạy song song, các cảnh báo ở các clusters khác nhau có thể có mối tương quan sâu sắc (ví dụ do dùng chung database, hoặc chung hệ thống Kafka). Sơ đồ phụ thuộc dịch vụ (topology graph) cần được thiết kế hỗ trợ nhận biết thông tin cluster.
 
@@ -1997,20 +1144,27 @@ def record_correlation_decision(incident_id: str, decision: str, reason: str, ac
 
 6. **Storm UX + decision audit (merge/link/split)**: Không chỉ đúng thuật toán — on-call cần card nén được và sửa được quyết định engine; đo `human_split_rate` / `human_merge_rate`.
 
-### Chapter Scores
+### Production acceptance checklist
 
-| Tiêu chí | Điểm số | Ghi chú |
-|-----------|-------|-------|
-| Technical Accuracy | 9.6/10 | Thuật toán phân tích, tính toán tương quan chéo, causal ordering xác thực |
-| Production Readiness | 9.7/10 | Redis, K8s, suppression, topology guard, storm UX |
-| Depth | 9.8/10 | 4 thuật toán + topology + temporal + edge thinking cascade/split |
-| Practical Value | 9.8/10 | Python thực tế + playbook merge/split + incident card UX |
-| Architecture Quality | 9.7/10 | Thiết kế pipeline 5 bước rõ ràng kèm mốc thời gian xử lý |
-| Observability | 9.6/10 | Cấu hình đầy đủ metrics hiệu năng, cảnh báo lag |
-| Security | 9.5/10 | Bảo mật mTLS, KMS, SASL/SSL đầy đủ |
-| Scalability | 9.6/10 | Cấu hình HPA tự động dựa trên metric Kafka consumer lag |
-| Cost Awareness | 9.6/10 | Định lượng chi tiết chi phí hạ tầng |
-| Diagram Quality | 9.7/10 | Biểu đồ luồng biến đổi đầu vào/đầu ra, kiến trúc trực quan |
+Trước khi mọi pageable path bắt buộc đi qua correlation engine:
+
+- Fingerprint có giữ failure signature nhưng loại instance cardinality không?
+- Dedup TTL có tách khỏi incident recovery/lifecycle không?
+- State restart/rebalance/failover có giữ incident ID và notification idempotency không?
+- Merge dùng active topology/shared resources và quality gate, không chỉ time window không?
+- Có hard veto cho tenant, independent roots, incompatible signatures và recovery divergence không?
+- Có LINK vùng xám và human SPLIT/MERGE audit không?
+- Suppression lease có scope entity+signature, không global silence không?
+- Incident dài có heartbeat/active state, recovery quorum, hysteresis và reopen policy không?
+- Fault mới chồng có test riêng về detection delay/isolation không?
+- Traffic seasonal/load hợp lệ có negative control không tạo page không?
+- Event time, detector delay, clock skew, late arrival và revision có được xử lý không?
+- Incident card có active/recovered members, impact, reasoning, graph quality và delta timeline không?
+- Quality metric có purity, completeness, false-merge harm, silent-gap và overlap recall không?
+- Game-day có worker restart, state failover, two faults và recovery ngược thứ tự không?
+- Tenant isolation, redaction, quotas và privileged human action có audit không?
+
+Nếu chưa đạt, chạy shadow và so candidate partition với incident/postmortem. “Giảm 90% alerts” chưa đủ để thay đổi routing PagerDuty.
 
 ---
 
