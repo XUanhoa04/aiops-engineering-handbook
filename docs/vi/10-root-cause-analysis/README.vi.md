@@ -35,11 +35,11 @@ Sau chương này, hãy chuyển sang [10 — LLM Agent](../11-llm-agent/README.
 5. [Causal Graph RCA](#5-causal-graph-rca)
 6. [Bayesian Network RCA](#6-bayesian-network-rca)
 7. [Graph Neural Network (GNN) RCA](#7-graph-neural-network-gnn-rca)
-8. [Log-Based RCA — Evidence Extraction](#8-log-based-rca--evidence-extraction)
-9. [Trace-Based RCA — Span Analysis](#9-trace-based-rca--span-analysis)
+8. [Log-Based RCA — Evidence Extraction](#8-log-based-rca-evidence-extraction)
+9. [Trace-Based RCA — Span Analysis](#9-trace-based-rca-span-analysis)
 10. [Change Correlation (Deployment-Driven RCA)](#10-change-correlation-deployment-driven-rca)
 11. [RCA Evidence Scoring and Ranking](#11-rca-evidence-scoring-and-ranking)
-12. [RCA Output Schema](#12-rca-output-schema)
+12. [RCA Output Contract](#12-rca-output-contract)
 13. [Historical Pattern Matching (Case-Based RCA)](#13-historical-pattern-matching-case-based-rca)
 14. [Production Architecture](#14-production-architecture)
 15. [Common Mistakes](#15-common-mistakes)
@@ -47,17 +47,17 @@ Sau chương này, hãy chuyển sang [10 — LLM Agent](../11-llm-agent/README.
 17. [Scaling](#17-scaling)
 18. [Security](#18-security)
 19. [Cost](#19-cost)
-20. [Tư duy sâu: Correlation≠Causation, Multi-root, Evidence Quality, Time Budget](#20-tư-duy-sâu-correlationcausation-multi-root-evidence-quality-time-budget)
+20. [Tư duy sâu: Correlation≠Causation, Multi-root, Evidence Quality, Time Budget](#20-tu-duy-sau-correlationcausation-multi-root-evidence-quality-time-budget)
 21. [Production Review](#21-production-review)
 
 ---
 
 
-## Cách đọc chapter này (concept-first)
+## Cách đọc chapter này: từ triệu chứng đến giả thuyết kiểm chứng được
 
 > [!IMPORTANT]
-> **Đọc concept trước — code để sau**
-> Từ chapter 08 trở đi, handbook ưu tiên: **vấn đề → ý tưởng → input data → thuật toán/model → output → ưu/nhược → khi nào dùng**. Phần implementation nằm trong khối **See the code below** (bấm mới mở). Mục tiêu: bạn hiểu *tại sao và hoạt động ra sao trên telemetry AIOps*, không chỉ copy-paste.
+> **Chương này cố ý không chứa code triển khai.**
+> Một RCA engine thật không trả về một service cùng con số 0,92 rồi gọi đó là “root cause”. Nó phải đưa ra chuỗi lập luận: tín hiệu nào xuất hiện trước, lỗi đi qua cạnh dependency/trace nào, node nào tạo downstream impact, change nào có khả năng tác động, bằng chứng nào phản bác giả thuyết, dữ liệu nào đang thiếu và bước kiểm chứng rẻ nhất là gì.
 
 | Bước đọc | Câu hỏi |
 |----------|---------|
@@ -68,6 +68,21 @@ Sau chương này, hãy chuyển sang [10 — LLM Agent](../11-llm-agent/README.
 | 5. Output | Schema sự kiện, score, rank, action proposal? |
 | 6. Trade-off | Ưu / nhược / chi phí / giải thích được không? |
 | 7. When | Dùng khi nào — và khi nào **đừng** dùng |
+
+### Hợp đồng của RCA engine
+
+Với một incident, engine phải trả được sáu câu hỏi:
+
+| Câu hỏi | Câu trả lời đạt chuẩn | Câu trả lời chưa đủ |
+|---------|----------------------|--------------------|
+| Root candidate là gì? | `payment-db`, failure mode `pool_exhaustion` | “database có vẻ lỗi” |
+| Vì sao xếp hạng cao? | Đỏ trước 43 giây; 4 service downstream lỗi; DB không có callee lỗi; trace dừng tại acquire connection | “score 0,91” |
+| Điều gì phản bác? | CPU DB bình thường; topology snapshot cũ 12 phút | Không có negative evidence |
+| Có root khác không? | Candidate thứ hai `auth-cache`, thuộc component tách rời | Ép mọi alert vào một root |
+| Confidence nghĩa gì? | 0,78 sau calibration; evidence quality 0,71 | Probability giả chưa hiệu chuẩn |
+| Kiểm chứng thế nào? | So pool wait old/new version; query active connections; canary rollback | “hãy kiểm tra logs” |
+
+RCA là **ranking có bằng chứng và uncertainty**, không phải oracle. Engine được phép trả `uncertain` hoặc hai root độc lập. Một câu trả lời trung thực “top-1 0,52, graph thiếu 35% edge” hữu ích hơn một root giả 0,96.
 
 ---
 
@@ -82,101 +97,43 @@ Sau chương này, hãy chuyển sang [10 — LLM Agent](../11-llm-agent/README.
 
 ### The Manual RCA Problem
 
-Quy trình phản ứng sự cố truyền thống:
+Quy trình thủ công thường bắt đầu bằng service phát page to nhất. Đó thường là downstream gần người dùng, không phải nơi fault bắt đầu. Ví dụ `checkout` error 18%, `payment` error 12%, `postgres` pool wait 96%; checkout đỏ nhất nhưng restart checkout không giải phóng connection pool. RCA tốt đảo câu hỏi từ “dashboard nào đỏ nhất?” sang “node nào giải thích được nhiều triệu chứng nhất mà bản thân không bị một upstream đỏ khác giải thích?”.
 
-```
-1. Cảnh báo kích hoạt (t=0)
-2. Kỹ sư trực được page (t+5 phút)
-3. Kỹ sư mở dashboards, bắt đầu tìm kiếm thông tin (t+10 phút)
-4. Kỹ sư xác định các dịch vụ bị ảnh hưởng (t+20 phút)
-5. Kỹ sư truy vết ngược lại nguyên nhân gốc rễ (t+40 phút)
-6. Kỹ sư thực hiện bản vá sửa lỗi (t+50 phút)
-7. Sự cố được khắc phục (t+60 phút)
-8. Viết báo cáo post-mortem, ghi nhận tài liệu RCA (t+2 ngày)
+RCA tự động nên rút 20 phút tìm kiếm thành một shortlist trong 30–90 giây, nhưng không bỏ bước kiểm chứng. Nó gom topology, trace, log, metric và change; xây candidate; chấm bằng chứng thuận/nghịch; rồi xuất một action kiểm tra. Mục tiêu là **time-to-plausible-and-testable-hypothesis**, không phải tự động viết postmortem.
 
-Tổng MTTR: 60 phút
-Chi phí gián đoạn dịch vụ (với trang thương mại điện tử): $10,000–$100,000/phút
-Tổng thiệt hại sự cố: $600K–$6M
-```
-
-Quy trình phản ứng khi có RCA tự động:
-
-```
-1. Cảnh báo kích hoạt (t=0)
-2. Hệ thống RCA tự động khởi chạy (t+16s, dựa trên độ trễ Kafka mô tả tại Ch06)
-3. Thu thập các bằng chứng từ Loki/Tempo (t+30s)
-4. Đưa ra giả thuyết RCA (t+45s)
-5. Kỹ sư nhận thông tin trực: page kèm chẩn đoán lỗi + runbook hướng dẫn (t+1 phút)
-6. Kỹ sư xác thực giả thuyết + thực hiện sửa lỗi (t+10 phút)
-7. Sự cố được khắc phục (t+15 phút)
-
-Tổng MTTR: 15 phút → giảm thiểu tới 75% thời gian xử lý
-```
 
 ### What RCA Is and Is NOT
 
-```
-RCA thực hiện:
-✅ Xác định nguyên nhân gốc rễ kỹ thuật (dịch vụ, thành phần, tài nguyên lỗi)
-✅ Thu thập và xếp hạng các bằng chứng liên đới
-✅ Sinh báo cáo giả thuyết lỗi dễ hiểu cho con người
-✅ Gợi ý các phương án xử lý remediation
-✅ Liên kết tham chiếu tới các incidents tương tự trong quá khứ
+| RCA là | RCA không phải |
+|--------|----------------|
+| Giải thích incident đã được correlation gom | Detector anomaly mới |
+| Xếp hạng component/failure mode | Chỉ sort alert theo timestamp |
+| Kết hợp evidence độc lập | Cộng mù mọi score |
+| Nêu giả thuyết và phản chứng | Khẳng định causation từ correlation |
+| Hỗ trợ multi-root và unknown | Luôn ép đúng một root |
+| Đề xuất phép kiểm chứng | Tự remediation mọi candidate |
 
-RCA KHÔNG phải là:
-❌ Độ chính xác tuyệt đối 100% — nó sinh ra GIẢ THUYẾT, không phải sự thật tuyệt đối
-❌ Giải pháp thay thế hoàn toàn con người — kỹ sư trực vẫn là người xác thực cuối cùng
-❌ Luôn luôn thành công — một số sự cố phức tạp vẫn đòi hỏi con người điều tra thủ công sâu
-❌ Miễn phí — nó làm tăng độ phức tạp cấu hình và chi phí của hệ thống
-```
 
 ---
 
 ## 2. RCA Architecture Overview
 
-```mermaid
-flowchart TD
-    subgraph Input["Input"]
-        INC[Incident Group\nfrom Correlation Engine]
-        METRIC[Prometheus\nmetric snapshots]
-        LOG[Loki\nrecent error logs]
-        TRACE[Tempo\nerror traces]
-        CHANGE[Change Events\ndeployments, config changes]
-    end
+Một engine thực tế có hai vòng. **Vòng fast-path** trong vài giây dùng topology, temporal order, trace error propagation và change proximity để trả shortlist. **Vòng deep-path** trong vài chục giây bổ sung log evidence, historical match, causal/Bayesian/GNN nếu có. Kết quả được publish dần: bản partial sớm không được ghi đè âm thầm bằng bản final; mỗi revision có version và lý do thay đổi rank.
 
-    subgraph RCA["RCA Engine"]
-        direction TB
-        TOPO[Topology Analyzer\nservice dependency traversal]
-        CAUSAL[Causal Graph\nPC algorithm / LiNGAM]
-        HIST[Historical Pattern Matcher\nvector similarity search]
-        LOG_RCA[Log Evidence Extractor\nDrain templates + regex]
-        TRACE_RCA[Trace Analyzer\nspan latency breakdown]
-        CHANGE_RCA[Change Correlator\ntemporal proximity to changes]
-        
-        SCORE[Evidence Scorer\nweighted ranking]
-        HYPO[Hypothesis Generator\nranked candidates]
-    end
+Luồng quyết định:
 
-    subgraph Output["Output"]
-        RCA_RESULT[RCA Result\nAvro schema]
-        PUB[Kafka: aiops-rca-results]
-        HUMAN[Human-readable\nMarkdown report]
-    end
+1. Nhận incident đã dedup/correlation, giữ toàn bộ event time và source quality.
+2. Chụp topology **tại thời điểm incident**, không mặc định graph hiện tại.
+3. Sinh candidate từ node đỏ, recent change, first-error span và shared infrastructure.
+4. Tính feature: temporal precedence, upstream/downstream consistency, blast radius, trace propagation, change fit, log specificity, recovery evidence.
+5. Tạo negative evidence: candidate có upstream đỏ hơn không, chỉ đỏ sau retry không, change có ngoài blast radius không, signal có thể do data gap không.
+6. Rank multi-signal; tách candidate phụ thuộc và component độc lập.
+7. Calibrate confidence, cap theo evidence quality và graph freshness.
+8. Trả top-k cùng reasoning path và validation step; cập nhật khi evidence mới đến.
 
-    Input --> RCA
-    TOPO --> SCORE
-    CAUSAL --> SCORE
-    HIST --> SCORE
-    LOG_RCA --> SCORE
-    TRACE_RCA --> SCORE
-    CHANGE_RCA --> SCORE
-    SCORE --> HYPO --> RCA_RESULT --> PUB
-    RCA_RESULT --> HUMAN
+### Dữ liệu tối thiểu để gọi là engine
 
-    style Input fill:#dbeafe,color:#1e293b
-    style RCA fill:#f3e8ff,color:#1e293b
-    style Output fill:#dcfce7,color:#1e293b
-```
+Không có topology vẫn có thể rank bằng change/log/time, nhưng phải hạ confidence. Không có trace vẫn có topology-metric RCA. Không có timestamp đáng tin thì không được dùng temporal precedence. Mỗi signal phải mang `event_time`, `ingest_time`, `entity`, `source`, `quality`, `baseline/current`, `incident_id`; change cần scope và rollout fraction; edge topology cần direction, observation time và confidence.
 
 ---
 
@@ -184,90 +141,13 @@ flowchart TD
 
 ### Signal Collection Schema
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Mỗi bằng chứng được chuẩn hóa thành một assertion có thể kiểm tra: “payment-db pool wait tăng từ 12 ms lên 820 ms lúc 10:02:14”, “span acquire connection lỗi trước checkout error 43 giây”, “release payment-v42 bắt đầu 10:01:20 trên 25% pod”. Không lưu mỗi `anomaly=true`; phải giữ current, expected, start/end, sample count và quality.
 
-```python
-from dataclasses import dataclass, field
-from typing import List, Dict, Optional
-from datetime import datetime
+### Đồng hồ, cửa sổ và dữ liệu đến trễ
 
-@dataclass
-class RCAContext:
-    """
-    Bối cảnh đầy đủ được thu thập phục vụ cho phân tích RCA.
-    Được xây dựng từ incident group + kết quả truy vấn dữ liệu.
-    """
-    incident_id: str
-    incident_start: datetime
-    incident_end: Optional[datetime]
-    
-    # Từ alert correlation
-    root_service_candidate: str           # Dự đoán ban đầu từ tương quan topology
-    affected_services: List[str]
-    correlated_alerts: List[dict]
-    
-    # Thông tin Metric snapshots (từ Prometheus API)
-    metric_snapshots: Dict[str, dict] = field(default_factory=dict)
-    # Định dạng: {service_name: {metric_name: [values]}}
-    
-    # Bằng chứng Log (từ Loki)
-    error_logs: Dict[str, List[str]] = field(default_factory=dict)
-    # Định dạng: {service_name: [log_lines]}
-    
-    # Bằng chứng Error traces (từ Tempo)
-    error_traces: List[dict] = field(default_factory=list)
-    # Cấu trúc rút gọn của trace spans
-    
-    # Các sự kiện thay đổi
-    recent_deployments: List[dict] = field(default_factory=list)
-    recent_config_changes: List[dict] = field(default_factory=list)
-    
-    # Dữ liệu lịch sử
-    similar_past_incidents: List[dict] = field(default_factory=list)
+Thứ tự thời gian chỉ đáng tin nếu clock skew được đo. Service A ghi lỗi 10:00:02 nhưng clock nhanh 40 giây; service B ghi 09:59:40 với clock đúng. Sort raw timestamp sẽ gọi B root dù A phát lỗi thật trước. Engine cần clock-offset từ NTP/collector, dùng trace parent-child khi có, và biểu diễn interval uncertainty: A bắt đầu trong `[09:59:20,10:00:00]`, B trong `[09:59:38,09:59:42]`. Nếu interval chồng nhau, temporal feature phải gần 0, không được tạo thứ tự giả.
 
-
-async def collect_rca_context(
-    incident: dict,
-    prometheus: PrometheusClient,
-    loki: LokiClient,
-    tempo: TempoClient,
-    change_store: ChangeEventStore,
-    incident_history: IncidentHistoryStore,
-    lookback_minutes: int = 30,
-) -> RCAContext:
-    """
-    Thu thập đồng thời toàn bộ các tín hiệu cần thiết cho RCA để tối ưu tốc độ.
-    """
-    affected_services = incident.get("services_affected", [])
-    
-    # Thực thi song song việc thu thập dữ liệu từ các nguồn ngoài
-    results = await asyncio.gather(
-        collect_metric_snapshots(prometheus, affected_services, lookback_minutes),
-        collect_error_logs(loki, affected_services, lookback_minutes),
-        collect_error_traces(tempo, affected_services, lookback_minutes),
-        collect_changes(change_store, affected_services, lookback_minutes),
-        find_similar_incidents(incident_history, incident),
-        return_exceptions=True,
-    )
-    
-    return RCAContext(
-        incident_id=incident["incident_id"],
-        incident_start=incident["started_at"],
-        incident_end=incident.get("ended_at"),
-        root_service_candidate=incident.get("root_cause", "unknown"),
-        affected_services=affected_services,
-        correlated_alerts=incident.get("all_alerts", []),
-        metric_snapshots=results[0] if not isinstance(results[0], Exception) else {},
-        error_logs=results[1] if not isinstance(results[1], Exception) else {},
-        error_traces=results[2] if not isinstance(results[2], Exception) else [],
-        recent_deployments=results[3][0] if not isinstance(results[3], Exception) else [],
-        recent_config_changes=results[3][1] if not isinstance(results[3], Exception) else [],
-        similar_past_incidents=results[4] if not isinstance(results[4], Exception) else [],
-    )
-```
-
-</details>
+Late event cũng làm rank thay đổi. Fast-path lúc 10:01 có thể chọn `checkout`; trace batch đến 10:02 cho thấy DB span lỗi từ 09:59. Output revision 2 phải nói “rank changed because 312 late spans arrived”, không chỉ đổi root trên UI.
 
 ---
 
@@ -283,7 +163,7 @@ Giải pháp RCA đơn giản và tin cậy nhất cho microservices giám sát 
 | **Ý tưởng** | Root candidate mạnh là node **anomaly** và có callee **khỏe** (fault bắt đầu tại đây) và caller **bị ảnh hưởng** (cascade ra ngoài). Duyệt graph; chấm điểm “lá” của vùng đỏ. |
 
 > [!IMPORTANT]
-> Topology RCA tìm **chỗ tập trung lỗi trong mesh**. Nó **không** chứng minh causation so với confounder AZ/DNS — xem [§20.1](#201-correlation--causation--the-classic-rca-trap).
+> Topology RCA tìm **chỗ tập trung lỗi trong mesh**. Nó **không** chứng minh causation so với confounder AZ/DNS — xem [§20.1](#201-correlation-causation-bay-kinh-ien-trong-rca).
 
 ### Input từ AIOps data plane
 
@@ -296,42 +176,69 @@ Giải pháp RCA đơn giản và tin cậy nhất cho microservices giám sát 
 
 ### Cách hoạt động (các bước)
 
-```
-1. Với mỗi service trong affected set:
-2.   callees = successors; callers = predecessors
-3.   Nếu service anomaly:
-4.     +0.5 nếu mọi callee khỏe (gốc-like trong vùng đỏ)
-5.     +0.3 nếu caller cũng trong affected (chữ ký cascade)
-6.     +bonus nhỏ theo fan-in (blast rộng hơn)
-7. Sort candidate theo score → danh sách giả thuyết topology
-```
+1. Lấy change trong lookback nhưng chỉ giữ change có scope giao với vùng incident hoặc shared dependency.
+2. Tính temporal fit theo rollout: symptom có tăng khi rollout tăng và giảm khi rollback không?
+3. So canary/stable: cùng traffic mix, version mới có error/latency cao hơn không?
+4. Tìm signature mới theo version: template log, span attribute, config diff, feature flag cohort.
+5. Kiểm tra blast compatibility: change ở payment không giải thích auth độc lập trừ khi có shared resource.
+6. Sinh candidate `change × failure_mode`, không chỉ service. Một deploy có thể gây schema mismatch, pool leak hoặc CPU regression với remediation khác nhau.
+7. Trừ điểm khi change không được expose tới request lỗi, onset trước change, stable version lỗi tương đương, hoặc rollback không cải thiện.
+1. Lấy subgraph gồm service bị ảnh hưởng, upstream/downstream trong bán kính giới hạn và shared resource như DB, queue, DNS, zone.
+2. Đánh dấu mỗi node: anomaly start, severity, signal quality, recent change; mỗi edge: request volume, error propagation, trace coverage, freshness.
+3. Sinh candidate là node đỏ hoặc recent-change có đường tới vùng đỏ. Node chỉ là downstream symptom vẫn có thể candidate nhưng nhận penalty.
+4. Duyệt từ symptom ngược hướng caller→callee. Candidate mạnh khi callee của nó khỏe hoặc lỗi bắt đầu tại chính candidate, trong khi nhiều caller downstream đỏ sau đó.
+5. Tính downstream impact có trọng số, không chỉ đếm node. Một checkout critical nặng hơn 20 batch nội bộ; edge mang 80% traffic nặng hơn edge 1%.
+6. Trừ điểm nếu candidate có upstream/callee đỏ sớm hơn, graph stale, cạnh không có traffic trong incident, hoặc anomaly chỉ bắt đầu sau retry storm.
+7. Gom candidate có common infrastructure; giữ nhiều root khi vùng đỏ tách thành component không nối được.
 
-```mermaid
-flowchart TB
-    GW[api-gateway · đỏ] --> ORD[order · đỏ]
-    ORD --> PAY[payment · đỏ · ROOT?]
-    PAY --> DB[(payment-db · xanh)]
-    ORD --> INV[inventory · xanh]
-
-    style GW fill:#fecaca,color:#1e293b
-    style ORD fill:#fecaca,color:#1e293b
-    style PAY fill:#ffedd5,color:#1e293b
-    style DB fill:#dcfce7,color:#1e293b
-    style INV fill:#dcfce7,color:#1e293b
-```
 
 *payment anomaly, callee khỏe, caller đỏ → topology score cao.*
 
+### Case bằng số: dependency graph và downstream weighting
+
+Graph có hướng caller → callee:
+
+- `web → checkout` mang 1.000 RPS, business weight 5.
+- `checkout → payment` mang 600 RPS, weight 5.
+- `checkout → inventory` mang 400 RPS, weight 4.
+- `payment → postgres` mang 550 RPS, weight 5.
+- `reporting → postgres` mang 40 RPS, weight 1.
+
+Anomaly start: postgres pool wait 10:02:10; payment error 10:02:34; checkout error 10:02:51; web success drop 10:03:02; reporting timeout 10:03:20. Inventory khỏe. Nếu chỉ đếm số alert, checkout có nhiều metric đỏ nhất và có thể đứng đầu. Nếu chỉ chọn timestamp đầu, postgres đứng đầu nhưng vẫn chưa đủ: monitoring DB có thể nhạy hơn và báo sớm dù lỗi bắt đầu tại network.
+
+Topology consistency của postgres mạnh vì nó không có callee ứng dụng đỏ, còn hai caller độc lập payment/reporting đều đỏ sau đó. Downstream impact không đếm `4 node`; nó cộng luồng đã chuẩn hóa: payment/checkout/web trên path critical cộng trọng số lớn, reporting nhỏ. Một cách minh họa: blast score của postgres = 0,6×5 payment + 0,6×5 checkout + 0,6×5 web + 0,04×1 reporting = **9,04**; payment chỉ giải thích checkout/web, khoảng **6,0**; checkout chỉ giải thích web, khoảng **3,0**. Các hệ số không phải xác suất, chúng là policy cần calibration.
+
+Candidate postgres nhận thêm temporal +0,8 vì đỏ trước tối thiểu 24 giây, leaf-of-red-region +1,0, two-independent-callers +0,7. Payment nhận penalty −0,6 vì callee postgres đỏ trước. Kết quả có thể postgres 0,86, payment 0,54, checkout 0,31. On-call thấy đường giải thích `postgres → payment → checkout → web` và nhánh `postgres → reporting`, không chỉ score.
+
+### Edge case: fan-out làm đếm downstream sai
+
+Service `config` được 80 service gọi nhưng chỉ khi startup; trong incident không có traffic qua cạnh. Topology catalog tĩnh khiến config có downstream count 80 và luôn thắng blast radius. Edge phải được activation-weight bằng request/span trong cửa sổ. Nếu chỉ 2/80 service gọi config lúc đó, 78 cạnh không đóng góp.
+
+Ngược lại, một payment service chỉ có một caller checkout nhưng phục vụ 70% doanh thu. Đếm node xem blast nhỏ; business weighting thấy impact lớn. Weight phải versioned, có cap để một owner không tự gán service của mình bằng 100 và áp đảo mọi evidence.
+
+### Edge case: cycle, retry và circuit breaker
+
+Graph thực có cycle `A→B→C→A` do callback. Backward traversal không được đi vô hạn; collapse strongly connected component hoặc giới hạn path và ghi rõ ambiguity. Retry làm traffic B→DB tăng sau DB slowdown; CPU B có thể đỏ mạnh hơn DB. Downstream weighting phải phân biệt impact propagation với load amplification, nếu không chọn B vì nó “ảnh hưởng nhiều”.
+
+Circuit breaker lại cắt propagation: payment không gọi DB nữa, DB metric hồi phục nhưng checkout vẫn lỗi fast-fail. Snapshot cuối incident làm DB trông khỏe và payment là leaf đỏ. Engine phải dùng graph/time series theo episode, không chỉ trạng thái hiện tại; recovery của root xảy ra trước recovery downstream chính là positive evidence.
+
 ### Output / on-call thấy gì
 
-```
-candidates:
-  - service: payment-service  score: 0.85
-    evidence: [all_dependencies_healthy, cascading_to_2_callers]
-    algorithm: topology_traversal
-  - service: order-service    score: 0.35
-    evidence: [cascading_to_1_callers]
-```
+On-call cần thấy rollout timeline cạnh symptom: “v42 10% lúc 10:00, error new=8,1%/old=0,7% lúc 10:02; rollout 50% lúc 10:04, fleet error 4,3%; rollback 10:08, new traffic về 0 và error hồi 10:10.” Đây là dose-response evidence mạnh hơn “deploy cách incident 5 phút”.
+
+### Case khó: deploy trùng traffic spike
+
+RPS **[800, 820, 1.100, 1.500, 1.900]**, rollout new version **[0, 10, 25, 50, 50]%**. Error old version **[0,7; 0,8; 0,8; 0,9; 1,0]%**; error new **[—; 6,2; 6,5; 6,3; 6,4]%**. Fleet error tăng cùng cả traffic và rollout, nên correlation thô mơ hồ. Cohort comparison cho thấy old khỏe dưới cùng traffic, new lỗi ổn định; deploy là candidate mạnh.
+
+Đổi dữ liệu: old error **[0,7; 0,8; 2,5; 5,0; 7,2]%**, new **[—; 0,9; 2,7; 5,1; 7,0]%**. Hai version hỏng giống nhau khi traffic tăng; rollback new không giải quyết. Capacity/shared dependency là candidate, deploy chỉ trùng thời điểm. RCA engine thực phải biết nói “recent change present but contradicted by version cohort”.
+
+### Edge case: feature flag và config không có deploy
+
+Nếu change feed chỉ lấy CI/CD, flag bật 30% tenant hoặc secret rotation sẽ vô hình. Mỗi change cần actor, type, scope entity/tenant/region, old/new hash, rollout fraction, event time và rollback link. Manual SSH không được audit phải hạ evidence completeness, không mặc định “không có change”.
+
+### Edge case: rollback thành công giả
+
+Error giảm sau rollback có thể vì traffic campaign kết thúc cùng lúc hoặc cache tự hồi. Counterfactual canary/stable, region không rollback và repeated exposure giúp. Một lần “action rồi metric tốt” là supportive evidence, không proof; engine ghi recovery lag và alternative explanations.
 
 ### Ưu / nhược + khi nào dùng
 
@@ -348,104 +255,7 @@ candidates:
 
 ### Algorithm: Backward Traversal
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-import networkx as nx
-from typing import List
-
-def topology_rca(
-    incident: dict,
-    dependency_graph: nx.DiGraph,
-    metric_snapshots: dict,
-    anomaly_threshold: float = 0.7,
-) -> List[dict]:
-    """
-    Duyệt ngược sơ đồ phụ thuộc từ các dịch vụ biểu hiện triệu chứng lỗi về nguyên nhân gốc rễ.
-    Một dịch vụ được coi là nguyên nhân gốc rễ nếu thỏa mãn:
-    1. Bản thân dịch vụ biểu hiện bất thường (tỷ lệ lỗi cao hoặc latency lớn)
-    2. Các dịch vụ gọi tới nó (upstream) cũng có bất thường (ảnh hưởng cascading kéo theo)
-    3. Các dịch vụ được nó gọi tới (downstream) hoàn toàn khỏe mạnh (dịch vụ lá bị lỗi)
-    
-    Trả về danh sách các ứng viên nguyên nhân gốc rễ được xếp hạng.
-    """
-    affected_services = set(incident.get("services_affected", []))
-    
-    candidates = []
-    
-    for service in affected_services:
-        if service not in dependency_graph:
-            continue
-        
-        # Lấy danh sách dependencies trực tiếp (các dịch vụ được service này gọi tới)
-        callees = list(dependency_graph.successors(service))
-        
-        # Lấy danh sách callers trực tiếp (các dịch vụ thực hiện gọi tới service này)
-        callers = list(dependency_graph.predecessors(service))
-        
-        # Kiểm tra xem các dependencies có khỏe mạnh không
-        callees_are_healthy = all(
-            not _is_service_anomalous(callee, metric_snapshots, anomaly_threshold)
-            for callee in callees
-        )
-        
-        # Xác định dịch vụ hiện tại có bị bất thường không
-        service_is_anomalous = _is_service_anomalous(service, metric_snapshots, anomaly_threshold)
-        
-        if service_is_anomalous:
-            candidate_score = 0.0
-            evidence = []
-            
-            # Bằng chứng mạnh: toàn bộ các dependencies đều khỏe mạnh (lỗi phát sinh từ chính node này)
-            if callees_are_healthy:
-                candidate_score += 0.5
-                evidence.append("all_dependencies_healthy")
-            
-            # Bằng chứng mạnh: các callers gọi tới nó cũng bị ảnh hưởng (cascading impact)
-            callers_affected = [c for c in callers if c in affected_services]
-            if callers_affected:
-                candidate_score += 0.3
-                evidence.append(f"cascading_to_{len(callers_affected)}_callers")
-            
-            # Điểm cộng thêm: số lượng liên kết callers càng lớn thể hiện mức độ ảnh hưởng rộng
-            candidate_score += min(0.2, len(callers) * 0.05)
-            
-            candidates.append({
-                "service": service,
-                "score": min(candidate_score, 1.0),
-                "evidence": evidence,
-                "algorithm": "topology_traversal",
-                "callees": callees,
-                "affected_callers": callers_affected,
-            })
-    
-    return sorted(candidates, key=lambda x: x["score"], reverse=True)
-
-
-def _is_service_anomalous(
-    service: str,
-    metric_snapshots: dict,
-    threshold: float,
-) -> bool:
-    """Kiểm tra xem một dịch vụ có metrics biểu hiện bất thường hay không."""
-    service_metrics = metric_snapshots.get(service, {})
-    
-    if not service_metrics:
-        return False
-    
-    error_rate = service_metrics.get("error_rate", {}).get("current", 0)
-    latency_p99 = service_metrics.get("latency_p99", {}).get("current", 0)
-    baseline_latency = service_metrics.get("latency_p99", {}).get("baseline", 1)
-    
-    # Coi là bất thường nếu: tỷ lệ lỗi > 5% HOẶC latency P99 vượt quá 2 lần baseline
-    return (
-        error_rate > 0.05 or
-        (baseline_latency > 0 and latency_p99 > 2 * baseline_latency)
-    )
-```
-
-</details>
+Backward traversal chỉ là candidate generator. Nó không chứng minh root và không nên tự page remediation. Độ phức tạp cần được chặn bằng incident subgraph, edge activation và top-k frontier; nếu duyệt cả service mesh 2.000 node cho mỗi alert storm, RCA tự trở thành incident.
 
 ---
 
@@ -470,13 +280,34 @@ Causal graph vượt correlation để mô hình **cấu trúc nhân quả** gi�
 
 ### Cách hoạt động (các bước) — phác PC
 
-```
-1. Bắt đầu graph vô hướng đầy đủ trên biến
-2. Gỡ cạnh độc lập có điều kiện (Fisher-Z / kernel CI)
-3. Định hướng cạnh còn lại (collider / Meek) → CPDAG/DAG
-4. Map biến anomaly; rank parent d-separate symptom
-5. Emit giả thuyết causal kèm edge confidence
-```
+PC và các phương pháp discovery bắt đầu bằng graph dày rồi loại cạnh khi hai biến độc lập có điều kiện trên tập biến khác. Trong vận hành, không nên để thuật toán tự do đảo mọi cạnh: direction từ trace/call graph, nguyên tắc thời gian “future không gây past”, và domain constraint như traffic có thể gây CPU nhưng CPU không tạo traffic user cần làm prior. Discovery bổ sung edge metric, không thay kiến thức hệ thống.
+
+### Case bằng số: tương quan cao nhưng thứ tự loại ứng viên sai
+
+Mỗi 30 giây ta có ba chuỗi:
+
+- DB pool wait: **[10, 11, 12, 180, 420, 650, 700]**.
+- Payment retry rate: **[0, 0, 1, 2, 18, 42, 60]**.
+- Payment CPU: **[35, 36, 35, 38, 57, 78, 91]**.
+
+Retry và CPU tương quan rất cao; một engine correlation có thể chọn CPU saturation. Nhưng pool wait đổi ở bước 4, retry/CPU đổi rõ ở bước 5. Khi điều kiện trên pool wait, quan hệ retry–CPU vẫn có thể là retry gây CPU; khi điều kiện trên retry, pool wait vẫn giải thích retry. Câu chuyện hợp lý là pool wait → retry → CPU. CPU đỏ nhất và muộn nhất là hậu quả.
+
+Giờ thêm traffic **[100, 102, 101, 220, 410, 650, 800]** cùng tăng từ bước 4. Traffic có thể là confounder gây cả pool wait và CPU. Nếu không có traffic trong ma trận, discovery dễ gán pool wait → CPU. Có traffic, cạnh trực tiếp có thể biến mất khi condition on traffic. “Causal graph” không vượt được biến ẩn; thiếu confounder quan trọng vẫn tạo DAG sai rất tự tin.
+
+### Thứ tự thời gian: “đỏ trước” là filter, không phải proof
+
+Temporal precedence hữu ích để **loại** candidate xuất hiện sau triệu chứng mà nó được cho là gây ra. Nó yếu hơn khi dùng để khẳng định root. Bốn lý do thường gặp:
+
+1. Detector sensitivity khác nhau: DB detector cần 5 phút persistence, checkout detector chỉ cần 1 phút; checkout đỏ trước dù DB fault trước.
+2. Sampling khác nhau: log realtime, metric scrape 60 giây, trace export batch 2 phút.
+3. Clock skew và late arrival đảo timestamp.
+4. Root im lặng: config sai lúc deploy nhưng chỉ gây lỗi khi cache hết hạn 20 phút sau.
+
+Vì vậy engine dùng **onset interval** thay timestamp đơn. Nếu checkout onset `[10:02:00,10:02:20]`, DB onset `[10:01:40,10:03:10]`, interval chồng nhau; không thưởng DB “đỏ trước”. Nếu DB `[10:00:10,10:00:20]` và checkout `[10:02:00,10:02:20]`, precedence mạnh. Temporal score nên tăng theo lead có ý nghĩa so với sampling uncertainty, và cap khi detector latency không biết.
+
+### Negative evidence từ thứ tự recovery
+
+Root fix thường precede downstream recovery. Rollback payment lúc 10:15; DB pool wait giảm 10:15:20; payment error giảm 10:16; checkout success hồi 10:17. Thứ tự này củng cố path. Nếu payment được restart 10:15 nhưng checkout vẫn lỗi đến khi DNS sửa 10:28, restart payment không xác nhận root; đó có thể chỉ là coincidental action. Engine phải ghi both onset và recovery, không cherry-pick timestamp hỗ trợ giả thuyết.
 
 ### Output / on-call thấy gì
 
@@ -497,117 +328,10 @@ Cạnh xếp hạng dạng `db_pool_wait → payment_error_rate → order_latenc
 
 ### PC Algorithm (Constraint-Based Causal Discovery)
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-from causallearn.search.ConstraintBased.PC import pc
-from causallearn.utils.cit import fisherz
-import numpy as np
-import pandas as pd
-import networkx as nx
-
-class CausalGraphRCA:
-    def __init__(self, alpha: float = 0.05):
-        """
-        alpha: mức ý nghĩa đối với kiểm định tính độc lập (nhỏ hơn = sinh ra nhiều cạnh hơn)
-        """
-        self.alpha = alpha
-
-    def build_causal_graph(
-        self,
-        metric_timeseries: pd.DataFrame,  # Cột = tên metric, hàng = các mốc timestamp
-    ) -> dict:
-        """
-        Khám phá cấu trúc nhân quả từ dữ liệu chuỗi thời gian.
-        Trả về ma trận kề biểu diễn mối liên hệ nhân quả.
-        
-        LƯU Ý: Yêu cầu tối thiểu 100+ mốc thời gian để cho ra kết quả tin cậy.
-        """
-        if len(metric_timeseries) < 100:
-            return {"error": "insufficient_data", "min_required": 100}
-        
-        # Thực thi thuật toán PC
-        data = metric_timeseries.values
-        cg = pc(data, alpha=self.alpha, ci_test=fisherz)
-        
-        # Trích xuất các cạnh nhân quả
-        edges = []
-        for i, col_i in enumerate(metric_timeseries.columns):
-            for j, col_j in enumerate(metric_timeseries.columns):
-                if cg.G.graph[i, j] == 1 and cg.G.graph[j, i] == -1:
-                    # i → j: col_i gây ra tác động tới col_j
-                    edges.append({
-                        "cause": col_i,
-                        "effect": col_j,
-                        "confidence": 1.0 - self.alpha,
-                    })
-        
-        return {
-            "edges": edges,
-            "nodes": list(metric_timeseries.columns),
-            "algorithm": "pc",
-            "alpha": self.alpha,
-        }
-
-    def find_root_cause_from_causal_graph(
-        self,
-        causal_graph: dict,
-        anomalous_metrics: list,
-    ) -> list:
-        """
-        Dựa vào danh sách metrics bất thường và đồ thị nhân quả,
-        xác định xem metric nào là nguồn nhân quả của các metrics còn lại.
-        """
-        G = nx.DiGraph()
-        for edge in causal_graph.get("edges", []):
-            G.add_edge(edge["cause"], edge["effect"])
-        
-        root_causes = []
-        
-        for metric in anomalous_metrics:
-            if metric not in G:
-                continue
-            
-            # In-degree = số lượng các yếu tố gây tác động trực tiếp tới metric hiện tại
-            # Một metric nguyên nhân gốc rễ sẽ không có (hoặc có rất ít) nút nhân quả cha trong nhóm bất thường
-            causal_parents = [
-                p for p in G.predecessors(metric)
-                if p in anomalous_metrics
-            ]
-            
-            if not causal_parents:
-                # Metric này không bị tác động bởi metric bất thường nào khác → nó chính là nguồn lỗi
-                descendants = list(nx.descendants(G, metric))
-                affected_anomalous = [d for d in descendants if d in anomalous_metrics]
-                
-                root_causes.append({
-                    "metric": metric,
-                    "score": min(1.0, 0.5 + len(affected_anomalous) * 0.1),
-                    "explains": affected_anomalous,
-                    "algorithm": "causal_graph_pc",
-                })
-        
-        return sorted(root_causes, key=lambda x: x["score"], reverse=True)
-```
-
-</details>
+PC phù hợp deep-path/offline khi có đủ mẫu và phân phối tương đối ổn định. Với incident 4 phút lấy mẫu mỗi phút chỉ có bốn hàng, conditional-independence test không đáng tin. Đừng bù bằng cách trộn 30 ngày gồm nhiều regime; quan hệ normal workload có thể khác fault regime. Topology/trace/change evidence thường đáng tin hơn trong phút đầu.
 
 ### When Causal Graph RCA Works Best
 
-```
-Trường hợp phù hợp:
-- Các metrics được thu thập ở cùng tần suất và độ phân giải thời gian
-- Đủ lượng dữ liệu lịch sử (>100 điểm dữ liệu cho mỗi metric)
-- Chuỗi thời gian đã được loại bỏ xu hướng và chu kỳ (detrended, deseasoned)
-- Quy mô số lượng metrics ở mức nhỏ và vừa (<50 metrics)
-
-Trường hợp KHÔNG phù hợp:
-- Dữ liệu streaming thời gian thực (thuật toán PC chạy dạng batch chậm)
-- Dữ liệu số chiều quá lớn (>100 metrics, chi phí tính toán rất cao)
-- Dữ liệu thô chưa qua tiền xử lý loại bỏ trôi phân phối
-- Dữ liệu bị khuyết thiếu (đòi hỏi phải chạy nội suy điền giá trị trước)
-```
 
 ---
 
@@ -617,147 +341,16 @@ Mạng Bayesian (Bayesian Networks) mô hình hóa **các mối quan hệ phụ 
 
 ### Structure Learning from Data + Domain Knowledge
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Bayesian network hữu ích khi đội vận hành có failure-mode catalog. Ví dụ node nhị phân: `deploy_bad`, `schema_mismatch`, `decode_fallback`, `latency_high`, `error_high`. Domain định nghĩa deploy_bad làm schema_mismatch dễ hơn; schema_mismatch làm fallback dễ hơn; fallback làm latency/error tăng. Khi quan sát deploy gần, fallback log tăng và error cao, posterior của schema mismatch tăng.
 
-```python
-from pgmpy.models import BayesianNetwork
-from pgmpy.estimators import BayesianEstimator, HillClimbSearch
-from pgmpy.inference import BeliefPropagation
-import pandas as pd
+### Case số: prior mạnh có thể giúp và cũng có thể lừa
 
-class BayesianNetworkRCA:
-    def __init__(self):
-        self.model = None
-        self.inference = None
+Giả sử prior mỗi incident: bad deploy 20%, DB exhaustion 10%. Evidence `deploy within 5m` có likelihood ratio 3 cho bad deploy; `new schema error log` LR 8; `DB pool wait normal` LR 0,3 cho DB exhaustion. Không cần coi các số độc lập tuyệt đối để thấy hướng: deploy+schema evidence nâng giả thuyết release mạnh, DB-normal hạ DB candidate.
 
-    def learn_structure(
-        self,
-        training_data: pd.DataFrame,  # Dữ liệu sự cố lịch sử chứa trạng thái các thành phần
-        prior_edges: list = None,     # Tri thức chuyên môn: các cạnh nhân quả đã biết trước
-    ):
-        """
-        Học cấu trúc mạng Bayesian từ dữ liệu sự cố trong lịch sử.
-        
-        Tập dữ liệu training_data cần được chuyển đổi về các trạng thái rời rạc:
-        Ví dụ: {db_connections: "normal|high|critical",
-               payment_error_rate: "normal|high|critical",
-               payment_latency: "normal|high|critical",
-               order_error_rate: "normal|high|critical"}
-        """
-        # Học cấu trúc mạng sử dụng Hill Climbing Search
-        hc = HillClimbSearch(training_data)
-        best_model_structure = hc.estimate(
-            scoring_method="bicscore",
-            max_indegree=4,
-        )
-        
-        # Khởi tạo mô hình dựa trên cấu trúc tốt nhất tìm được
-        self.model = BayesianNetwork(best_model_structure.edges())
-        
-        # Bổ sung các liên kết nhân quả đã biết trước từ tri thức chuyên môn
-        if prior_edges:
-            for cause, effect in prior_edges:
-                if not self.model.has_edge(cause, effect):
-                    self.model.add_edge(cause, effect)
-        
-        # Ước lượng bảng phân phối xác suất có điều kiện (conditional probability distributions)
-        self.model.fit(
-            training_data,
-            estimator=BayesianEstimator,
-            prior_type="BDeu",
-            equivalent_sample_size=10,
-        )
-        
-        self.inference = BeliefPropagation(self.model)
+Nhưng nếu mọi team mặc định “80% incident do deploy”, prior quá mạnh sẽ chọn deploy cả khi DNS chung lỗi đúng lúc release. Posterior cần hiển thị prior và evidence contribution; domain prior phải cập nhật từ incident review. Mạng Bayesian không biến phán đoán cũ thành sự thật, nó chỉ làm phán đoán explicit và kiểm tra được.
 
-    def diagnose(
-        self,
-        observed_states: dict,  # Trạng thái quan sát hiện tại: {component: state}
-        target_component: str = "root_cause",
-    ) -> dict:
-        """
-        Dựa trên các trạng thái bất thường quan sát được, suy luận ra thành phần có khả năng lỗi cao nhất.
-        
-        Ví dụ:
-        observed_states = {
-            "order_error_rate": "high",
-            "payment_error_rate": "high",
-            "payment_latency": "high",
-        }
-        """
-        if self.inference is None:
-            raise RuntimeError("Mô hình cần phải được huấn luyện trước")
-        
-        # Lấy các bằng chứng quan sát được khớp với các nút của mô hình
-        evidence = {k: v for k, v in observed_states.items() if k in self.model.nodes()}
-        
-        # Truy vấn xác suất trên các nút còn lại dựa trên bằng chứng
-        rca_scores = {}
-        
-        for node in self.model.nodes():
-            if node in evidence:
-                continue
-            
-            # Tính toán xác suất hậu nghiệm (posterior probability)
-            query_result = self.inference.query(
-                variables=[node],
-                evidence=evidence,
-                show_progress=False,
-            )
-            
-            # Lấy xác suất nút này rơi vào trạng thái "critical"
-            critical_prob = float(query_result.values[
-                list(query_result.state_names[node]).index("critical")
-            ])
-            
-            rca_scores[node] = {
-                "probability_critical": critical_prob,
-                "distribution": dict(zip(
-                    query_result.state_names[node],
-                    query_result.values.tolist()
-                )),
-            }
-        
-        return {
-            "rca_scores": rca_scores,
-            "most_likely_root_cause": max(
-                rca_scores,
-                key=lambda k: rca_scores[k]["probability_critical"]
-            ),
-            "algorithm": "bayesian_network",
-        }
-```
+Known causal edge nên có owner, nguồn và version: `pool_exhaustion → acquire_span_error`, `acquire_span_error → payment_timeout`. Một edge “CPU high → latency” quá chung có thể đảo trong retry storm; ghi điều kiện tải/regime thay vì universal edge.
 
-</details>
-
-**Ví dụ khai báo các liên kết nhân quả đã biết trước (Known Causal Edges)**:
-
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-KNOWN_CAUSAL_EDGES = [
-    # Lỗi database làm tăng tỷ lệ lỗi dịch vụ
-    ("db_connection_count", "payment_error_rate"),
-    ("db_connection_count", "order_error_rate"),
-    ("db_latency", "payment_latency"),
-    
-    # Áp lực memory làm tăng thời gian chạy GC, gây trễ dịch vụ
-    ("jvm_heap_used_pct", "service_latency"),
-    ("jvm_gc_pause_duration", "service_latency"),
-    
-    # Lỗi trễ lan truyền downstream
-    ("payment_latency", "order_latency"),
-    ("order_latency", "checkout_latency"),
-    
-    # Các giới hạn tài nguyên của Pod
-    ("pod_cpu_throttling", "service_latency"),
-    ("pod_memory_pressure", "pod_oom_kills"),
-]
-```
-
-</details>
 
 ---
 
@@ -767,186 +360,15 @@ KNOWN_CAUSAL_EDGES = [
 
 ### Architecture: Spatial-Temporal GNN
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-import torch
-import torch.nn as nn
-import torch_geometric.nn as geo_nn
-from torch_geometric.data import Data
-
-class RCA_GNN(nn.Module):
-    """
-    Mạng Graph Neural Network cho phân tích nguyên nhân gốc rễ.
-    
-    Kiến trúc:
-    - Node features: Chuỗi thời gian metric của mỗi service (được mã hóa qua LSTM)
-    - Edge features: Thông tin call rate, error rate, latency truyền giữa các services
-    - GNN: Học cách chỉ điểm node lỗi dựa trên cấu trúc đồ thị và trạng thái các nodes
-    
-    Dựa trên thiết kế: "Towards Intelligent Incident Management" (Microsoft Research)
-    và nghiên cứu "MicroRCA" (CloudCom 2020)
-    """
-    def __init__(
-        self,
-        node_feature_dim: int = 64,     # Chiều vector đặc trưng node sau mã hóa LSTM
-        edge_feature_dim: int = 8,      # Số đặc trưng của cạnh (call rate, error rate, latency)
-        hidden_dim: int = 128,
-        num_gnn_layers: int = 3,
-        num_services: int = 50,          # Tổng số dịch vụ trong đồ thị
-    ):
-        super().__init__()
-        
-        # Mã hóa chuỗi thời gian metric của mỗi node
-        self.node_encoder = nn.LSTM(
-            input_size=5,               # 5 metrics đầu vào của mỗi dịch vụ trên mỗi timestep
-            hidden_size=node_feature_dim,
-            num_layers=2,
-            batch_first=True,
-        )
-        
-        # Các lớp GNN: sử dụng GraphSAGE để xử lý các vùng lân cận có kích thước biến động
-        self.gnn_layers = nn.ModuleList([
-            geo_nn.SAGEConv(
-                in_channels=node_feature_dim if i == 0 else hidden_dim,
-                out_channels=hidden_dim,
-            )
-            for i in range(num_gnn_layers)
-        ])
-        
-        self.activation = nn.ReLU()
-        self.dropout = nn.Dropout(0.3)
-        
-        # Đầu ra: xác suất mỗi node là nguyên nhân gốc rễ
-        self.classifier = nn.Sequential(
-            nn.Linear(hidden_dim, 64),
-            nn.ReLU(),
-            nn.Linear(64, 1),           # Mỗi node có 1 điểm số đầu ra
-            nn.Sigmoid(),
-        )
-
-    def forward(
-        self,
-        node_timeseries: torch.Tensor,  # (num_nodes, seq_len, 5)
-        edge_index: torch.Tensor,       # (2, num_edges) — cấu trúc đồ thị
-        edge_attr: torch.Tensor,        # (num_edges, edge_feature_dim)
-    ) -> torch.Tensor:
-        # Mã hóa đặc trưng chuỗi thời gian cho mỗi node
-        _, (h_n, _) = self.node_encoder(
-            node_timeseries.view(-1, node_timeseries.size(1), node_timeseries.size(2))
-        )
-        node_features = h_n[-1]  # Lấy hidden state cuối cùng của LSTM: (num_nodes, node_feature_dim)
-        
-        # Đi qua các lớp GNN
-        x = node_features
-        for gnn_layer in self.gnn_layers:
-            x = gnn_layer(x, edge_index)
-            x = self.activation(x)
-            x = self.dropout(x)
-        
-        # Trả về xác suất nguyên nhân gốc rễ cho từng node
-        root_cause_probs = self.classifier(x).squeeze(-1)  # (num_nodes,)
-        
-        return root_cause_probs
-
-
-def build_graph_from_incident(
-    incident: dict,
-    metric_snapshots: dict,
-    dependency_graph: nx.DiGraph,
-    service_index: dict,  # service_name → node_index
-) -> Data:
-    """
-    Chuyển đổi bối cảnh sự cố thành cấu trúc dữ liệu đồ thị PyTorch Geometric.
-    """
-    num_nodes = len(service_index)
-    
-    # Node features: chuỗi thời gian metric của mỗi dịch vụ
-    node_features = torch.zeros(num_nodes, 10, 5)  # 10 bước thời gian, 5 metrics
-    
-    for service, idx in service_index.items():
-        metrics = metric_snapshots.get(service, {})
-        # Gói các metrics đầu vào: [error_rate, latency_p99, cpu, memory, request_rate]
-        for t in range(10):
-            node_features[idx, t, 0] = metrics.get("error_rate", {}).get(f"t-{t}", 0)
-            node_features[idx, t, 1] = metrics.get("latency_p99", {}).get(f"t-{t}", 0)
-            node_features[idx, t, 2] = metrics.get("cpu_usage", {}).get(f"t-{t}", 0)
-            node_features[idx, t, 3] = metrics.get("memory_usage", {}).get(f"t-{t}", 0)
-            node_features[idx, t, 4] = metrics.get("request_rate", {}).get(f"t-{t}", 0)
-    
-    # edge index
-    edges = []
-    edge_attrs = []
-    
-    for caller, callee, data in dependency_graph.edges(data=True):
-        if caller in service_index and callee in service_index:
-            edges.append([service_index[caller], service_index[callee]])
-            edge_attrs.append([
-                data.get("weight", 0),        # Call rate
-                data.get("error_rate", 0),    # Tỷ lệ lỗi
-                data.get("latency_p99", 0),   # Latency P99
-            ])
-    
-    edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
-    edge_attr = torch.tensor(edge_attrs, dtype=torch.float)
-    
-    return Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr)
-```
-
-</details>
+GNN nhận graph service cùng feature node theo thời gian và học cách pattern fault lan qua cạnh. Nó có thể tận dụng cấu trúc giống nhau giữa service, nhưng output vẫn phải quay về evidence con người đọc được: node nào, path nào, feature nào và counterfactual nào làm rank giảm. Attention weight không tự động là causal explanation.
 
 ### GNN Training Pipeline
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Train cần incident label ở cấp root component/failure mode, topology snapshot đúng thời điểm và negative incident. Random split theo row làm cùng một incident lọt cả train/test; phải split theo incident/time. New service và topology version mới cần holdout riêng để đo inductive generalization.
 
-```python
-def train_rca_gnn(
-    historical_incidents: list,    # Danh sách incidents lịch sử đã có nhãn nguyên nhân
-    dependency_graph: nx.DiGraph,
-    service_index: dict,
-    epochs: int = 100,
-) -> RCA_GNN:
-    """
-    Huấn luyện mô hình GNN trên tập dữ liệu sự cố lịch sử đã gán nhãn.
-    Đòi hỏi tối thiểu 100+ sự cố đã gán nhãn cho mỗi service cluster để chạy ổn định.
-    """
-    model = RCA_GNN(num_services=len(service_index))
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    criterion = nn.BCELoss()
-    
-    for epoch in range(epochs):
-        total_loss = 0
-        
-        for incident in historical_incidents:
-            graph_data = build_graph_from_incident(
-                incident, incident["metric_snapshots"], dependency_graph, service_index
-            )
-            
-            # Ground truth: dịch vụ nào thực tế là nguyên nhân gốc rễ?
-            root_cause_service = incident["confirmed_root_cause"]
-            labels = torch.zeros(len(service_index))
-            if root_cause_service in service_index:
-                labels[service_index[root_cause_service]] = 1.0
-            
-            optimizer.zero_grad()
-            predictions = model(
-                graph_data.x, graph_data.edge_index, graph_data.edge_attr
-            )
-            loss = criterion(predictions, labels)
-            loss.backward()
-            optimizer.step()
-            
-            total_loss += loss.item()
-        
-        if epoch % 10 == 0:
-            print(f"Epoch {epoch}, Loss: {total_loss / len(historical_incidents):.4f}")
-    
-    return model
-```
+### Case khó: topology đổi nhưng feature giống
 
-</details>
+Trước migration, `checkout→payment-old→db-old`; sau migration, `checkout→payment-new→db-new`. GNN train trên node ID có thể nhớ `db-old` thường root. Khi db-new lỗi với chuỗi metric giống hệt, model không generalize. Dùng role/type/edge feature giúp, nhưng graph change vẫn phải shadow. Nếu topology snapshot hiện tại được gắn vào incident lịch sử, model học path không tồn tại lúc sự cố—một dạng temporal leakage ở graph.
 
 ### GNN GNN Trade-offs
 
@@ -954,7 +376,7 @@ def train_rca_gnn(
 |--------|---------|
 | ✅ Khai thác tốt cấu trúc đồ thị phức tạp | Tự học trực tiếp từ cấu trúc liên kết đồ thị + đặc trưng node |
 | ✅ Hỗ trợ tổng quát hóa dịch vụ | Cho phép truyền tải tri thức (transfer learning) giữa các dịch vụ tương tự |
-| ✅ Đạt độ chính xác hàng đầu hiện nay | Nghiên cứu thực tế cho thấy độ chính xác top-1 đạt khoảng 85–95% |
+| ✅ Có thể học pattern khó | Chỉ có giá trị khi replay production thắng baseline topology/change |
 | ❌ Đòi hỏi lượng sự cố lịch sử đã gán nhãn | Cần tối thiểu 100+ sự cố có nhãn để chạy huấn luyện ổn định |
 | ❌ Vấn đề cold start với dịch vụ mới | Dịch vụ mới triển khai hoàn toàn không có dữ liệu lịch sử đối sánh |
 | ❌ Kiến trúc đồ thị thay đổi | Bắt buộc phải chạy huấn luyện lại khi cấu hình topology hệ thống thay đổi lớn |
@@ -970,121 +392,25 @@ Phân tích log cung cấp các bằng chứng RCA có tính biểu đạt cao v
 
 ### Structured Log Analysis
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Log RCA không tìm “dòng ERROR đầu tiên” rồi kết luận. ERROR có thể là downstream wrapping, còn root log ở WARN; startup log có thể luôn xuất hiện trước incident. Evidence mạnh gồm template specificity, novelty/rate, entity/path consistency, timestamp quality và liên kết trace.
 
-```python
-import re
-from collections import Counter
-from typing import List, Dict
+### Case: exception wrapping tạo ba “root” giả
 
-class LogRCAAnalyzer:
-    """
-    Trích xuất các bằng chứng RCA từ nội dung logs lỗi.
-    """
-    
-    # Các mẫu log lỗi phổ biến ánh xạ sang phân loại nguyên nhân gốc rễ
-    ERROR_PATTERNS = [
-        (r"connection pool exhausted|too many connections|connection refused",
-         "database_connection_exhaustion"),
-        (r"OOMKilled|out of memory|memory pressure|GC overhead",
-         "memory_exhaustion"),
-        (r"dial tcp.*i/o timeout|context deadline exceeded|connection timed out",
-         "network_timeout"),
-        (r"certificate.*expired|TLS handshake|SSL.*error",
-         "tls_certificate_error"),
-        (r"rate limit|too many requests|429|quota exceeded",
-         "rate_limiting"),
-        (r"pod.*evicted|failed to schedule|insufficient.*memory|Unschedulable",
-         "kubernetes_scheduling_failure"),
-        (r"NullPointerException|nil pointer dereference|index out of range",
-         "application_code_error"),
-        (r"disk.*full|no space left|ENOSPC",
-         "disk_full"),
-        (r"kafka.*timeout|consumer lag|offset.*reset",
-         "kafka_consumer_lag"),
-        (r"permission denied|FORBIDDEN|403|unauthorized|401",
-         "permission_error"),
-    ]
+Một request có log theo thứ tự:
 
-    def analyze(
-        self,
-        logs_by_service: Dict[str, List[str]],
-    ) -> List[dict]:
-        """
-        Phân tích logs lỗi và trả về danh sách các ứng viên RCA xếp hạng theo độ tin cậy của bằng chứng.
-        """
-        evidence_list = []
-        
-        for service, log_lines in logs_by_service.items():
-            error_lines = [l for l in log_lines if "ERROR" in l or "FATAL" in l or "CRITICAL" in l]
-            
-            if not error_lines:
-                continue
-            
-            # Khớp mẫu
-            pattern_matches = Counter()
-            pattern_examples = {}
-            
-            for line in error_lines:
-                for pattern, category in self.ERROR_PATTERNS:
-                    if re.search(pattern, line, re.IGNORECASE):
-                        pattern_matches[category] += 1
-                        if category not in pattern_examples:
-                            pattern_examples[category] = line[:300]
-            
-            if not pattern_matches:
-                # Không khớp mẫu định sẵn nào — trả về log lỗi phổ biến nhất cho con người tự đánh giá
-                evidence_list.append({
-                    "service": service,
-                    "category": "unknown_error",
-                    "score": 0.3,
-                    "evidence": error_lines[0][:300] if error_lines else "no errors",
-                    "error_count": len(error_lines),
-                    "algorithm": "log_pattern_match",
-                })
-                continue
-            
-            # Mẫu lỗi xuất hiện nhiều nhất có khả năng cao nhất phản ánh nguyên nhân gốc rễ
-            top_category, count = pattern_matches.most_common(1)[0]
-            
-            evidence_list.append({
-                "service": service,
-                "category": top_category,
-                "score": min(1.0, 0.4 + count * 0.05),  # Xuất hiện càng nhiều = độ tin cậy càng cao
-                "evidence": pattern_examples[top_category],
-                "error_count": len(error_lines),
-                "pattern_count": count,
-                "algorithm": "log_pattern_match",
-                "all_patterns": dict(pattern_matches.most_common(5)),
-            })
-        
-        return sorted(evidence_list, key=lambda x: x["score"], reverse=True)
+| Thời điểm | Service | Template |
+|-----------|---------|----------|
+| 10:02:14.120 | postgres proxy | `pool acquire timeout after 800ms` |
+| 10:02:14.925 | payment | `charge failed: dependency timeout` |
+| 10:02:14.940 | checkout | `checkout failed: payment unavailable` |
 
-    def extract_stacktrace(self, log_lines: List[str]) -> List[str]:
-        """Trích xuất và gom nhóm các stack traces từ dòng logs."""
-        traces = []
-        current_trace = []
-        in_trace = False
-        
-        for line in log_lines:
-            if "Exception" in line or "Error" in line and "at " in line:
-                if current_trace:
-                    traces.append("\n".join(current_trace))
-                current_trace = [line]
-                in_trace = True
-            elif in_trace and (line.strip().startswith("at ") or line.strip().startswith("...")):
-                current_trace.append(line)
-            else:
-                if current_trace:
-                    traces.append("\n".join(current_trace))
-                    current_trace = []
-                in_trace = False
-        
-        return traces[:5]  # Chỉ lấy tối đa 5 stack traces duy nhất
-```
+Ba dòng đều ERROR. Chọn frequency cao nhất có thể lấy checkout vì nó log hai lần mỗi request; chọn service user-facing cũng sai. Root evidence là template pool acquire ở leaf dependency, xuất hiện trước trong cùng trace và giải thích hai wrapper downstream. Engine phải collapse error chain theo trace/cause, không đếm ba lỗi độc lập.
 
-</details>
+Counterexample: proxy log timeout do client checkout hủy request sau deadline quá ngắn. Khi đó checkout config deadline mới là root và proxy ERROR là hậu quả. Trace status/message `context canceled by client`, recent config change và span timing phản bác giả thuyết DB. Text log một mình không phân biệt.
+
+### Log absence và sampling
+
+Không thấy error log không chứng minh service khỏe. Sampling 1%, log pipeline lag hoặc process crash trước flush đều tạo absence. Evidence quality phải chứa log coverage/lag. Một template mới chỉ xuất hiện trên version canary 3/3 pod và bắt đầu sau deploy mạnh hơn một singleton không trace ID. Raw message cần redaction; RCA output chỉ cite template và link điều tra có quyền truy cập.
 
 ---
 
@@ -1092,135 +418,44 @@ class LogRCAAnalyzer:
 
 Distributed traces cung cấp bằng chứng rõ ràng nhất về vị trí (WHERE) phát sinh lỗi đầu tiên trong chuỗi gọi dịch vụ liên tiếp.
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+### Span-error propagation: phân biệt origin và propagation
 
-```python
-from typing import List, Optional
-from dataclasses import dataclass
+Với mỗi trace lỗi, đi từ leaf về root và gán ba trạng thái:
 
-@dataclass
-class SpanAnalysis:
-    service: str
-    operation: str
-    duration_ms: float
-    status: str
-    is_root_span: bool
-    children: List['SpanAnalysis']
-    error_message: Optional[str] = None
+- **Origin error:** span tự thất bại do operation/resource của nó, không chỉ vì child trả lỗi.
+- **Propagated error:** span parent đánh error vì child thất bại hoặc deadline bị tiêu thụ downstream.
+- **Independent error:** span ở nhánh khác thất bại không có ancestor/descendant relation với origin.
 
-class TraceRCAAnalyzer:
-    """
-    Phân tích traces lỗi để chỉ điểm span cụ thể gây ra lỗi.
-    """
-    
-    def analyze_trace(self, trace: dict) -> dict:
-        """
-        Tìm kiếm span nguyên nhân gốc rễ trong một trace bị lỗi.
-        
-        Thuật toán:
-        1. Tìm kiếm toàn bộ các spans bị đánh nhãn lỗi (ERROR/FAILED)
-        2. Tìm span bị lỗi nằm ở vị trí sâu nhất trên cây gọi dịch vụ (nút lá lỗi)
-        3. Span lỗi sâu nhất chính là điểm phát sinh lỗi đầu tiên của hệ thống
-        """
-        spans = trace.get("spans", [])
-        
-        if not spans:
-            return {"error": "empty_trace"}
-        
-        # Ánh xạ theo span ID
-        span_by_id = {s["spanID"]: s for s in spans}
-        
-        # Lọc các spans lỗi
-        error_spans = [s for s in spans if s.get("statusCode") == "STATUS_CODE_ERROR"]
-        
-        if not error_spans:
-            # Không có spans nào bị đánh nhãn lỗi — tìm kiếm span xử lý chậm nhất
-            slowest = max(spans, key=lambda s: s.get("durationMs", 0))
-            return {
-                "root_cause_span": slowest,
-                "root_cause_service": slowest.get("processID", "unknown"),
-                "evidence": "slowest_span",
-                "duration_ms": slowest.get("durationMs", 0),
-                "analysis_type": "latency",
-            }
-        
-        # Trong các spans lỗi, tìm span có đường đi dài nhất tính từ root span
-        # (vị trí sâu nhất trên call tree = gần nhất với điểm lỗi thực tế)
-        def get_depth(span_id: str, visited: set = None) -> int:
-            if visited is None:
-                visited = set()
-            if span_id in visited:
-                return 0
-            visited.add(span_id)
-            
-            span = span_by_id.get(span_id)
-            if not span or not span.get("parentSpanID"):
-                return 0
-            
-            parent_id = span["parentSpanID"]
-            if parent_id not in span_by_id:
-                return 0
-            
-            return 1 + get_depth(parent_id, visited)
-        
-        # Lấy span lỗi sâu nhất
-        deepest_error = max(error_spans, key=lambda s: get_depth(s["spanID"]))
-        
-        # Trích xuất thông tin lỗi chi tiết
-        error_message = next(
-            (a["value"]["stringValue"] for a in deepest_error.get("attributes", [])
-             if a.get("key") in ["exception.message", "error.message", "error"]),
-            "unknown error"
-        )
-        
-        return {
-            "root_cause_span": deepest_error,
-            "root_cause_service": deepest_error.get("process", {}).get("serviceName", "unknown"),
-            "root_cause_operation": deepest_error.get("operationName", "unknown"),
-            "error_message": error_message,
-            "depth": get_depth(deepest_error["spanID"]),
-            "total_error_spans": len(error_spans),
-            "total_spans": len(spans),
-            "trace_duration_ms": max(s.get("durationMs", 0) for s in spans),
-            "analysis_type": "error",
-            "algorithm": "trace_depth_traversal",
-        }
-    
-    def compute_span_contribution(self, trace: dict) -> List[dict]:
-        """
-        Tính toán tỷ lệ thời gian đóng góp của mỗi service vào tổng thời gian trace.
-        Hữu ích cho phân tích RCA tìm điểm nghẽn latency.
-        """
-        spans = trace.get("spans", [])
-        total_duration = max(s.get("durationMs", 0) for s in spans)
-        
-        if total_duration == 0:
-            return []
-        
-        # Hợp cộng thời gian theo service
-        service_duration = {}
-        for span in spans:
-            service = span.get("process", {}).get("serviceName", "unknown")
-            duration = span.get("durationMs", 0)
-            service_duration[service] = service_duration.get(service, 0) + duration
-        
-        # Tính tỷ lệ phần trăm đóng góp
-        return sorted(
-            [
-                {
-                    "service": svc,
-                    "duration_ms": dur,
-                    "contribution_pct": round(dur / total_duration * 100, 1),
-                }
-                for svc, dur in service_duration.items()
-            ],
-            key=lambda x: x["contribution_pct"],
-            reverse=True,
-        )
-```
+Engine aggregate trên nhiều trace, không kết luận từ một trace hiếm. Candidate mạnh khi là first origin trong phần lớn trace lỗi, parent propagation theo sau, và sibling khỏe.
 
-</details>
+### Case bằng số: critical path và span duration
+
+Trace checkout có các span:
+
+| Span | Quan hệ | Start | Duration | Status |
+|------|---------|-------|----------|--------|
+| checkout | root | 0 ms | 980 ms | ERROR |
+| inventory | child | 12 ms | 45 ms | OK |
+| payment | child | 60 ms | 900 ms | ERROR |
+| acquire-db | child của payment | 70 ms | 810 ms | ERROR `pool timeout` |
+| fraud | child của payment | 75 ms | 80 ms | OK |
+
+Naive “span dài nhất” chọn checkout 980 ms. Naive “error đầu tiên theo start” chọn payment vì bắt đầu 60 ms trước acquire-db 70 ms. Nhưng parent bắt đầu trước child là cấu trúc bình thường; thời điểm **failure/end** và error semantics mới quan trọng. acquire-db tiêu thụ 810 ms rồi lỗi ở khoảng 880 ms; payment kết thúc error 960 ms; checkout kết thúc 980 ms. Origin là acquire-db, propagation lên payment rồi checkout. Inventory/fraud khỏe là negative evidence hỗ trợ.
+
+Qua 1.000 trace, 620 trace lỗi; 590/620 có acquire-db origin, 20 có gateway 429, 10 incomplete. Origin ratio DB 95,2% với trace coverage 70% tạo evidence mạnh nhưng chưa phải 100% traffic. Engine phải hiển thị denominator và sampling bias.
+
+### Edge case: parallel fan-out và canceled sibling
+
+Payment gọi fraud và DB song song. DB chậm làm deadline root hết; fraud đang chạy bị cancel và ghi ERROR sớm hơn DB timeout do cancellation propagation. Sort error timestamp chọn fraud sai. Span relation/status `CANCELLED`, root deadline và critical path cho thấy fraud là victim. Candidate nhận penalty nếu lỗi là cancel bởi ancestor hoặc “context deadline exceeded” sau sibling critical path.
+
+### Edge case: retry che origin
+
+Ba attempt DB: attempt1 timeout 300 ms, attempt2 timeout 300 ms, attempt3 OK 40 ms; request tổng 700 ms nhưng status OK. Error-rate metric không đỏ, trace root OK, chỉ latency SLO burn. RCA phải giữ failed attempt span thay vì chỉ status cuối. Nếu retry instrumentation gộp vào một span, root cause visibility giảm; engine ghi warning “attempt-level spans missing”.
+
+### Edge case: tail sampling bias
+
+Tail sampling giữ 100% trace lỗi nhưng chỉ 1% trace khỏe. Tỷ lệ “95% trace có DB error” không phải prevalence toàn traffic. RCA dùng trace để định vị trong tập lỗi, còn impact denominator lấy metric/request count. Không nhân trực tiếp trace ratio vào probability nếu sampling policy chưa được hiệu chỉnh.
+
 
 ---
 
@@ -1236,7 +471,7 @@ Hầu hết incident production nghiêm trọng **gần change**. Proximity th�
 | **Ý tưởng** | Chấm change trong cửa sổ pre-incident theo **delta thời gian × overlap service × loại change**, rồi **đòi** evidence hỗ trợ (error signature mới, canary delta) trước khi “đổ deploy 100%”. |
 
 > [!WARNING]
-> **Confounder**: deploy + marketing spike cùng lúc. Rank **cả hai** candidate và interaction — xem [§20.2](#202-confounding-deploy--traffic-spike-at-the-same-time).
+> **Confounder**: deploy + marketing spike cùng lúc. Rank **cả hai** candidate và interaction — xem [§20.2](#202-confounding-deploy-traffic-spike-cung-luc).
 
 ### Input từ AIOps data plane
 
@@ -1249,23 +484,53 @@ Hầu hết incident production nghiêm trọng **gần change**. Proximity th�
 
 ### Cách hoạt động (các bước)
 
-```
-1. Lọc change timestamp < incident_start và delta ≤ window
-2. temporal_score = 1 - (minutes_before / window)
-3. service_score = 1 nếu service đổi nằm trong affected, else thấp
-4. type_weight: deploy/migration > infra > config > flag (tune theo org)
-5. combined = tổng có trọng số; sort
-6. Nếu traffic_z cao VÀ có change → multi-hypothesis (không winner đơn)
-```
+1. Chuẩn hóa candidate identity: cùng `postgres/pool_exhaustion` từ topology, trace và log phải merge; `postgres/disk_full` là hypothesis khác.
+2. Biến mỗi module thành feature đã calibration, không cộng score raw khác thang.
+3. Tách evidence family để tránh double count: error metric và anomaly event phát từ chính metric đó là một nguồn, không phải hai vote.
+4. Cộng positive evidence, trừ contradiction và coverage penalty.
+5. Tính evidence quality từ freshness, coverage, clock certainty, topology completeness và source independence.
+6. Calibrate publishable confidence trên incident holdout; cap confidence khi quality thấp.
+7. Kiểm tra candidate gần hòa và graph component; trả multi-root/uncertain khi phù hợp.
+8. Sinh reasoning path và phép kiểm chứng phân biệt top-1/top-2.
+
+### Multi-signal scoring bằng số
+
+Incident có ba candidate: A=`payment-db/pool_exhaustion`, B=`payment-service/bad_deploy`, C=`checkout/cpu_saturation`. Mỗi feature đã nằm trong khoảng 0–1; trọng số minh họa được học/điều chỉnh từ review lịch sử, không phải xác suất.
+
+| Evidence feature | Weight | A | B | C |
+|------------------|--------|---|---|---|
+| Topology downstream impact | 0,22 | 0,95 | 0,70 | 0,30 |
+| Temporal precedence đáng tin | 0,14 | 0,85 | 0,40 | 0,10 |
+| Trace origin ratio | 0,24 | 0,92 | 0,35 | 0,05 |
+| Log specificity | 0,12 | 0,80 | 0,55 | 0,20 |
+| Change cohort fit | 0,14 | 0,10 | 0,90 | 0,10 |
+| Recovery consistency | 0,08 | 0,75 | 0,20 | 0,15 |
+| Historical match | 0,06 | 0,70 | 0,60 | 0,30 |
+
+Weighted positive score xấp xỉ A **0,79**, B **0,54**, C **0,16**. Sau đó contradiction: A bị −0,05 vì DB CPU khỏe (yếu, pool exhaustion không cần CPU cao); B bị −0,12 vì old/new version error giống nhau; C bị −0,18 vì CPU đỏ sau error và giảm khi retry bị chặn. Raw rank A 0,74, B 0,42, C gần 0.
+
+Evidence quality của A: trace coverage 70%=0,7; topology freshness 0,9; clock certainty 0,8; log coverage 0,95; source independence 0,8. Không lấy mean mù; nếu trace là bằng chứng quyết định thì coverage thấp phải cap mạnh. Quality aggregate có thể 0,78. Calibration từ incident holdout ánh xạ raw 0,74 thành model confidence 0,84; publishable confidence không vượt quality policy, ví dụ **0,78**. UI hiển thị cả ba số và contribution.
+
+### Không double-count tín hiệu cùng nguồn
+
+Prometheus error rate tạo anomaly event; correlation group chứa chính alert đó; topology module dùng cùng error rate để đánh node đỏ. Nếu coi “metric + anomaly + topology” là ba evidence độc lập, một counter được đếm ba lần. Provenance graph phải ghi lineage để group chúng thành một family. Trace origin và log template gắn cùng trace có liên hệ nhưng cung cấp modality khác; independence factor có thể 0,7 thay vì 1.
+
+### Negative evidence phải có trọng lượng
+
+Candidate deploy gần thời gian nhận +0,8 nhưng canary/stable giống nhau là phản chứng mạnh, không phải một note cuối card. Candidate DB có pool wait normal trên 99% pod và trace lỗi trước khi gọi DB thì phải tụt rank. Absence chỉ có giá trị khi coverage tốt: “không thấy DB error” với log loss 60% gần như không phải negative evidence.
+
+### Multi-root bằng graph component và residual symptoms
+
+Sau khi chọn A, engine giải thích được payment, checkout, web nhưng không giải thích auth 401 ở region khác. Loại các symptom đã covered rồi chạy lại ranking trên residual. Nếu auth-cache change giải thích cluster còn lại và hai candidate không có path/shared infra/time propagation hợp lý, mode=`multi_root`. Không chọn root thứ hai chỉ vì score #2 gần #1; nó phải giải thích **phần impact chưa được root đầu bao phủ**.
+
+Ví dụ 10 service đỏ: DB root cover 7 service với weighted impact 85%; auth-cache cover 2 service độc lập 12%; một batch noise 3%. Single-root report sẽ bỏ auth. Multi-root trả DB 0,81 và auth-cache 0,69, đồng thời drop batch vì impact thấp. Remediation được gate riêng; rollback auth không thay đổi DB incident.
+
+### Chọn phép kiểm chứng có information gain
+
+Nếu A=DB pool exhaustion và B=bad deploy gần hòa, query pool wait theo version không giúp vì DB dùng chung. Một test tốt là chuyển 5% canary new sang DB pool riêng hoặc rollback new trên một cohort: nếu lỗi theo version, B tăng; nếu cả old/new cùng pool lỗi, A tăng. Engine nên đề xuất action ít rủi ro nhất phân biệt hai hypothesis, không chỉ action sửa top-1.
 
 ### Output / on-call thấy gì
 
-```
-change_correlations:
-  - deployment payment@2.15  score 0.91  t-12m  can_rollback: true
-  - flag promo_checkout      score 0.55  t-20m  can_rollback: true
-ui_banner: "Possible confound: deploy AND traffic spike — verify both"
-```
 
 ### Ưu / nhược + khi nào dùng
 
@@ -1280,84 +545,6 @@ ui_banner: "Possible confound: deploy AND traffic spike — verify both"
 | Luôn trong ensemble production | Chỉ proximity thời gian, không delta error signature |
 | Freeze / audit change | Confidence cao nhưng evidence_quality thấp |
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-from datetime import datetime, timedelta
-
-class ChangeCorrelationRCA:
-    """
-    Tính tương quan giữa incidents và các thay đổi gần đây (deployments, config changes, flag flips).
-    """
-    
-    CHANGE_IMPACT_WINDOW_MINUTES = 30  # Khoảng thời gian tác động: incident xảy ra trong vòng 30 phút sau khi change = có liên quan
-    
-    def correlate(
-        self,
-        incident: dict,
-        change_events: List[dict],
-    ) -> List[dict]:
-        """
-        Tìm kiếm các sự kiện thay đổi xuất hiện ngay trước khi incident bắt đầu.
-        """
-        incident_start = incident.get("started_at")
-        if isinstance(incident_start, str):
-            incident_start = datetime.fromisoformat(incident_start.replace("Z", "+00:00"))
-        
-        affected_services = set(incident.get("services_affected", []))
-        
-        correlations = []
-        
-        for change in change_events:
-            change_time = change.get("timestamp")
-            if isinstance(change_time, str):
-                change_time = datetime.fromisoformat(change_time.replace("Z", "+00:00"))
-            
-            # Sự kiện change phải xảy ra TRƯỚC incident
-            if change_time >= incident_start:
-                continue
-            
-            # Nằm trong cửa sổ tác động cho phép
-            time_delta = (incident_start - change_time).total_seconds() / 60
-            if time_delta > self.CHANGE_IMPACT_WINDOW_MINUTES:
-                continue
-            
-            changed_service = change.get("service")
-            
-            # Điểm số khoảng cách thời gian (càng gần thời điểm xảy ra = điểm càng cao)
-            temporal_score = 1.0 - (time_delta / self.CHANGE_IMPACT_WINDOW_MINUTES)
-            
-            # Điểm tương đồng dịch vụ
-            service_score = 1.0 if changed_service in affected_services else 0.3
-            
-            # Trọng số theo loại hình thay đổi (deployment > config > feature flag)
-            change_type_scores = {
-                "deployment": 1.0,
-                "config_change": 0.8,
-                "feature_flag": 0.7,
-                "infrastructure_change": 0.9,
-                "database_migration": 1.0,
-            }
-            change_type_score = change_type_scores.get(change.get("type", ""), 0.5)
-            
-            combined_score = temporal_score * 0.4 + service_score * 0.4 + change_type_score * 0.2
-            
-            correlations.append({
-                "change_event": change,
-                "score": combined_score,
-                "time_before_incident_minutes": round(time_delta, 1),
-                "changed_service": changed_service,
-                "change_type": change.get("type"),
-                "change_version": change.get("version"),
-                "can_rollback": change.get("type") == "deployment",
-                "algorithm": "change_correlation",
-            })
-        
-        return sorted(correlations, key=lambda x: x["score"], reverse=True)
-```
-
-</details>
 
 ---
 
@@ -1383,14 +570,6 @@ Hợp nhất output thuật toán thành **danh sách giả thuyết xếp hạn
 
 ### Cách hoạt động (các bước)
 
-```
-1. Chuẩn hóa top-k mỗi thuật toán → (service, score, evidence[])
-2. service_scores += score × algorithm_weight
-3. Gắn evidence_quality từ fidelity / freshness / agreement
-4. publishable_confidence = f(model_conf, evidence_quality)
-5. finalize: single | multi_root | uncertain (xem §20.3)
-6. Gắn suggested_remediation chỉ khi failure_mode biết + allowlist
-```
 
 ### Output / on-call thấy gì
 
@@ -1415,128 +594,30 @@ Hợp nhất output thuật toán thành **danh sách giả thuyết xếp hạn
 | Luôn trước page / remediate | Giấu alternative khi mode=uncertain |
 | Nuôi context LLM agent | Coi rank-1 là chân lý tuyệt đối |
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-from dataclasses import dataclass
-from typing import List, Optional
-
-@dataclass
-class RCAHypothesis:
-    rank: int
-    root_cause_service: str
-    root_cause_component: str      # "database", "application_code", "infrastructure"
-    failure_mode: str              # "connection_exhaustion", "memory_oom", v.v.
-    confidence: float              # 0.0 - 1.0
-    evidence: List[dict]           # Toàn bộ bằng chứng hỗ trợ kèm theo
-    suggested_remediation: str
-    runbook_url: Optional[str]
-    estimated_impact: str
-
-def rank_rca_hypotheses(
-    topology_results: List[dict],
-    causal_results: List[dict],
-    log_results: List[dict],
-    trace_results: List[dict],
-    change_results: List[dict],
-    bayesian_results: dict,
-) -> List[RCAHypothesis]:
-    """
-    Hợp nhất và xếp hạng các kết quả RCA thu được từ tất cả thuật toán.
-    Sử dụng cơ chế biểu quyết có trọng số dựa trên độ chính xác lịch sử của mỗi thuật toán.
-    """
-    ALGORITHM_WEIGHTS = {
-        "change_correlation": 0.35,       # Trọng số cao nhất: tương quan deploy có độ chính xác rất cao
-        "trace_depth_traversal": 0.25,    # Traces cung cấp bằng chứng luồng gọi rõ ràng
-        "log_pattern_match": 0.20,        # Logs cung cấp thông tin lỗi chi tiết dạng văn bản
-        "topology_traversal": 0.15,       # Topology cung cấp thông tin phụ thuộc kiến trúc
-        "bayesian_network": 0.05,         # Trọng số thấp hơn: phụ thuộc nhiều vào chất lượng mô hình
-    }
-    
-    # Hợp cộng điểm số theo từng service
-    service_scores = {}
-    service_evidence = {}
-    
-    for result_list, algo_key in [
-        (topology_results, "topology_traversal"),
-        (log_results, "log_pattern_match"),
-        (trace_results, "trace_depth_traversal"),
-        (change_results, "change_correlation"),
-    ]:
-        weight = ALGORITHM_WEIGHTS.get(algo_key, 0.1)
-        
-        for result in result_list[:3]:  # Chỉ lấy top 3 kết quả từ mỗi thuật toán
-            service = result.get("service") or result.get("root_cause_service") or \
-                      result.get("changed_service", "unknown")
-            score = result.get("score", 0.0) * weight
-            
-            if service not in service_scores:
-                service_scores[service] = 0.0
-                service_evidence[service] = []
-            
-            service_scores[service] += score
-            service_evidence[service].append({**result, "algorithm": algo_key})
-    
-    # Xây dựng danh sách giả thuyết cuối cùng
-    hypotheses = []
-    for rank, (service, score) in enumerate(
-        sorted(service_scores.items(), key=lambda x: x[1], reverse=True)[:5], 1
-    ):
-        # Xác định failure mode từ bằng chứng log
-        log_evidence = [e for e in service_evidence[service] if "category" in e]
-        failure_mode = log_evidence[0]["category"] if log_evidence else "unknown"
-        
-        # Gợi ý remediation tương ứng với loại failure mode
-        remediation = REMEDIATION_SUGGESTIONS.get(failure_mode, "Investigate manually")
-        
-        hypotheses.append(RCAHypothesis(
-            rank=rank,
-            root_cause_service=service,
-            root_cause_component=_infer_component(failure_mode),
-            failure_mode=failure_mode,
-            confidence=min(score, 1.0),
-            evidence=service_evidence[service],
-            suggested_remediation=remediation,
-            runbook_url=None,  # Sẽ được điền ở giai đoạn enrichment sau đó
-            estimated_impact=f"Gây ảnh hưởng tới {len(service_evidence[service])} dịch vụ",
-        ))
-    
-    return hypotheses
-
-REMEDIATION_SUGGESTIONS = {
-    "database_connection_exhaustion": "Tăng kích thước connection pool: kubectl patch configmap payment-config --patch '{\"data\":{\"DB_POOL_SIZE\":\"50\"}}'",
-    "memory_exhaustion": "Tăng giới hạn cấp phát memory hoặc kiểm tra rò rỉ bộ nhớ: kubectl top pods -n production",
-    "network_timeout": "Kiểm tra network policies, phân giải DNS, và sức khỏe của downstream service",
-    "tls_certificate_error": "Gia hạn chứng chỉ TLS certificate: kubectl get certificate -n production",
-    "rate_limiting": "Mở rộng tài nguyên cho service bị giới hạn hoặc giảm traffic: kiểm tra cấu hình HPA",
-    "disk_full": "Mở rộng dung lượng ổ đĩa PVC hoặc dọn dẹp logs cũ: kubectl get pvc -n production",
-    "kubernetes_scheduling_failure": "Kiểm tra tài nguyên của node: kubectl describe nodes | grep -A5 Conditions",
-    "application_code_error": "Kiểm tra các đợt deploy gần đây và thực hiện rollback nếu cần thiết",
-}
-```
-
-</details>
 
 ---
 
-## 12. RCA Output Schema
+## 12. RCA Output Contract
 
 Output có cấu trúc là **hợp đồng** giữa RCA, LLM agent, remediation và con người. Báo cáo prose là view dẫn xuất; máy phải consume schema.
 
 ### Vấn đề / ý tưởng
 
-Nếu mỗi team tự nghĩ JSON ad-hoc, auto-remediation không gate an toàn theo confidence, postmortem không chấm accuracy. Một schema Avro/JSON → Kafka \iops-rca-results\ → mọi consumer.
+Nếu mỗi team tự nghĩ payload ad-hoc, auto-remediation không gate an toàn theo confidence và postmortem không chấm accuracy. Một contract versioned được publish lên topic `aiops-rca-results`; Slack/LLM/remediation chỉ là consumer.
 
 ### On-call thấy gì (view người của cùng schema)
 
-\RCA · 47s · mode=single · publishable_conf=0.82 (model 0.91 · evidence_q 0.74)
-#1 payment-service · database_connection_exhaustion
-   evidence: topology ✓  logs ✓  change ~  trace ✓
-   suggest: increase DB_POOL_SIZE (Tier1 allowlist) — không auto nếu chưa gate
-#2 payment-db · discarded (metric khỏe)
-partial=false  warnings[]=empty
-\
+| Trường hiển thị | Ví dụ |
+|-----------------|-------|
+| Revision/time | RCA revision 3 sau 47 giây |
+| Mode | single, multi-root hoặc uncertain |
+| Top candidate | payment-db · pool exhaustion |
+| Confidence | publishable 0,78; model 0,84; evidence quality 0,78 |
+| Reasoning path | DB pool wait → acquire span error → payment timeout → checkout failure |
+| Evidence/contradiction | trace 590/620; two callers; deploy nearby nhưng cohort phản bác |
+| Data warning | topology age 12 phút; trace coverage 70% |
+| Next validation | query active connection/pool saturation; compare recovery order |
+| Action | gợi ý, risk tier, approval requirement; không tự động nếu chưa gate |
 ### Ưu / nhược + khi nào dùng
 
 | Ưu | Nhược |
@@ -1544,90 +625,8 @@ partial=false  warnings[]=empty
 | Bật automation & eval an toàn | Schema evolution cần compatibility |
 | Ép có evidence link | Schema quá cứng có thể mất free text hữu ích |
 
-**Luôn** publish schema lên Kafka; Markdown là enrichment tuỳ chọn cho Slack.
+Contract cần giữ candidate list, feature contribution, evidence reference, coverage, timestamp uncertainty, topology/model/policy version, revision, `partial` và `supersedes`. Markdown là view dẫn xuất; không parse prose ngược lại cho automation.
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```json
-{
-  "rca_id": "rca-20240115-143245-payment",
-  "incident_id": "inc-20240115-143215-001",
-  "generated_at": "2024-01-15T14:32:45Z",
-  "time_to_rca_seconds": 47,
-
-  "summary": "Database connection pool exhaustion in payment-service (confidence: 89%)",
-  "root_cause_service": "payment-service",
-  "root_cause_component": "database",
-  "failure_mode": "database_connection_exhaustion",
-  "confidence": 0.89,
-
-  "hypotheses": [
-    {
-      "rank": 1,
-      "root_cause_service": "payment-service",
-      "failure_mode": "database_connection_exhaustion",
-      "confidence": 0.89,
-      "suggested_remediation": "Scale up connection pool size",
-      "runbook_url": "https://runbooks.internal/payment/db-conn-pool",
-      "evidence": [
-        {
-          "algorithm": "log_pattern_match",
-          "category": "database_connection_exhaustion",
-          "pattern_count": 847,
-          "example": "2024-01-15T14:23:45Z ERROR: connection pool exhausted, waiting queue: 156"
-        },
-        {
-          "algorithm": "trace_depth_traversal",
-          "root_cause_operation": "payment-service:db.query",
-          "error_message": "could not obtain connection from pool within 3000ms",
-          "depth": 3
-        },
-        {
-          "algorithm": "topology_traversal",
-          "score": 0.85,
-          "callees": ["payment-db"],
-          "affected_callers": ["order-service", "checkout-service"]
-        }
-      ]
-    },
-    {
-      "rank": 2,
-      "root_cause_service": "payment-db",
-      "failure_mode": "database_connection_exhaustion",
-      "confidence": 0.45,
-      "suggested_remediation": "Increase max_connections on RDS instance"
-    }
-  ],
-
-  "causal_chain": [
-    {"service": "payment-db", "role": "root_cause", "evidence": "max_connections reached"},
-    {"service": "payment-service", "role": "primary_victim", "evidence": "connection pool exhausted"},
-    {"service": "order-service", "role": "secondary_victim", "evidence": "payment timeouts"},
-    {"service": "checkout-service", "role": "tertiary_victim", "evidence": "SLO burn"}
-  ],
-
-  "timeline": [
-    {"time": "14:21:30", "event": "payment-db connections reach 95% capacity"},
-    {"time": "14:22:45", "event": "payment-service connection pool begins queuing"},
-    {"time": "14:23:15", "event": "First ERROR logs in payment-service"},
-    {"time": "14:23:30", "event": "order-service timeout errors begin"},
-    {"time": "14:24:00", "event": "Alertmanager fires: payment-service error rate > 5%"}
-  ],
-
-  "related_traces": ["4bf92f3577b34da6", "8e3b4c2d91a5e6f7"],
-  "related_log_query": "{service=\"payment-service\"} |= \"connection pool\" | json",
-  "similar_past_incidents": [
-    {
-      "incident_id": "inc-20231205-091200-003",
-      "similarity": 0.92,
-      "resolution": "Increased DB_POOL_SIZE from 20 to 40, resolved in 8 minutes"
-    }
-  ]
-}
-```
-
-</details>
 
 ---
 
@@ -1635,149 +634,34 @@ partial=false  warnings[]=empty
 
 Sử dụng tìm kiếm vector tương đồng (vector similarity search) để tìm kiếm các sự cố tương tự từng xảy ra trong lịch sử:
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Một case fingerprint có topology role, failure mode, ordered symptoms, log templates, change type và time deltas. Không embed nguyên tên service: incident `payment-db pool exhaustion` và `profile-db pool exhaustion` nên match qua role/pattern, trong khi hai incident cùng payment nhưng một cái DNS, một cái schema không nên match chỉ vì từ khóa.
 
-```python
-from sentence_transformers import SentenceTransformer
-from typing import List
-import time
+### Case similarity cao nhưng remediation nguy hiểm
 
-class IncidentHistoryMatcher:
-    """
-    Tìm kiếm các incidents trong lịch sử có mô hình tương tự incident hiện tại.
-    Sử dụng embeddings thông tin mô tả incident để khớp ngữ nghĩa.
-    """
-    
-    def __init__(
-        self,
-        embedding_model: str = "all-MiniLM-L6-v2",
-        vector_store_url: str = "http://weaviate.aiops.svc:8080",  # pgvector, Pinecone, v.v.
-    ):
-        self.encoder = SentenceTransformer(embedding_model)
-        self.vector_store_url = vector_store_url
+Incident cũ: pool wait tăng, acquire span timeout, DB connections 100%, fix tăng pool từ 50 lên 100. Incident mới có fingerprint giống 0,91 nhưng DB max_connections đã chạm 500; tăng pool tiếp làm DB sập. Historical match là evidence “hãy kiểm tra pool”, không copy remediation. Card phải hiện khác biệt: version, capacity, topology và validation outcome.
 
-    def _create_incident_description(self, incident: dict) -> str:
-        """Xây dựng văn bản mô tả bối cảnh phục vụ embedding."""
-        services = ", ".join(incident.get("services_affected", []))
-        alerts = ", ".join(incident.get("alert_types", []))
-        log_categories = ", ".join(
-            e.get("category", "") for e in incident.get("log_evidence", [])[:3]
-        )
-        
-        return (
-            f"Services affected: {services}. "
-            f"Alerts: {alerts}. "
-            f"Root cause: {incident.get('root_cause', '')}. "
-            f"Log patterns: {log_categories}. "
-            f"Failure mode: {incident.get('failure_mode', '')}."
-        )
+Chỉ index postmortem đã review; ticket “resolved” không có root verified tạo knowledge poisoning. Khi on-call chọn case, feedback phải tách “pattern hữu ích” khỏi “root giống” và “remediation dùng được”. Recency decay giúp kiến trúc cũ không thống trị, nhưng case hiếm vẫn cần giữ theo failure mode.
 
-    async def find_similar(
-        self,
-        current_incident: dict,
-        top_k: int = 5,
-        min_similarity: float = 0.75,
-    ) -> List[dict]:
-        """
-        Truy vấn vector database lấy các incidents lịch sử tương tự.
-        """
-        description = self._create_incident_description(current_incident)
-        embedding = self.encoder.encode(description).tolist()
-        
-        # Truy vấn vector database (Ví dụ với Weaviate GraphQL)
-        import aiohttp
-        async with aiohttp.ClientSession() as session:
-            query = {
-                "query": {
-                    "Get": {
-                        "HistoricalIncident": {
-                            "nearVector": {
-                                "vector": embedding,
-                                "certainty": min_similarity,
-                            },
-                            "limit": top_k,
-                            "_additional": ["certainty"],
-                            "fields": [
-                                "incidentId",
-                                "rootCause",
-                                "failureMode",
-                                "resolution",
-                                "resolutionTimeMinutes",
-                                "affectedServices",
-                            ],
-                        }
-                    }
-                }
-            }
-            
-            async with session.post(
-                f"{self.vector_store_url}/v1/graphql",
-                json=query,
-                timeout=aiohttp.ClientTimeout(total=3),
-            ) as resp:
-                data = await resp.json()
-                results = data.get("data", {}).get("Get", {}).get("HistoricalIncident", [])
-        
-        return [
-            {
-                "incident_id": r["incidentId"],
-                "similarity": r["_additional"]["certainty"],
-                "root_cause": r["rootCause"],
-                "failure_mode": r["failureMode"],
-                "resolution": r["resolution"],
-                "resolution_time_minutes": r["resolutionTimeMinutes"],
-            }
-            for r in results
-        ]
-```
-
-</details>
 
 ---
 
 ## 14. Production Architecture
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+RCA engine nên là orchestrator có budget, không phải một tiến trình đồng bộ gọi mọi backend. Incident partition theo `incident_id`; evidence collector độc lập có timeout/circuit breaker; result store giữ revision; ranker thu kết quả đến đâu publish đến đó.
 
-```yaml
-# Triển khai rca-engine
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: rca-engine
-  namespace: aiops
-spec:
-  replicas: 2
-  template:
-    spec:
-      containers:
-        - name: rca-engine
-          image: aiops/rca-engine:1.0.0
-          env:
-            - name: KAFKA_INPUT_TOPIC
-              value: "aiops-correlated-alerts"
-            - name: KAFKA_OUTPUT_TOPIC
-              value: "aiops-rca-results"
-            - name: PROMETHEUS_URL
-              value: "http://prometheus.observability.svc:9090"
-            - name: LOKI_URL
-              value: "http://loki-query-frontend.observability.svc:3100"
-            - name: TEMPO_URL
-              value: "http://tempo-query-frontend.observability.svc:3200"
-            - name: VECTOR_STORE_URL
-              value: "http://weaviate.aiops.svc:8080"
-          resources:
-            requests:
-              cpu: "2"
-              memory: "4Gi"
-            limits:
-              cpu: "4"
-              memory: "8Gi"
-```
+### Fast path và deep path
 
-</details>
+Trong 5–10 giây đầu, engine lấy incident, cached topology, anomaly onset và change index để trả candidate sơ bộ. Trace/log query chạy song song với deadline riêng. Sau 30–60 giây, ranker publish revision có multi-signal. Causal discovery/GNN/historical deep search có thể tới sau nhưng không được thay root mà không nêu evidence mới.
+
+Ví dụ timeline: t+0 nhận group; t+2 topology candidate DB 0,58 partial; t+8 trace origin tăng DB lên 0,76; t+15 change cohort phản bác deploy; t+22 log pool timeout nâng DB 0,82; t+45 causal module timeout. Final vẫn 0,82 với warning “causal unavailable”, thay vì đợi 45 giây mới cho on-call gì cả.
+
+### Cache và snapshot đúng thời điểm
+
+Topology query trực tiếp có thể trả graph sau khi rollback/scale làm node biến mất. Incident phải tham chiếu snapshot/as-of time. Cache topology tiết kiệm latency nhưng mỗi edge mang `observed_at`; graph 30 phút tuổi hạ quality. Change index có idempotency để webhook retry không biến một deploy thành ba evidence. Evidence query/result cần key gồm incident, time window, tenant, query version để replay.
+
+### Degraded modes
+
+Nếu Loki down, engine vẫn chạy topology+trace+metric, đặt `partial=true`; không coi “không có error log” là phản chứng. Nếu Tempo sampling tụt, origin ratio có denominator/coverage thấp. Nếu topology store down nhưng snapshot cache còn mới, dùng cache; nếu không, rank change/log và cap confidence. Chính degraded behavior phải được game-day, không chỉ happy path.
 
 ---
 
@@ -1798,61 +682,29 @@ spec:
 
 ## 16. Monitoring RCA Quality
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Đo top-1 accuracy thôi sẽ khuyến khích engine đoán một root. Bộ metric production cần:
 
-```promql
-# Tải phân tích RCA
-rate(aiops_rca_analyses_total[5m])
+| Metric | Ý nghĩa |
+|--------|---------|
+| Top-1 / top-3 root recall | Root verified có nằm trong shortlist không? |
+| MRR / rank verified | Root đúng thường đứng vị trí nào? |
+| Time-to-first-hypothesis | Fast-path có đến kịp on-call không? |
+| Time-to-stable-rank | Rank ngừng đổi sau bao lâu? |
+| Calibration | Candidate 0,8 có đúng gần 80% trong cohort tương tự không? |
+| Evidence citation validity | Link/query có tái lập được không? |
+| Multi-root recall | Có tìm đủ root verified hay chỉ primary? |
+| Explanation coverage | Bao nhiêu weighted symptom được root giải thích? |
+| Harmful suggestion rate | Gợi ý remediation có bị reviewer đánh nguy hiểm không? |
 
-# Độ chính xác phân tích (thống kê từ phản hồi của kỹ sư)
-rate(aiops_rca_feedback_total{outcome="correct"}[7d])
-/
-rate(aiops_rca_feedback_total[7d])
+Không dùng “on-call không phản đối” làm TP. Label tốt đến từ postmortem: verified root, contributing factor, remediation effect và uncertainty. Incident chưa có postmortem giữ `unverified`, không tự biến top-1 model thành ground truth.
 
-# Thời gian chạy phân tích RCA
-histogram_quantile(0.99, rate(aiops_rca_duration_seconds_bucket[5m]))
+### Golden incident replay
 
-# Tỷ lệ đóng góp bằng chứng của từng thuật toán
-sum by (algorithm) (rate(aiops_rca_evidence_used_total[5m]))
-
-# Chỉ số consumer lag
-kafka_consumer_group_lag_sum{group="rca-engine-group"}
-```
-
-</details>
+Duy trì tập case gồm: DB cascade, retry reverse causation, DNS shared root, bad deploy, traffic-only, deploy×traffic interaction, clock skew, trace cancellation, two independent roots và telemetry gap. Mỗi thay đổi rank policy chạy replay; regression nếu root rơi khỏi top-3, confidence tăng khi evidence bị mất, hoặc page latency vượt budget.
 
 ### Critical Alerts
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```yaml
-- alert: RCAEngineDown
-  expr: up{job="rca-engine"} == 0
-  for: 2m
-  labels:
-    severity: critical
-
-- alert: RCAAccuracyLow
-  expr: |
-    rate(aiops_rca_feedback_total{outcome="correct"}[24h])
-    /
-    rate(aiops_rca_feedback_total[24h]) < 0.70
-  for: 0m
-  labels:
-    severity: warning
-  annotations:
-    summary: "Độ chính xác RCA dưới 70% trong 24 giờ qua — cần rà soát lại thuật toán"
-
-- alert: RCALatencyHigh
-  expr: histogram_quantile(0.99, rate(aiops_rca_duration_seconds_bucket[5m])) > 60
-  for: 5m
-  labels:
-    severity: warning
-```
-
-</details>
+Page đội platform khi không publish được partial trong SLO, evidence backend timeout hàng loạt, topology freshness vượt giới hạn fleet-wide, result revisions oscillate, tenant isolation violation, hoặc synthetic RCA drill không ra candidate mong đợi. Accuracy drift theo tuần tạo ticket/review, không đánh thức on-call mỗi giờ.
 
 ---
 
@@ -1860,27 +712,10 @@ kafka_consumer_group_lag_sum{group="rca-engine-group"}
 
 Tiến trình RCA tiêu tốn nhiều tài nguyên CPU/RAM. Ưu tiên mở rộng theo chiều dọc (tăng tài nguyên CPU/RAM để phục vụ thu thập song song dữ liệu lớn), sau đó áp dụng mở rộng ngang:
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Scale theo số incident active và evidence fan-out, không theo số raw alert. Correlation phải giảm 10.000 alerts thành vài incident trước RCA. Mỗi incident có query budget: tối đa node, time range, log bytes, trace count và tool calls. Hot incident không được chiếm toàn worker pool; fair queue theo tenant/severity và semaphore theo backend bảo vệ Loki/Tempo.
 
-```yaml
-# Mở rộng ngang: tự động scale theo Kafka consumer lag
-autoscaling:
-  min_replicas: 2
-  max_replicas: 6
-  scale_up_trigger: "kafka_consumer_group_lag > 100"
-  
-# Mở rộng dọc: phân tích RCA yêu cầu RAM lớn cho tính toán đồ thị nhân quả
-resources:
-  requests:
-    cpu: "2"
-    memory: "4Gi"
-  limits:
-    cpu: "4"
-    memory: "8Gi"
-```
+Graph traversal trên subgraph active thay vì fleet graph. Với 2.000 service, bán kính 3 hop có thể vẫn nổ ở shared gateway; cap frontier theo activated edge/traffic. Approximate historical search chỉ chạy top-k; deep causal chỉ cho incident có đủ mẫu. Cache feature dùng chung giữa candidate tránh query Prometheus 20 lần.
 
-</details>
 
 ---
 
@@ -1890,6 +725,12 @@ resources:
 - **Kiểm soát truy cập Trace**: Dữ liệu từ Tempo có thể chứa các thông tin yêu cầu nhạy cảm. Giới hạn quyền gọi Tempo API chỉ dành riêng cho RCA engine.
 - **Mã hóa kết quả RCA**: Kết quả phân tích RCA (chứa các thông tin hệ thống nội bộ, chuỗi kết nối db lỗi trong log) cần được mã hóa bằng KMS.
 - **Bảo mật Vector store**: Cơ sở dữ liệu chứa incidents lịch sử (chứa tài liệu phân tích lỗi postmortem nhạy cảm) cần được mã hóa dữ liệu tĩnh.
+
+RCA có quyền đọc chéo metrics/logs/traces/change nên blast radius bảo mật lớn. Query luôn mang tenant scope từ incident, backend credential least-privilege và audit theo evidence reference. Không đưa raw token, customer payload hoặc connection string vào result/LLM context; redaction xảy ra trước lưu case.
+
+Feedback là attack surface: người dùng gắn mọi candidate đối thủ là FP có thể poison weight. Giữ actor, role, timestamp; postmortem reviewer mạnh hơn quick feedback; tách “không hữu ích” khỏi “root sai”. Change feed cũng cần signature/provenance vì một event giả có thể khiến engine đề xuất rollback.
+
+Không cho RCA tự thực thi query phá hủy. Validation action như “kill connection” hay “rollback” đi qua remediation policy/approval. Evidence link ngắn hạn phải kiểm soát quyền, không nhúng snapshot PII vào Slack card.
 
 ---
 
@@ -1901,6 +742,10 @@ resources:
 | Weaviate (vector store, 2× r6g.large) | $600 |
 | Chi phí phát sinh do truy vấn Prometheus/Loki | ~$50 (năng lực xử lý) |
 | **Tổng cộng** | **~$1,370/tháng** |
+
+Bảng trên chỉ là kịch bản minh họa, không phải báo giá cố định. Cost thực bị chi phối bởi số incident, blast radius và query fan-out. Nếu 100 incident/ngày, mỗi incident query 20 service × 5 log query × 500 MB scan, log scan đã là 5 TB/ngày. Correlation tốt, index template/trace ID, time window hẹp và cached feature tiết kiệm hơn tối ưu vài phần trăm CPU ranker.
+
+Theo dõi cost per RCA result, bytes log scanned, traces fetched, graph nodes visited, deep-path activation rate và cost theo tenant. Time budget vừa là latency control vừa là cost control. Một candidate confidence thấp không được mở thêm 100 query chỉ để tăng 0,01 score.
 
 ---
 
@@ -1919,29 +764,6 @@ resources:
 | Selection bias | Chỉ trace error paths | Span X luôn "root" | Sampling bias |
 | Proxy metric | Queue depth ↑ với latency | Queue là root | Upstream slow producer |
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-def causation_sanity_checks(hypothesis: dict, evidence: list) -> list:
-    """
-    Trả về danh sách warning — không auto-reject, nhưng hạ confidence.
-    """
-    warnings = []
-    if hypothesis.get("only_correlational") and not hypothesis.get("has_trace_path"):
-        warnings.append("corr_without_path: correlation only, no causal path")
-    if hypothesis.get("root") in hypothesis.get("symptoms", []):
-        warnings.append("root_in_symptoms: circular ranking")
-    # Symptom xuất hiện TRƯỚC candidate root → nghi reverse causation
-    if evidence:
-        root_t = min((e["t"] for e in evidence if e.get("role") == "root"), default=None)
-        sym_t = min((e["t"] for e in evidence if e.get("role") == "symptom"), default=None)
-        if root_t and sym_t and sym_t < root_t - 30:
-            warnings.append("temporal_reverse: symptom predates root by >30s")
-    return warnings
-```
-
-</details>
 
 > [!TIP]
 > **Checklist causation tối thiểu trước khi tin rank #1**:
@@ -1957,37 +779,11 @@ Bài học outage thật: [15 — Famous Incidents](../16-famous-incidents/READM
 
 Kịch bản Friday afternoon kinh điển:
 
-```
-t-20m  Marketing bật campaign → RPS ×3
-t-12m  Deploy payment-service@2.15 (connection pool default vẫn 20)
-t-5m   Error budget burn 14x
-```
 
 RCA chỉ nhìn change → **đổ 100% cho deploy** (dễ rollback).  
 RCA chỉ nhìn traffic → **scale blindly** (pool vẫn 20, vẫn chết).  
 **Root thật**: interaction effect — pool size không theo traffic; deploy là trigger lộ defect sẵn có.
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```yaml
-confounder_policy:
-  if:
-    - change_within: 30m
-    - traffic_zscore: "> 2.5"
-  then:
-    rank_both:
-      - candidate: "deploy_regression"
-        needs: ["error signature new in version", "canary worse than baseline"]
-      - candidate: "capacity_exhaustion"
-        needs: ["saturation metrics", "pool/thread/cpu at limit"]
-      - candidate: "interaction"
-        needs: ["old code ok at low RPS", "new or old code fails at high RPS"]
-    ui:
-      show: "Possible confound: deploy AND traffic spike — verify both before rollback"
-```
-
-</details>
 
 > [!IMPORTANT]
 > Rollback deploy khi root là pure traffic sẽ **không** cứu hệ thống và có thể làm mất fix đang rollout. Luôn so sánh: *version N vs N-1 dưới cùng load* (canary metrics / shadow).
@@ -2003,37 +799,6 @@ Không phải mọi incident có 1 root. Các class multi-root:
 | **Cascading secondary** | Root A gây B, B trở thành root cục bộ | Primary + secondary roots với timeline |
 | **Partial mitigation residual** | Fix A xong, residual B còn | Re-run RCA after mitigate; đừng đóng incident sớm |
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-def finalize_hypotheses(ranked: list, max_roots=2) -> dict:
-    """
-    Cho phép multi-root khi điểm #1 và #2 gần nhau và khác failure domain.
-    """
-    if len(ranked) < 2:
-        return {"mode": "single", "roots": ranked[:1]}
-
-    top, second = ranked[0], ranked[1]
-    close = abs(top["confidence"] - second["confidence"]) < 0.12
-    different_domain = top["failure_domain"] != second["failure_domain"]
-
-    if close and different_domain:
-        return {
-            "mode": "multi_root",
-            "roots": [top, second],
-            "note": "Two contributing causes with similar evidence weight",
-        }
-    if top["confidence"] >= 0.8 and (top["confidence"] - second["confidence"]) >= 0.25:
-        return {"mode": "single", "roots": [top]}
-    return {
-        "mode": "uncertain",
-        "roots": ranked[:max_roots],
-        "note": "Present alternatives; do not auto-remediate",
-    }
-```
-
-</details>
 
 ### 20.4 Evidence quality scoring (không chỉ confidence algorithm)
 
@@ -2048,38 +813,6 @@ def finalize_hypotheses(ranked: list, max_roots=2) -> dict:
 | **Counter-evidence** | Đã tìm và loại trừ | Chưa search counter |
 | **Provenance** | Query ids tái lập được | "LLM said so" không cite |
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-def evidence_quality(ev: dict) -> float:
-    w = {
-        "trace_error_span": 0.30,
-        "log_template_match": 0.20,
-        "change_proximity": 0.20,
-        "topology_path": 0.15,
-        "metric_saturation": 0.10,
-        "historical_case": 0.05,
-    }
-    score = 0.0
-    for k, weight in w.items():
-        if ev.get(k):
-            score += weight * ev[k].get("strength", 1.0)
-    # Phạt thiếu freshness / coverage
-    if ev.get("data_age_s", 0) > 600:
-        score *= 0.7
-    if ev.get("coverage") == "partial":
-        score *= 0.85
-    if ev.get("algorithms_agree", 1) < 2:
-        score *= 0.8
-    return round(min(score, 1.0), 3)
-
-def publishable_confidence(model_conf: float, eq: float) -> float:
-    # Không cho model_conf vượt evidence quality quá xa
-    return round(min(model_conf, eq + 0.1) * (0.5 + 0.5 * eq), 3)
-```
-
-</details>
 
 > [!NOTE]
 > **Ý TƯỞNG**
@@ -2089,60 +822,7 @@ def publishable_confidence(model_conf: float, eq: float) -> float:
 
 RCA không được thành black hole CPU. On-call cần **hypothesis lúc t+45s**, không phải essay lúc t+10m.
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
-```yaml
-rca_time_budget:
-  total_ms: 45000
-  phases:
-    collect_signals: 12000     # parallel Prom/Loki/Tempo/changes
-    cheap_algorithms: 8000     # topology + change + log regex
-    expensive_algorithms: 15000 # causal graph / GNN optional
-    rank_and_render: 5000
-  preemption:
-    if_p1_and_change_score_gt: 0.85
-      skip: ["gnn", "full_causal_pc"]
-      reason: "fast path deploy-correlated"
-  always_return:
-    - top_k_hypotheses: 3
-    - evidence_links: true
-    - partial_flag: true   # nếu budget cắt giữa chừng
-```
-
-</details>
-
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-import time
-
-def run_rca_with_budget(incident, collectors, algorithms, budget_s=45.0):
-    t0 = time.monotonic()
-    evidence = {}
-    # Phase collect — song song, hard timeout
-    evidence = collectors.gather(incident, timeout=min(12.0, budget_s * 0.3))
-
-    results = []
-    for algo in algorithms:  # sorted cheap → expensive
-        remaining = budget_s - (time.monotonic() - t0)
-        if remaining < 3.0:
-            break
-        if algo.cost == "expensive" and incident.severity == "P1" and has_strong_change(evidence):
-            continue  # preemption
-        results.append(algo.run(incident, evidence, timeout=min(algo.timeout, remaining - 2)))
-
-    ranked = rank_rca_hypotheses_from(results)
-    return {
-        "hypotheses": ranked,
-        "partial": (time.monotonic() - t0) >= budget_s - 0.5,
-        "elapsed_ms": int((time.monotonic() - t0) * 1000),
-        "algorithms_run": [r["name"] for r in results],
-    }
-```
-
-</details>
 
 | Tình huống | Stop khi | Hành động tiếp |
 |------------|----------|----------------|
@@ -2170,6 +850,251 @@ def run_rca_with_budget(incident, collectors, algorithms, budget_s=45.0):
 
 Drill RCA trên famous outages: [15 — Famous Incidents](../16-famous-incidents/README.vi.md) · vận hành accuracy: [12 — Production](../13-production/README.vi.md).
 
+### 20.7 Case study end-to-end: một incident, ba giả thuyết và hai root
+
+Case này mô phỏng cách engine làm việc trong 90 giây đầu. Hệ thống gồm `web → checkout → payment → ledger-db`; checkout còn gọi `inventory`; payment gọi `fraud`; `auth → auth-cache` nằm trong cùng region nhưng không có path request tới payment. Lúc 10:00 đội payment rollout version v42; lúc 10:01 traffic campaign bắt đầu. Đến 10:03 khách báo checkout timeout và login 401 tăng.
+
+#### Input metric và onset interval
+
+Mẫu mỗi 30 giây:
+
+| Tín hiệu | Dãy giá trị | Detector onset đã hiệu chỉnh |
+|----------|-------------|------------------------------|
+| Ledger pool wait ms | [12, 14, 15, 18, 210, 520, 790, 810] | [10:01:55, 10:02:25] |
+| Payment error % | [0,6; 0,7; 0,8; 0,9; 2,8; 7,5; 12,1; 13,0] | [10:02:18, 10:02:48] |
+| Checkout error % | [0,7; 0,8; 0,7; 0,9; 1,4; 5,8; 11,0; 14,5] | [10:02:42, 10:03:12] |
+| Payment CPU % | [42, 43, 44, 45, 51, 68, 84, 91] | [10:02:55, 10:03:25] |
+| Inventory error % | [0,4; 0,5; 0,4; 0,5; 0,5; 0,4; 0,5; 0,5] | không đỏ |
+| Auth 401 % | [0,3; 0,3; 0,4; 0,4; 0,5; 4,2; 8,0; 8,5] | [10:02:50, 10:03:20] |
+| Auth-cache eviction/s | [1, 2, 1, 2, 2, 180, 320, 340] | [10:02:28, 10:02:58] |
+
+Raw alert ledger mang timestamp 10:02:40 vì detector persistence 60 giây; checkout alert phát ngay ở 10:02:42. Nếu sort alert arrival, checkout đứng trước ledger 2 giây. Engine dùng onset interval từ raw series và detector delay, nên chỉ biết ledger nhiều khả năng sớm hơn payment/checkout; không khẳng định thứ tự chính xác trong 30 giây. Auth-cache và auth tạo component riêng.
+
+#### Topology candidate generation
+
+Vùng checkout có node đỏ ledger, payment, checkout, web; inventory/fraud khỏe. Ledger có hai caller active: payment 620 RPS và reporting 35 RPS; reporting timeout nhẹ xuất hiện 10:03:10. Weighted downstream coverage của ledger gồm payment, checkout, web và reporting; payment chỉ cover checkout/web. Ledger nhận leaf-of-red-region và two-callers evidence. Payment v42 recent change nên vẫn là candidate dù có callee đỏ.
+
+Vùng auth gồm auth-cache và auth. Không có activated edge/shared dependency nối auth-cache với ledger trong snapshot. Một engine ép single root có thể chọn region network hoặc payment deploy để giải thích tất cả, nhưng chưa có evidence. Engine tách graph thành hai red components và giữ khả năng independent dual root.
+
+Topology snapshot 2 phút tuổi, coverage edge từ trace 78%; quality tốt nhưng không hoàn hảo. Catalog cũng có cạnh `auth → ledger` cho audit job, nhưng không có span/traffic qua cạnh trong 15 phút; activation weight bằng 0, nên không nối hai component giả.
+
+#### Trace span-error propagation
+
+Trong 800 trace checkout lỗi được tail-sample, 610 trace có đầy đủ payment branch. 570 trace cho cấu trúc:
+
+| Span | Start tương đối | End | Status/semantic |
+|------|-----------------|-----|-----------------|
+| checkout | 0 ms | 1.020 ms | ERROR propagated |
+| inventory | 15 ms | 70 ms | OK |
+| payment | 80 ms | 1.000 ms | ERROR propagated |
+| fraud | 90 ms | 180 ms | OK |
+| acquire-ledger | 95 ms | 905 ms | ERROR pool timeout |
+
+30 trace có gateway 429 origin; 10 trace incomplete. Ledger acquire là first **origin error** trong 570/610 trace đủ, tức 93,4% tập quan sát. Checkout/payment span bắt đầu sớm hơn acquire nhưng kết thúc sau và error message wrap child; engine không gọi chúng origin. Inventory/fraud sibling khỏe là negative evidence chống “toàn payment process bị CPU saturation”.
+
+20 trace fraud có status CANCELLED trước ledger span ghi timeout do exporter flush/order. Parent deadline và cancellation semantics khiến fraud nhận victim penalty. Nếu chỉ sort error timestamp, fraud có thể đứng đầu; span graph loại nó.
+
+Trace auth cho thấy `auth-cache get` trả miss/error trước auth 401 trong 88% trace lỗi. Không có span sang ledger/payment. Đây là evidence root thứ hai.
+
+#### Log evidence và provenance
+
+Payment log templates:
+
+- Ledger proxy `pool acquire timeout; active=200 idle=0 waiters=417` tăng từ 0 lên 590/phút.
+- Payment `charge failed: dependency timeout` tăng 610/phút.
+- Checkout `payment unavailable` tăng 1.100/phút vì một request log ở hai middleware.
+
+Frequency lớn nhất là checkout, nhưng specificity và trace cause-chain đưa ledger template cao hơn. Cùng trace ID cho thấy hai wrapper downstream không phải evidence độc lập. Lineage group là `ledger timeout family`, không ba vote.
+
+Auth-cache có template `key prefix session evicted under maxmemory` mới trên hai node, bắt đầu 10:02:31. Auth chỉ log `invalid session`. Log evidence khớp component auth-cache và không liên quan ledger.
+
+Log coverage ledger 96%; auth-cache 92%. “Không có OOM log” là negative evidence vừa phải, không mạnh bằng maxmemory/eviction metric trực tiếp.
+
+#### Change correlation và confounder
+
+Payment v42 rollout: 10% lúc 10:00, 50% lúc 10:01:30, 100% lúc 10:03. Traffic tăng từ 800 lên 1.600 RPS cùng lúc. Error theo version ở cùng 10:02:30: v41 7,2%, v42 7,5%; pool wait chung tăng cho cả hai. Không có new-version-specific log. Bad deploy proximity cao nhưng cohort fit thấp.
+
+Diff v42 tăng client retry max từ 2 lên 4. Nó không tạo pool exhaustion ban đầu nhưng khuếch đại waiters/CPU sau DB slowdown. Engine xếp nó là **contributing factor**, không primary root: ledger capacity/pool bắt đầu đỏ trước retry rate; v42 làm blast nặng hơn. Rollback v42 có thể giảm amplification nhưng không khôi phục DB nếu traffic vẫn gấp đôi.
+
+Auth-cache có config change maxmemory từ 8 GB xuống 2 GB lúc 09:58 do IaC apply ở riêng cluster auth. Scope khớp, eviction tăng sau 4 phút khi working set chạm limit, rollback lúc 10:07 làm eviction giảm. Đây là change evidence mạnh cho root thứ hai.
+
+Campaign traffic là candidate chung cho ledger capacity. Old/new payment đều lỗi theo load; pool wait có dose-response với RPS. Failure hypothesis đúng hơn không phải “traffic là root” chung chung mà là `ledger capacity/pool limit insufficient under traffic`; traffic là trigger, v42 retry là amplifier.
+
+#### Candidate table trước scoring
+
+| Candidate | Giải thích được | Positive evidence | Contradiction |
+|-----------|-----------------|-------------------|---------------|
+| Ledger pool/capacity | payment, checkout, web, reporting | topology leaf; 93,4% trace origin; specific pool log; onset sớm; load dose-response | DB CPU chỉ 58%, nhưng không phản bác pool limit |
+| Payment v42 regression | payment, checkout, web | recent rollout; retry diff khuếch đại | v41/v42 error giống nhau; ledger đỏ; không signature riêng |
+| Payment CPU saturation | payment, checkout, web | CPU 91%, temporal gần | CPU đỏ sau retry/error; fraud/inventory khỏe; CPU giảm khi retry giảm |
+| Auth-cache memory config | auth | separate component; eviction log/metric; scoped change; recovery after rollback | trace coverage thiếu 8% |
+| Region network | có thể giải thích cả hai component | cùng region/time | không network loss; inventory/fraud khỏe; lỗi semantic khác nhau |
+
+Candidate region network quan trọng vì nó là common-cause alternative, nhưng negative evidence mạnh. Engine không drop sớm chỉ vì không có alert network; nó query packet loss/DNS/zone signals trong budget rồi hạ rank.
+
+#### Multi-signal score và independence correction
+
+Raw module outputs cho ledger: topology 0,91; temporal 0,76; trace 0,95; log 0,89; change/capacity 0,72; causal metric 0,70; historical 0,74. Không average thành 0,81 ngay. Topology dùng anomaly metric và temporal; causal cũng dùng cùng time series, nên independence correction giảm đóng góp lặp. Trace+log cùng trace ID liên quan nhưng semantics khác, factor 0,7.
+
+Sau calibration/contribution, ledger raw rank 0,84; evidence quality 0,81 do trace coverage 78% và topology age; publishable 0,81. Payment deploy raw 0,48 rồi contradiction cohort −0,18, còn 0,30; nó được giữ dưới `contributing_factor=retry_amplification` 0,61 thay vì primary. CPU candidate 0,19. Region network 0,22.
+
+Auth-cache config raw 0,79; quality 0,84; publishable 0,79. Vì candidate giải thích symptom residual auth mà ledger không cover và nằm component độc lập, output mode chuyển `multi_root`, không phải chọn ledger #1 rồi giấu auth.
+
+#### Output revision và reasoning path
+
+Revision t+6 giây, chưa có trace/log, trả partial: ledger 0,55; payment deploy 0,52; auth-cache 0,48; warning clock/topology. Revision t+18 có trace: ledger 0,76, auth-cache 0,61. Revision t+31 có logs/change cohort: ledger 0,81 primary root A; auth-cache 0,79 independent root B; v42 retry contributing factor. Deep causal t+70 không đổi rank và chỉ attach metric path.
+
+Incident card không nói “root cause 81%” đơn giản. Nó ghi:
+
+| Root A | Ledger connection pool/capacity exhausted under campaign load |
+|--------|---------------------------------------------------------------|
+| Reasoning | pool wait onset → acquire-ledger origin 570/610 → payment wrapper → checkout/web; two active callers |
+| Trigger/amplifier | traffic ×2 trigger; v42 retry max 4 amplification |
+| Contradiction checked | version cohort giống nhau; region network khỏe; DB CPU normal không loại pool exhaustion |
+| Validation | giảm retry/canary; kiểm tra active/max connection; chuyển 5% traffic sang pool dự phòng |
+| Safe action | dừng rollout, cap retry trước; scale/raise pool chỉ sau DB headroom check |
+
+| Root B | Auth-cache maxmemory config regression |
+|--------|----------------------------------------|
+| Reasoning | scoped IaC change → eviction spike → cache-get origin → auth 401; graph component độc lập |
+| Validation | compare unchanged cluster; rollback memory limit; observe eviction/401 recovery order |
+| Safe action | rollback config với dual control; không phụ thuộc action ledger |
+
+#### Validation và rank update
+
+At 10:08, đội cap retry v42 từ 4 về 2. Payment CPU giảm 91→68%, waiters 417→260 nhưng pool wait vẫn 600 ms và error 8%: xác nhận retry là amplifier, không root. At 10:10, chuyển 20% payment traffic sang ledger replica có pool headroom; error cohort đó về 0,9%, candidate ledger tăng. At 10:12 capacity được nâng an toàn, pool wait về 20 ms; payment hồi 40 giây sau, checkout 70 giây sau. Recovery propagation củng cố path.
+
+Auth config rollback 10:07; eviction về 2/s ở 10:08; 401 về baseline 10:09. Ledger action không ảnh hưởng auth. Hai recovery độc lập xác nhận dual root.
+
+Nếu chỉ rollback v42 lúc 10:08 và traffic cũng giảm 10:12, metric cuối cùng vẫn hồi; postmortem naive có thể label deploy root. Instrumented interventions/cohort cho thấy điều ngược lại. RCA result phải lưu action timeline và outcome để training label không học sai.
+
+#### Edge cases acceptance rút ra từ case
+
+Case trở thành bộ replay với các biến thể:
+
+1. Xóa trace: ledger vẫn top-3 nhưng confidence phải giảm, không giữ 0,81.
+2. Làm topology stale 45 phút và thêm cạnh auth→ledger inactive: engine không được merge root.
+3. Đảo raw alert arrival: rank không đổi vì onset interval/provenance.
+4. Đổi v42 cohort thành error 15% trong khi v41 1%: bad deploy phải vượt capacity candidate.
+5. Cho network packet loss 20% trên cả hai component: shared region candidate phải tăng và có thể thay dual root.
+6. Cho fraud CANCELLED timestamp sớm: span semantics vẫn không chọn fraud.
+7. Giảm trace coverage còn 5%: origin ratio không được thống trị.
+8. Bỏ config change auth: auth-cache vẫn candidate qua trace/log nhưng report missing change feed và hạ confidence.
+9. Cho ledger fix không làm checkout hồi vì queue backlog: ledger vẫn primary, queue trở thành cascading secondary root cần remediation riêng.
+10. Cho auth 401 là detector false positive/data gap: residual symptom bị drop, mode quay về single root.
+
+Một RCA engine chỉ được promote khi qua các replay kiểu này. Accuracy trung bình không đủ: chính các case clock skew, retry, cancellation, inactive edge, confounder và dual root là nơi engine lý thuyết thường thất bại trong ca trực thật.
+
+### 20.8 Những edge case thường xuyên gặp ngoài production
+
+#### Queue backlog biến symptom thành root thứ cấp
+
+Kafka broker chậm 10 phút làm consumer lag tăng từ **[20, 40, 100, 500, 2.000, 8.000]**. Broker hồi lúc 10:10 nhưng consumer chỉ xử lý 500 msg/s trong khi backlog 8.000 và traffic mới 450 msg/s; latency vẫn cao hơn một giờ. Broker là primary root của onset, nhưng consumer capacity/backlog trở thành secondary operational root của recovery. RCA không được đóng incident khi broker xanh; nó re-run trên residual và đề xuất drain backlog/scale consumer. Nếu gọi consumer root ngay từ đầu, ta nhầm hậu quả; nếu không nâng nó sau fix, ta bỏ lý do impact còn kéo dài.
+
+#### Autoscaling làm node root biến mất
+
+Pod payment-7 leak memory rồi OOM; Kubernetes thay pod mới trước khi RCA query. Topology hiện tại không còn payment-7, metric pod bị stale và trace resource attributes trỏ instance cũ. Aggregate service có thể đã hồi, nhưng incident cần root `payment version v42 / memory leak`, không phải pod ID đã chết. Entity resolution nối ephemeral instance → workload/version/deployment và giữ tombstone trong incident snapshot. Nếu chỉ graph hiện tại, engine thấy “mọi node khỏe” và trả unknown.
+
+#### Shared infrastructure ẩn ngoài service mesh
+
+Checkout, auth và search cùng timeout nhưng không gọi nhau. Service graph tách ba component; naive multi-root trả ba service. Thực tế cả ba resolve DNS qua cùng node-local cache. Shared resource graph phải có DNS, zone, node, certificate authority, queue, cloud API và feature-flag provider. Nếu inventory này thiếu, engine nên nói “three independent red components in same AZ; common-infra coverage incomplete” và query zone/DNS evidence, thay vì tự tin ba root.
+
+#### Detector đỏ sớm nhất chỉ vì nhạy hơn
+
+Synthetic probe checkout chạy mỗi 10 giây và fail lúc 10:00:10. DB pool metric scrape mỗi 60 giây, detector yêu cầu ba mẫu nên alert 10:03. “Cái đỏ trước” chọn checkout sai gần ba phút. Engine lưu detector latency distribution: synthetic onset có uncertainty ±10 giây nhưng là downstream observation; DB onset interval từ raw samples có thể bắt đầu 09:59:30–10:00:30 dù alert muộn. Temporal evidence dựa raw transition/trace, không `alert.created_at`.
+
+#### Cache giữ symptom sau khi root đã hết
+
+Config service phát giá sai trong hai phút rồi fix, nhưng checkout cache TTL 30 phút. Config hiện khỏe, checkout tiếp tục lỗi; topology snapshot cuối chọn checkout. Change/log lịch sử cho thấy bad value được phát trước, trace hiện tại không còn gọi config vì cache hit. RCA cần state propagation: root primary là config publish, cached bad state là persistence mechanism, checkout cache là remediation target. Restart checkout có thể giảm impact nhưng không đổi nguyên nhân gốc postmortem.
+
+#### Success status nhưng semantic failure
+
+Payment dependency trả HTTP 200 với body `approved=false` do schema default, nên span status OK và error-rate metric xanh; business success giảm **[99,8; 99,7; 92,0; 71,0]%**. Trace error propagation không thấy ERROR. RCA phải dùng domain outcome/span event/log template và change schema. Nếu engine coi status OK là negative evidence tuyệt đối, nó loại đúng root. “Healthy” phải định nghĩa theo SLI, không protocol code đơn lẻ.
+
+#### Partial rollout và Simpson's paradox
+
+Version mới chỉ nhận tenant enterprise có request nặng; error new 5%, old 1%, nhìn như regression. Nhưng trong cùng enterprise cohort, old historical cũng 5%; version không phải root. Ngược lại fleet aggregate new 1,2% vì phần lớn new traffic nhẹ có thể che bug 20% ở payment method hiếm. Cohort comparison phải condition theo tenant/region/request class đủ quan trọng, nhưng tránh over-segment tới vài sample. Engine ghi denominator và confidence interval, không chỉ tỷ lệ.
+
+#### Thundering herd sau recovery
+
+DB outage kết thúc, hàng nghìn client retry cùng lúc làm DB sập lần hai. Root của wave 1 là DB network; root gần của wave 2 là retry policy/no jitter, dù được kích hoạt bởi wave 1. Nếu correlation gộp cả 40 phút thành một episode, RCA có thể chỉ giữ network root và bỏ design flaw. Change-point/timeline phân phase incident: onset, amplification, recovery, relapse. Candidate có vai trò primary, trigger, amplifier, secondary; không ép một nhãn root cho toàn thời gian.
+
+#### Một log template xuất hiện trước nhưng không causal
+
+Cron backup luôn log WARN lúc 02:00:00; incident DB bắt đầu 02:00:05. Template mới/đỏ trước 5 giây và cùng DB host, historical match dễ blame backup. Counter-evidence: backup đọc replica khác, I/O không tăng, incident cũng xảy ra ngày cron bị disable. Temporal proximity không đủ. Engine cần activated resource path và intervention/history; routine event có base rate cao nhận coincidence penalty.
+
+#### Telemetry pipeline là root của “incident quan sát”
+
+Prometheus remote-write lag làm dashboard hiển thị RPS về 0 ở 50 service, nhưng blackbox và logs vẫn có traffic. Correlation tạo storm service-wide. Shared root thực là observability data plane, không application. RCA candidate generator phải bao gồm source health và data-quality anomaly. Nếu tất cả signal cùng loại biến mất đồng thời nhưng modality khác khỏe, rank collector/transport cao và route platform team. Không dùng chính metric đang mất để chứng minh collector khỏe.
+
+#### Manual mitigation trở thành confounder
+
+On-call restart ba service cùng lúc; metric hồi. Nếu feedback gắn cả ba là root, historical/GNN học “restart target = cause”. Action timeline phải là intervention evidence, nhưng nhiều action đồng thời không xác định cái nào hiệu quả. Lần sau nên canary một action nếu an toàn hoặc dùng cohort không tác động. Label postmortem tách root, contributing factor, affected component và mitigation target.
+
+#### Multi-region với replication delay
+
+Primary region A DB chậm; region B đọc replica và bắt đầu stale-data error sau 90 giây. Graph có edge replication A→B nhưng service call graph không có. Nếu topology chỉ request, engine gọi hai root. Data dependency graph (stream, replication, ETL) cần đứng cạnh call graph. Temporal lag phải khớp replication SLA: B đỏ 90 giây sau hỗ trợ cascade; B đỏ 20 phút trước phản bác. Downstream weighting tính user traffic mỗi region và tránh double-count global gateway.
+
+### 20.9 Đánh giá RCA mà không tự lừa mình
+
+Một bộ test có 100 incident, nhưng 70 incident là bad deploy dễ và 30 là shared-infra/multi-root khó. Engine đúng 68/70 deploy, chỉ 6/30 khó: top-1 accuracy 74% trông ổn nhưng không giải quyết ca tốn MTTR nhất. Báo metric theo failure class, severity, topology quality, service mới/cũ và evidence availability.
+
+#### Đơn vị đánh giá là incident hypothesis
+
+Nếu một incident kéo dài 60 phút và engine publish 12 revision cùng root đúng, đó là một success, không 12 TP. Nếu root đúng chỉ lên #1 sau on-call đã fix, top-1 cuối đúng nhưng lead time vô dụng. Lưu rank tại các checkpoint t+10s, t+30s, t+60s, trước first human action và final.
+
+Multi-root cần set metric. Ground truth `{ledger, auth-cache}`, prediction `{ledger}` có primary hit nhưng root-set recall 50%. Prediction `{ledger, auth-cache, dns, payment}` có recall 100% nhưng precision 50%; spam top-k không được thưởng. Weighted coverage theo impact cho biết bỏ root auth 12% khác bỏ root ledger 85%, nhưng cả exact-set và impact metric đều cần.
+
+#### Calibration thay vì confidence trang trí
+
+Chia candidate thành bucket 0,5–0,6; 0,6–0,7; 0,7–0,8; 0,8–0,9. Nếu bucket 0,8–0,9 chỉ đúng 55%, score overconfident và không được auto-act. Calibration phải theo mode/evidence quality; topology-only 0,8 không tương đương trace+change+log 0,8 nếu training trộn chúng. Khi service/topology mới, distribution shift hạ cap cho đến đủ feedback.
+
+#### Label không chắc và disagreement reviewer
+
+Postmortem đôi khi chỉ nói “restart fixed it” hoặc hai team bất đồng. Cho label `verified`, `probable`, `contributing`, `unknown`; không ép probable thành ground truth. Hai reviewer độc lập cho P1; disagreement được adjudicate hoặc giữ distribution. Training sample weight theo label quality. “No postmortem” không phải negative example.
+
+#### So sánh với baseline có giá trị
+
+Baseline thực dụng: recent-change gần nhất + first origin trace + topology leaf. Nếu GNN/LLM ensemble tăng top-1 từ 74% lên 76% nhưng latency từ 15 lên 90 giây, explanation validity giảm và cost gấp 10, nó chưa thắng production. Báo incremental lift trên hard cases, time-to-correct-hypothesis và harmful suggestion rate. Model phức tạp chỉ được promote khi cải thiện có ý nghĩa so baseline trên split theo thời gian.
+
+### 20.10 Evidence playbook cho các failure mode phổ biến
+
+Playbook không hard-code root; nó định nghĩa evidence nào kỳ vọng và điều gì bác bỏ để ranker không dựa vào từ khóa chung chung.
+
+#### Database pool exhaustion
+
+Positive evidence: acquire wait tăng trước application timeout; active connection gần pool max; first-origin span ở acquire; nhiều caller độc lập cùng bị; query duration DB có thể bình thường vì request chưa lấy được connection. Negative evidence: pool wait bình thường, lỗi xảy ra trước acquire, chỉ một version lỗi dù dùng chung pool. Bẫy thường gặp là thấy DB CPU thấp rồi loại DB; pool cạn do connection leak/limit không cần CPU cao. Remediation “tăng pool” nguy hiểm nếu database max connection/headroom không đủ; validation trước là active/idle/waiter và connection ownership.
+
+#### DNS hoặc service discovery
+
+Positive evidence: nhiều service không liên quan cùng `name resolution`/connect error; DNS span/client log là origin; cache miss/latency resolver tăng; scope trùng node/AZ/resolver; IP-direct probe khỏe. Negative evidence: chỉ một target hostname lỗi vì endpoint thật down, resolver metrics khỏe, cached clients không ảnh hưởng. Bẫy là topology service graph không có DNS node nên tạo multi-root giả. Validation an toàn: resolve từ affected/unaffected node, so cache, authoritative response và network path; không flush DNS toàn fleet chỉ dựa trên correlation.
+
+#### Certificate/secret rotation
+
+Positive evidence: TLS handshake origin, expiry/not-yet-valid/unknown-CA cụ thể; change rotation ngay trước onset; chỉ client dùng trust bundle cũ lỗi; clock skew có thể làm `not yet valid`. Negative evidence: HTTP request đã tới application rồi mới 500, TLS success spans tồn tại, cả version trước/sau dùng cùng cert khỏe. Bẫy là rollback application vì deploy trùng lúc secret reload. Candidate phải là certificate/trust distribution/failure mode, không service wrapper. Validation: inspect metadata/fingerprint/validity mà không đưa private key vào RCA evidence.
+
+#### Queue consumer lag
+
+Positive evidence: producer rate vượt consumer rate hoặc processing latency tăng trước lag; partition-specific skew; poison message/retry; downstream freshness giảm sau lag. Negative evidence: lag metric nhảy do consumer group rebalance/offset reset nhưng event-time freshness khỏe; queue depth proxy sai. Bẫy chọn Kafka vì lag cao trong khi consumer DB call chậm mới root. Graph path cần `consumer → dependency`; temporal order và span/log xử lý message phân biệt broker, consumer code và downstream. Validation: throughput per partition, oldest event age, processing vs fetch latency.
+
+#### Node/AZ resource contention
+
+Positive evidence: nhiều pod khác service nhưng cùng node/AZ đỏ; steal time, disk/network saturation hoặc packet loss precede app symptom; reschedule sang node khác hồi; service topology không giải thích cross-service cluster. Negative evidence: chỉ cùng version/container image lỗi trên nhiều node, node signals khỏe. Bẫy down-weight service vì pod metrics nhiều: 20 pod trên một node không phải 20 evidence độc lập. Candidate generator group theo failure domain; downstream weighting tính business impact nhưng evidence independence theo node.
+
+#### Schema/config incompatibility
+
+Positive evidence: producer/consumer version matrix; decode/default-field log cụ thể; semantic failure dù transport 200; canary cohort; change scope; rollback/compat mode recovery. Negative evidence: old/new cùng lỗi, payload version không đi qua request lỗi, signature đã có từ lâu ở baseline. Bẫy chỉ tìm exception ERROR và bỏ silent default. Trace attribute/event phải giữ schema version và business outcome. Validation tốt là replay payload đã redaction trên old/new decoder hoặc compare shadow, không rollback toàn fleet ngay.
+
+#### Rate limit và retry amplification
+
+Positive evidence: upstream 429/limit header xuất hiện trước retries; attempts/request tăng; downstream CPU/traffic tăng sau; jitter thiếu; cap retry giảm amplification nhưng rate-limit origin còn. Negative evidence: CPU saturation có trước 429 và gateway limit chỉ bảo vệ, hoặc client retry metric không tăng. Engine biểu diễn limiter là trigger/primary tùy policy và retry là amplifier; không gộp chúng thành “service overload”. Validation: per-attempt trace, token/quota state, retry cohort và recovery order.
+
+#### Memory leak/OOM restart loop
+
+Positive evidence: working set tăng qua nhiều GC cycle, không về baseline; allocation/heap profile; OOM/restart; cùng version/cohort; node memory headroom phân biệt app leak với node pressure. Negative evidence: memory cache có eviction và ổn định, pod restart do rollout/probe, nhiều workload cùng node OOM. Bẫy pod biến mất làm mất series và root. Workload/version identity cùng tombstone/restart event phải được giữ. Validation: slope/time-to-OOM, heap class, canary version; tăng limit chỉ là mitigation.
+
+Các playbook này cũng giúp audit score: nếu engine chọn DNS nhưng không cite resolution evidence và không kiểm tra shared resolver scope, candidate chưa đủ điều kiện publish confidence cao dù historical embedding rất giống.
+
 ---
 
 ## 21. Production Review
@@ -2188,20 +1113,24 @@ Drill RCA trên famous outages: [15 — Famous Incidents](../16-famous-incidents
 
 5. **Evidence quality + time budget + multi-root** là ba trụ sản phẩm còn thiếu nếu chỉ rank algorithm confidence — xem §20.
 
-### Chapter Scores
+### Production acceptance checklist
 
-| Tiêu chí | Điểm số | Ghi chú |
-|-----------|-------|-------|
-| Technical Accuracy | 9.7/10 | Thuật toán PC, GNN, Bayesian được mô tả chính xác |
-| Production Readiness | 9.6/10 | Async collect, schema, time budget, evidence quality |
-| Depth | 9.8/10 | 7 phương pháp RCA + causation traps + multi-root |
-| Practical Value | 9.8/10 | Code Python + confounder policy + stop-search budget |
-| Architecture Quality | 9.6/10 | Thu thập song song bằng chứng, sắp xếp giả thuyết đầu ra |
-| Observability | 9.6/10 | Theo dõi sát sao độ chính xác, latency phân tích, consumer lag |
-| Security | 9.6/10 | Có chính sách kiểm soát PII, cô lập tenant bảo mật |
-| Scalability | 9.5/10 | Hỗ trợ mở rộng dọc + mở rộng ngang theo consumer lag |
-| Cost Awareness | 9.5/10 | Định lượng chi tiết chi phí, bao gồm cả vector store |
-| Diagram Quality | 9.6/10 | Biểu đồ pipeline, luồng thu thập bằng chứng trực quan |
+Trước khi engine có quyền gợi ý remediation trên P1:
+
+- Dependency graph có direction, active traffic, freshness, shared/data dependency và snapshot theo incident time không?
+- Temporal feature dùng onset interval/clock uncertainty, không dùng alert arrival đơn thuần không?
+- Trace phân biệt origin, propagated, cancellation, retry và sampling denominator không?
+- Downstream weighting có business/traffic impact, cap và không đếm inactive edge không?
+- Multi-signal scoring có provenance/independence correction, contradiction và calibration không?
+- Có mode multi-root/uncertain, residual symptom coverage và candidate alternatives không?
+- Change correlation có cohort/dose-response/rollback evidence, không chỉ proximity không?
+- Missing backend làm `partial` + confidence cap thay vì absence evidence không?
+- Output versioned có reasoning path, evidence link, warnings và validation step không?
+- Golden replay có clock skew, retry storm, canceled sibling, hidden shared infra, partial rollout, telemetry outage và dual root không?
+- Quality được đo trước human action, theo failure class, với label uncertainty không?
+- Mọi action phá hủy vẫn qua policy, approval, tenant isolation và audit không?
+
+Nếu chưa đạt, engine chạy shadow và chỉ cung cấp investigation hints. Một RCA engine biết giới hạn của mình đáng tin hơn một hệ thống luôn có câu trả lời.
 
 ---
 

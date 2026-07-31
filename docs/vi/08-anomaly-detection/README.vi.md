@@ -30,18 +30,18 @@ Sau chương này, hãy chuyển sang [09 — Alert Correlation](../09-alert-cor
 
 1. [Anomaly Detection Overview](#1-anomaly-detection-overview)
 2. [The Detection Pipeline](#2-the-detection-pipeline)
-3. [EWMA — Exponentially Weighted Moving Average](#3-ewma--exponentially-weighted-moving-average)
+3. [EWMA — Exponentially Weighted Moving Average](#3-ewma-exponentially-weighted-moving-average)
 4. [Z-Score and Modified Z-Score](#4-z-score-and-modified-z-score)
 5. [STL Decomposition](#5-stl-decomposition)
 6. [Seasonal Hybrid ESD (SHESD)](#6-seasonal-hybrid-esd-shesd)
 7. [Isolation Forest](#7-isolation-forest)
-8. [DBSCAN — Density-Based Clustering](#8-dbscan--density-based-clustering)
+8. [DBSCAN — Density-Based Clustering](#8-dbscan-density-based-clustering)
 9. [Local Outlier Factor (LOF)](#9-local-outlier-factor-lof)
 10. [One-Class SVM](#10-one-class-svm)
 11. [LSTM for Time-Series Anomaly Detection](#11-lstm-for-time-series-anomaly-detection)
 12. [Transformer-Based Detection](#12-transformer-based-detection)
-13. [Log Anomaly Detection — Drain Algorithm](#13-log-anomaly-detection--drain-algorithm)
-14. [Log Anomaly Detection — DeepLog](#14-log-anomaly-detection--deeplog)
+13. [Log Anomaly Detection — Drain Algorithm](#13-log-anomaly-detection-drain-algorithm)
+14. [Log Anomaly Detection — DeepLog](#14-log-anomaly-detection-deeplog)
 15. [Algorithm Selection Guide](#15-algorithm-selection-guide)
 16. [Feature Engineering](#16-feature-engineering)
 17. [Production Architecture](#17-production-architecture)
@@ -52,17 +52,17 @@ Sau chương này, hãy chuyển sang [09 — Alert Correlation](../09-alert-cor
 22. [Scaling](#22-scaling)
 23. [Security](#23-security)
 24. [Cost](#24-cost)
-25. [Tư duy sâu: Drift, Ensemble, Feedback Loop & Khi nào KHÔNG dùng ML](#25-tư-duy-sâu-drift-ensemble-feedback-loop--khi-nào-không-dùng-ml)
+25. [Tư duy sâu: Drift, Ensemble, Feedback Loop & Khi nào KHÔNG dùng ML](#25-tu-duy-sau-drift-ensemble-feedback-loop-khi-nao-khong-dung-ml)
 26. [Production Review](#26-production-review)
 
 ---
 
 
-## Cách đọc chapter này (concept-first)
+## Cách đọc chapter này: đi từ dữ liệu đến quyết định vận hành
 
 > [!IMPORTANT]
-> **Đọc concept trước — code để sau**
-> Từ chapter 08 trở đi, handbook ưu tiên: **vấn đề → ý tưởng → input data → thuật toán/model → output → ưu/nhược → khi nào dùng**. Phần implementation nằm trong khối **See the code below** (bấm mới mở). Mục tiêu: bạn hiểu *tại sao và hoạt động ra sao trên telemetry AIOps*, không chỉ copy-paste.
+> **Chương này cố ý không chứa code triển khai.**
+> Mỗi detector được đọc theo cùng một đường đi: **dữ liệu thô → phép biến đổi → con số trung gian → quyết định → hành động của on-call → failure mode**. Mục tiêu không phải nhớ tên thuật toán mà là nhìn một dãy số và giải thích được vì sao hệ thống cảnh báo, vì sao nó im lặng, và im lặng đó có đúng hay không.
 
 | Bước đọc | Câu hỏi |
 |----------|---------|
@@ -73,6 +73,21 @@ Sau chương này, hãy chuyển sang [09 — Alert Correlation](../09-alert-cor
 | 5. Output | Schema sự kiện, score, rank, action proposal? |
 | 6. Trade-off | Ưu / nhược / chi phí / giải thích được không? |
 | 7. When | Dùng khi nào — và khi nào **đừng** dùng |
+
+### Một anomaly chỉ có nghĩa khi gắn với quyết định
+
+Giả sử latency p99 theo phút là **[118, 121, 119, 123, 120, 182] ms**. Điểm 182 khác hẳn năm điểm trước, nhưng chưa đủ để page. Nếu SLO là 300 ms, traffic vẫn đủ và error rate không đổi, đây có thể chỉ là một batch ngắn. Ngược lại, với chuỗi **[118, 121, 119, 123, 120, 148] ms**, mức tăng nhỏ hơn nhưng đồng thời checkout success giảm từ 99,8% xuống 96,5% thì tín hiệu thứ hai đáng xử lý hơn. Detector chỉ đo độ lạ; policy mới quyết định độ nguy hiểm.
+
+Trong chapter này, mỗi ví dụ tách rõ bốn lớp thường bị trộn lẫn:
+
+| Lớp | Câu hỏi bắt buộc | Ví dụ với điểm 182 ms |
+|-----|------------------|------------------------|
+| Observation | Ta thực sự đo được gì? | p99 của một phút là 182 ms; có 24.000 request |
+| Expectation | Bình thường trong đúng ngữ cảnh là bao nhiêu? | Cùng phút trong bảy ngày gần nhất là 115–126 ms |
+| Detection | Mức lệch có đủ lớn và đủ lâu không? | residual +61 ms, kéo dài một cửa sổ |
+| Decision | Có page, tạo ticket hay chỉ ghi nhận? | Chỉ annotate nếu error rate và SLO burn vẫn bình thường |
+
+Điều này ngăn một lỗi thiết kế phổ biến: lấy nhãn `anomaly=true` làm đồng nghĩa với `incident=P1`. Trong hệ thống trưởng thành, anomaly event là bằng chứng đầu vào cho correlation, không phải phán quyết cuối cùng.
 
 ---
 
@@ -94,127 +109,73 @@ Sau chương này, hãy chuyển sang [09 — Alert Correlation](../09-alert-cor
 
 Một điểm bất thường (anomaly) là **một điểm dữ liệu sai lệch đáng kể so với hành vi kỳ vọng**. Trong AIOps, bất thường được chia làm ba loại:
 
-```mermaid
-graph TD
-    subgraph Point["Point Anomaly"]
-        P1[Time Series:\n...100, 102, 98, 101, **850**, 100, 99...]
-        P2[Một giá trị đơn lẻ\ntự thân nó là bất thường]
-    end
+| Loại | Dãy số minh họa | Vì sao bất thường | Detector phù hợp |
+|------|-----------------|-------------------|-------------------|
+| Point anomaly | CPU **[41, 43, 42, 44, 91, 43]** | 91 tự nó cách xa vùng 41–44 | EWMA, modified Z-score |
+| Contextual anomaly | RPS lúc 02:00 **[22, 24, 23, 81]**; 81 lại bình thường lúc 20:00 | Giá trị chỉ sai khi đặt đúng giờ/ngày | STL, SHESD |
+| Collective anomaly | Queue **[4, 6, 9, 13, 18, 25, 33]** | Không điểm nào cực đoan, nhưng cả quỹ đạo tăng đều là dấu hiệu consumer hụt hơi | Forecast/LSTM, slope feature |
+| Multivariate anomaly | CPU 48%, memory 61%, error 8,2%; từng metric có thể chưa vượt ngưỡng | Tổ hợp “tài nguyên bình thường nhưng lỗi cao” hiếm trong lịch sử | Isolation Forest, OC-SVM, Transformer |
 
-    subgraph Context["Contextual Anomaly"]
-        C1[CPU: 80% lúc 3 giờ sáng\nCPU 80% là bình thường vào buổi trưa\nnhưng bất thường vào lúc 3 giờ sáng]
-        C2[Giá trị bình thường nằm\nsai ngữ cảnh]
-    end
+Một loại thứ năm rất quan trọng trong vận hành là **absence anomaly**: điều đáng lẽ phải xuất hiện lại biến mất. Ví dụ số job hoàn tất mỗi 5 phút là **[12, 11, 13, 12, 0, 0]**. Hai số 0 có thể không tạo log lỗi nào, nhưng pipeline đã ngừng tạo output. Với case này, kiểm tra freshness hoặc expected-event rule thường đáng tin hơn mô hình phức tạp.
 
-    subgraph Collective["Collective Anomaly"]
-        COL1[Không có điểm bất thường đơn lẻ\nnhưng mô hình chung bị sai:\n...100, 103, 98, 101, 99...\n→ Bình thường, nhưng lượng requests\ngiảm 90% — mất traffic]
-        COL2[Nhóm các điểm dữ liệu\nbiểu hiện bất thường]
-    end
-
-    style Point fill:#dbeafe,color:#1e293b
-    style Context fill:#dcfce7,color:#1e293b
-    style Collective fill:#ffedd5,color:#1e293b
-```
 
 ### Why Static Thresholds Fail
 
-```
-Cảnh báo ngưỡng tĩnh (Static threshold): cảnh báo nếu cpu_usage > 80%
 
-Các vấn đề:
-1. Vào lúc 3 giờ sáng (traffic thấp): CPU 60% đã là mức nghiêm trọng
-2. Vào ngày Black Friday (traffic tăng 10 lần): CPU 90% là bình thường và chấp nhận được
-3. Sau một đợt deploy tối ưu hóa CPU: CPU 60% kích hoạt cảnh báo nhưng thực tế lại là một cải tiến
-4. Lỗi rò rỉ bộ nhớ (memory leak) chậm: không bao giờ vượt ngưỡng cho đến khi xảy ra lỗi OOM, khi đó đã quá muộn
+Ngưỡng tĩnh không sai; nó sai khi baseline phụ thuộc ngữ cảnh mà rule không biểu diễn. Cùng ngưỡng CPU 80% cho ta ba kết quả trái ngược:
 
-Kết quả: Tỷ lệ dương tính giả (false positive) lên tới 70% đối với các cảnh báo ngưỡng tĩnh (trung bình toàn ngành)
-```
+| Bối cảnh | Dãy CPU theo phút | Rule `>80%` | Thực tế |
+|----------|-------------------|-------------|---------|
+| Batch đã lên lịch | **[72, 78, 84, 89, 86, 76]** | Bắn ba lần | Bình thường; batch luôn chạy 01:00–01:10 |
+| Memory leak làm GC tăng | **[48, 51, 55, 60, 66, 73]** | Im lặng | Có vấn đề; slope kéo dài và latency cùng tăng |
+| Checkout mất traffic | **[67, 63, 54, 39, 21, 18]** | Im lặng | Nghiêm trọng; CPU giảm vì request không tới |
+
+Static threshold vẫn là lựa chọn đúng khi đại lượng có ranh giới vật lý hoặc nghiệp vụ: dung lượng đĩa 95%, chứng thư còn 14 ngày, SLO burn-rate, replica ready bằng 0. Dynamic detection nên bổ sung phần “hành vi kỳ vọng”, không thay mọi rule bằng ML.
 
 **Phát hiện bất thường động (Dynamic anomaly detection)**: Kích hoạt cảnh báo khi giá trị sai lệch đáng kể so với **giá trị kỳ vọng tại thời điểm này, đối với dịch vụ này, dưới các điều kiện cụ thể này**.
 
 ### The AIOps Detection Stack
 
-```
-Thống kê (Nhanh, không cần huấn luyện, tốt cho các bất thường được định nghĩa rõ ràng)
-├── EWMA              → làm mịn xu hướng, phát hiện thay đổi đột ngột
-├── Z-Score           → các điểm ngoại lai so với giá trị trung bình/độ lệch chuẩn lịch sử
-└── STL + SHESD       → bất thường theo mùa (theo giờ trong ngày, ngày trong tuần)
 
-Machine Learning (Tốt hơn cho các mô hình phức tạp, yêu cầu dữ liệu huấn luyện)
-├── Isolation Forest  → đa biến, không yêu cầu giả định phân phối dữ liệu
-├── DBSCAN            → dựa trên phân cụm, tìm kiếm các vùng bình thường có mật độ cao
-├── LOF               → dựa trên mật độ, tốt cho các cụm có mật độ khác nhau
-└── One-Class SVM     → học biên giới hạn của dữ liệu bình thường
+Không có thứ hạng “càng xuống dưới càng tốt”. Stack hợp lý là một **thang chi phí**. Với 50.000 series, lớp rẻ như freshness, EWMA và modified Z có thể chấm tất cả. Chỉ vài trăm service quan trọng hoặc các ứng viên đáng ngờ mới đi qua detector đa biến. LSTM/Transformer dành cho những failure mode đã chứng minh rằng thống kê đơn giản bỏ lỡ, không phải để trang trí kiến trúc.
 
-Deep Learning (Mạnh mẽ nhất, tốn kém nhất, yêu cầu lượng dữ liệu lớn)
-├── LSTM             → các mô hình tuần tự, sự phụ thuộc theo thời gian
-├── Transformer      → sự phụ thuộc tầm xa, độ chính xác tốt nhất
-└── Autoencoder      → sai số tái cấu trúc (reconstruction error) đóng vai trò là điểm bất thường
-
-Chuyên biệt cho Log
-├── Drain            → phân tích logs thành các templates, phát hiện các templates mới xuất hiện
-└── DeepLog          → dự đoán sự kiện log tiếp theo, gắn cờ các chuỗi sự kiện bất thường
-```
+Ví dụ một phút có 50.000 điểm: freshness loại 300 series mất dữ liệu; EWMA gắn cờ 420; policy maintenance loại 180; modified Z xác nhận 96; correlation gom còn 11 cụm; model đa biến nâng confidence cho 3 cụm; cuối cùng chỉ 1 incident đủ điều kiện page. Con số quan trọng không phải “420 anomaly” mà là **1 page có giá trị từ 50.000 quan sát**.
 
 ---
 
 ## 2. The Detection Pipeline
 
-```mermaid
-flowchart TD
-    subgraph Input["Input Sources"]
-        KF[Kafka Consumer\naiops-raw-metrics]
-        PROM[Prometheus API\n/api/v1/query_range]
-    end
 
-    subgraph FE["Feature Engineering"]
-        WINDOW[Time Window\nSliding · Tumbling]
-        NORM[Normalization\nStandard · MinMax]
-        FEAT[Feature Extraction\nlag features · rolling stats\nFourier components]
-    end
+Một pipeline production phải giữ được **event time**, **identity** và **context thay đổi**. Nếu điểm của 10:03 đến Kafka lúc 10:08 vì network lag mà detector dùng processing time, nó có thể so điểm cũ với baseline 10:08 và tạo anomaly giả. Nếu pod restart làm mất state, năm phút warm-up tiếp theo cũng không được phép page như một detector đã trưởng thành.
 
-    subgraph Detect["Detection Layer"]
-        STAT[Statistical\nEWMA · Z-Score · STL]
-        ML[ML Models\nIsolation Forest · LOF]
-        DL[Deep Learning\nLSTM · Transformer]
-        LOG[Log Anomaly\nDrain · DeepLog]
-    end
+### Walkthrough: từ 12 điểm metric đến một quyết định
 
-    subgraph Score["Scoring & Thresholding"]
-        ENS[Ensemble\nVoting · Weighted average]
-        THRESH[Dynamic Threshold\nconfidence-based]
-        DEDUP[Deduplication\n30-second window per metric]
-    end
+Xét `checkout.error_rate` theo phút:
 
-    subgraph Output["Output"]
-        EVT[AnomalyEvent\nAvro schema]
-        KF2[Kafka Topic\naiops-anomalies]
-        METRIC[Detection Metrics\n→ Prometheus]
-    end
+| Thời điểm | Error rate | RPS | Deploy? | Ghi chú |
+|-----------|------------|-----|---------|---------|
+| 10:00–10:04 | 0,7%; 0,8%; 0,6%; 0,9%; 0,8% | 790–830 | Không | Baseline ổn định |
+| 10:05–10:07 | 2,1%; 3,8%; 6,4% | 812; 805; 798 | Có lúc 10:04 | Tăng ngay sau release |
+| 10:08–10:11 | 7,1%; 7,4%; 7,0%; 6,8% | 801–820 | Có | Sai lệch duy trì |
 
-    Input --> FE
-    FE --> Detect
-    STAT --> ENS
-    ML --> ENS
-    DL --> ENS
-    LOG --> ENS
-    ENS --> THRESH --> DEDUP
-    DEDUP --> EVT --> KF2
-    Detect --> METRIC
+Pipeline xử lý thực tế như sau:
 
-    style Input fill:#dbeafe,color:#1e293b
-    style FE fill:#dcfce7,color:#1e293b
-    style Detect fill:#f3e8ff,color:#1e293b
-    style Score fill:#ffedd5,color:#1e293b
-    style Output fill:#fecaca,color:#1e293b
-```
+1. Ingestion giữ timestamp nguồn và đánh dấu một điểm 10:06 đến trễ 40 giây.
+2. Feature layer tạo error rate từ hai counter cùng cửa sổ, không lấy trung bình các tỷ lệ pod một cách mù quáng.
+3. EWMA phát hiện từ 10:05; modified Z xác nhận ở 10:06; detector đa biến thấy error tăng trong khi RPS không tăng, loại giả thuyết “chỉ do tải”.
+4. Change context nối anomaly với deploy 10:04. Hệ thống không suppress tuyệt đối; nó giảm urgency trong hai cửa sổ đầu để tránh noise khởi động.
+5. Persistence gate yêu cầu ba phút liên tiếp. Đến 10:07 điều kiện được thỏa.
+6. Correlation gom ba anomaly thành một incident, gắn release ID và route cho đội checkout.
+7. Sau rollback 10:12, detector không học dãy 7% thành normal; state được giữ ở baseline trước incident cho tới khi recovery ổn định.
+
+Nếu pipeline chỉ thực hiện bước 3, on-call nhận ba page từ ba thuật toán. Nếu suppress toàn bộ 30 phút sau deploy, nó lại bỏ lỡ chính lỗi cần canary phát hiện. Production nằm ở các “van” giữa detector và page.
 
 ### Pipeline Step Details
 
 | Bước xử lý | Đầu vào | Đầu ra | Độ trễ | Kịch bản lỗi |
 |------|-------|--------|---------|--------------|
-| Nhận dữ liệu từ Kafka | Telemetry thô | Python dict | <10ms | Consumer lag: bị chậm tiến trình |
-| Trích xuất đặc trưng | Raw dict | Numpy array | 1–50ms | Lỗi bộ nhớ: cửa sổ thời gian quá lớn |
+| Nhận dữ liệu từ Kafka | Telemetry thô | Bản ghi đã chuẩn hóa | <10ms | Consumer lag: bị chậm tiến trình |
+| Trích xuất đặc trưng | Bản ghi thô | Vector đặc trưng | 1–50ms | Lỗi bộ nhớ: cửa sổ thời gian quá lớn |
 | Phát hiện bằng thống kê | Đặc trưng (Features) | Điểm số 0–1 | 1–5ms | Cold start: lịch sử trống |
 | Phát hiện bằng ML | Đặc trưng (Features) | Điểm số 0–1 | 5–50ms | Mô hình cũ: hiện tượng trôi (drift) |
 | Phát hiện bằng DL | Đặc trưng (Features) | Điểm số 0–1 | 50–500ms | Yêu cầu GPU ở quy mô lớn |
@@ -258,158 +219,54 @@ Có thể hiểu đơn giản là: "Ước lượng tốt nhất của tôi về
 
 1. Điểm đầu: `S = X`, variance `= 0`, trả "initializing".
 2. Phần dư: `r_t = X_t − S_{t−1}`.
-3. Cập nhật variance: `v_t = α r_t² + (1−α) v_{t−1}`.
-4. Cập nhật baseline: `S_t = α X_t + (1−α) S_{t−1}`.
-5. Nếu còn warm-up → không alert.
-6. `z = |r_t| / √v_t`; bất thường nếu `z > k` (thường `k = 3`).
-7. Score ≈ `min(z / k, 1)`; ghi `direction` spike/drop.
+3. Chấm residual bằng scale `v_{t−1}` được ước lượng từ **các điểm trước**, không cho Xₜ tự nới ngưỡng của nó.
+4. Nếu còn warm-up → chưa page nhưng vẫn cập nhật state sau kiểm tra data quality.
+5. `z = |r_t| / √v_{t−1}`; bất thường nếu `z > k` (thường `k = 3`).
+6. Score ≈ `min(z / k, 1)`; ghi `direction` spike/drop.
+7. Nếu điểm bình thường, cập nhật `S_t` và `v_t`; nếu anomaly mạnh, freeze hoặc capped-update theo policy rồi chỉ nhận new normal qua change/recovery gate.
 
 ### Formula
 
-```
-S_t = α × X_t + (1 - α) × S_{t-1}
-
-Trong đó:
-  S_t   = Giá trị EWMA tại thời điểm t (ước lượng được làm mịn)
-  X_t   = Giá trị quan sát tại thời điểm t
-  S_{t-1} = Giá trị EWMA trước đó
-  α     = Hệ số làm mịn (smoothing factor) (0 < α < 1)
-```
+Với hệ số làm mịn α nằm giữa 0 và 1, baseline mới là **Sₜ = αXₜ + (1−α)Sₜ₋₁**. α cao làm baseline đuổi nhanh theo điểm mới; α thấp giữ trí nhớ dài hơn. Nhưng detector không nên dùng một scale vừa được phình lên bởi chính điểm đang đánh giá. Quy trình an toàn là: lấy **Sₜ₋₁ và scale của các residual trước đó** để chấm Xₜ; nếu Xₜ là anomaly mạnh thì freeze hoặc cập nhật với trọng số rất nhỏ; nếu bình thường mới cập nhật đầy đủ.
 
 **Điểm bất thường (Anomaly score)** (sai lệch so với EWMA):
 
-```
-residual_t = X_t - S_{t-1}    # Độ lệch của giá trị hiện tại so với dự đoán EWMA
-variance_t = α × residual_t² + (1 - α) × variance_{t-1}   # EWMA của bình phương các sai số
-std_dev_t = sqrt(variance_t)
-
-# Xác định bất thường nếu sai lệch vượt quá ngưỡng tính theo độ lệch chuẩn
-anomaly = |residual_t| > k × std_dev_t   # k = 3 là phổ biến (quy tắc 3-sigma)
-```
 
 ### Effect of α Parameter
 
-```
-Hệ số α cao (gần bằng 1): Trọng số lớn hơn cho các quan sát gần đây
-  → Phản ứng nhanh với các thay đổi
-  → Nhạy cảm hơn với nhiễu
-  → Rủi ro: dương tính giả đối với các biến động tự nhiên
-
-Hệ số α thấp (gần bằng 0): Trọng số lớn hơn cho các quan sát lịch sử
-  → Phản ứng chậm với thay đổi
-  → Loại bỏ nhiễu tốt hơn
-  → Rủi ro: bỏ lỡ các sự cố phát triển nhanh
-
-Các giá trị phổ biến:
-  α = 0.1: Rất mịn, phản ứng chậm (tốt cho các metrics ổn định)
-  α = 0.3: Cân bằng
-  α = 0.7: Phản ứng nhanh (tốt cho các metrics biến động mạnh)
-```
+| α | Trọng số còn lại của một điểm sau 5 bước | Cảm giác vận hành |
+|---|------------------------------------------|-------------------|
+| 0,1 | khoảng 59% | Mượt, chậm; hợp metric nhiều nhiễu |
+| 0,3 | khoảng 17% | Cân bằng cho baseline ngắn |
+| 0,7 | dưới 1% | Gần như quên quá khứ; dễ bám luôn vào incident |
 
 **Tự động tinh chỉnh α** dựa trên độ biến động tự nhiên của metric:
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
-```python
-# Tự động điều chỉnh α dựa trên hệ số biến thiên
-def auto_tune_alpha(historical_data: np.ndarray) -> float:
-    """
-    Các metrics có độ biến động tự nhiên cao cần alpha thấp hơn (làm mịn nhiều hơn)
-    Các metrics có độ biến động thấp cần alpha cao hơn (phản ứng nhanh hơn)
-    """
-    cv = np.std(historical_data) / np.mean(historical_data)  # Hệ số biến thiên
-    
-    if cv < 0.05:     # Rất ổn định (ví dụ: số lượng kết nối cơ sở dữ liệu)
-        return 0.7    # Phản ứng nhanh với các thay đổi
-    elif cv < 0.2:    # Ổn định trung bình (ví dụ: CPU dưới tải ổn định)
-        return 0.3
-    elif cv < 0.5:    # Biến động (ví dụ: request rate)
-        return 0.1
-    else:             # Biến động mạnh (ví dụ: độ dài hàng đợi khi có spike traffic)
-        return 0.05
-```
+### Case bằng số: spike thật và cách baseline bị đầu độc
 
-</details>
+Giả sử RPS theo phút là **[100, 102, 101, 99, 100, 142, 145, 144]**, α = 0,3. Chỉ xét năm điểm bình thường đầu, EWMA đi qua các baseline xấp xỉ **[100; 100,6; 100,72; 100,20; 100,14]**. Trước khi thấy 142, kỳ vọng hợp lý là khoảng 100,14; residual là **+41,86**, lớn hơn hẳn residual lịch sử chỉ quanh ±2.
 
-### Python Implementation
+Nếu detector cập nhật vô điều kiện, baseline sau ba điểm cao trở thành khoảng **123,4** rồi **129,9**. Incident đang tiếp diễn nhưng residual giảm từ 41,9 xuống 21,6 rồi 20,6. Một detector ngây thơ kết luận “đã đỡ”, dù RPS vẫn cao 44%. Đây là hiện tượng baseline contamination.
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Trong production, có ba lựa chọn:
 
-```python
-import numpy as np
-from dataclasses import dataclass
-from typing import Optional
+- **Freeze-on-alert:** giữ baseline 100,14 khi anomaly còn mở. Điểm 145 và 144 tiếp tục được so với normal trước incident. Cách này tốt cho spike/outage ngắn nhưng có thể cảnh báo mãi sau một thay đổi hợp lệ.
+- **Capped update:** giới hạn đóng góp của residual, ví dụ chỉ cho baseline dịch tối đa 3 đơn vị mỗi phút. Cách này thích nghi có kiểm soát.
+- **Human/change acceptance:** nếu đây là traffic tăng hợp lệ do campaign, operator chấp nhận “new normal”; state được re-baseline có audit thay vì tự trôi âm thầm.
 
-@dataclass
-class EWMADetector:
-    alpha: float = 0.3          # Hệ số làm mịn
-    k: float = 3.0              # Ngưỡng (k × std_dev)
-    min_periods: int = 30       # Số lượng quan sát tối thiểu trước khi đánh giá
+Giờ đổi dãy thành **[100, 102, 101, 99, 100, 103, 101, 102]**. Các residual vẫn nằm quanh ±3; EWMA theo kịp mà không phát tín hiệu. Cùng α, detector phân biệt được dao động ngắn quanh baseline và một bước nhảy lớn.
 
-    # Trạng thái (được lưu trữ qua các cuộc gọi)
-    ewma: Optional[float] = None
-    ewma_var: Optional[float] = None
-    n_observations: int = 0
+### Case EWMA không tốt: seasonality và slow leak
 
-    def update(self, value: float) -> dict:
-        """
-        Cập nhật trạng thái EWMA và trả về kết quả đánh giá bất thường.
-        """
-        self.n_observations += 1
+RPS mỗi sáu giờ trong hai ngày là **[20, 55, 110, 70, 22, 58, 112, 72]**. EWMA thấy các bước 20→55→110 là spike rồi 110→70→22 là drop ở cả hai ngày. Nhưng chuỗi đang lặp đúng nhịp. Tăng α chỉ làm baseline đuổi nhanh hơn, giảm α chỉ làm cảnh báo kéo dài hơn; không lựa chọn α nào tạo ra khái niệm “cùng giờ hôm qua”. Đây là lúc STL phù hợp hơn.
 
-        # Khởi tạo ở lượt quan sát đầu tiên
-        if self.ewma is None:
-            self.ewma = value
-            self.ewma_var = 0.0
-            return {"anomaly": False, "score": 0.0, "reason": "initializing"}
+Với memory usage **[51, 52, 53, 54, 55, 56, 57, 58]**, mỗi bước chỉ +1 và EWMA cũng tăng theo. Không điểm nào lệch xa baseline, dù xu hướng dài hạn có thể dẫn tới OOM. Cần feature slope, time-to-exhaustion hoặc forecast; EWMA không phải detector rò rỉ chỉ vì nó là “moving average”.
 
-        # Tính toán sai số (prediction error)
-        residual = value - self.ewma
+### Cách đọc alert EWMA trên dashboard
 
-        # Cập nhật ước lượng phương sai
-        self.ewma_var = self.alpha * (residual ** 2) + (1 - self.alpha) * self.ewma_var
+Một alert có ích phải nói: “current 142, expected 100, residual +42, scale lịch sử 1,4, kéo dài 3 phút, baseline đang freeze”, thay vì chỉ nói “score 0,98”. On-call cần biết detector thấy spike hay drop, state có vừa reset không, và điểm trước đó có bị missing hay không. Nếu không cung cấp các con số này, EWMA tuy giải thích được về lý thuyết nhưng vẫn là hộp đen trong ca trực.
 
-        # Cập nhật ước lượng giá trị trung bình
-        self.ewma = self.alpha * value + (1 - self.alpha) * self.ewma
-
-        # Cần đủ dữ liệu lịch sử tối thiểu để phát hiện chính xác
-        if self.n_observations < self.min_periods:
-            return {"anomaly": False, "score": 0.0, "reason": "warming_up"}
-
-        std_dev = np.sqrt(self.ewma_var) if self.ewma_var > 0 else 1e-10
-        z_score = abs(residual) / std_dev
-        anomaly_score = min(z_score / self.k, 1.0)  # Chuẩn hóa về khoảng 0-1
-
-        return {
-            "anomaly": z_score > self.k,
-            "score": anomaly_score,
-            "z_score": z_score,
-            "ewma": self.ewma,
-            "std_dev": std_dev,
-            "residual": residual,
-            "direction": "spike" if residual > 0 else "drop",
-        }
-
-# Ví dụ sử dụng
-detector = EWMADetector(alpha=0.3, k=3.0)
-
-for timestamp, cpu_value in metric_stream:
-    result = detector.update(cpu_value)
-    
-    if result["anomaly"]:
-        publish_anomaly_event(
-            metric="cpu_usage",
-            timestamp=timestamp,
-            score=result["score"],
-            algorithm="ewma",
-            baseline=result["ewma"],
-            current=cpu_value,
-        )
-```
-
-</details>
 
 ### Output
 
@@ -493,14 +350,7 @@ So sánh giá trị hiện tại với **phân phối tham chiếu ước lượ
 
 ### Standard Z-Score
 
-```
-Z = (X - μ) / σ
-
-Trong đó:
-  X = Giá trị quan sát
-  μ = Giá trị trung bình của cửa sổ lịch sử (ví dụ: 1 giờ gần nhất)
-  σ = Độ lệch chuẩn của cửa sổ lịch sử
-```
+Z-score chuẩn đo khoảng cách tới mean theo đơn vị standard deviation. Nó hữu ích khi cửa sổ khá ổn định, đủ mẫu và không bị vài incident cũ chi phối. “Ba sigma” không tự động đồng nghĩa xác suất sai cực thấp: telemetry thường lệch, đuôi nặng và có tự tương quan, nên ngưỡng phải được hiệu chuẩn trên false-positive thực tế.
 
 **Bất thường nếu |Z| > ngưỡng** (thường từ 2.5–4.0 tùy thuộc vào độ nhạy yêu cầu).
 
@@ -508,53 +358,10 @@ Trong đó:
 
 ### Modified Z-Score (Robust)
 
-```
-M = 0.6745 × (X - median) / MAD
-
-Trong đó:
-  MAD = Median Absolute Deviation (Độ lệch tuyệt đối trung vị) = median(|X_i - median(X)|)
-  0.6745 = Hệ số tỷ lệ (giúp MAD tương thích với độ lệch chuẩn đối với dữ liệu phân phối chuẩn)
-```
+Modified Z thay mean bằng median và độ lệch chuẩn bằng MAD. Median trả lời “điểm giữa nằm đâu”; MAD trả lời “độ lệch điển hình khỏi điểm giữa là bao nhiêu”. Vì cả hai ít bị một vài cực trị kéo đi, detector vẫn giữ độ nhạy khi history đã chứa spike.
 
 **Bất thường nếu |M| > 3.5**
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-import numpy as np
-
-def modified_z_score(
-    history: np.ndarray,
-    current_value: float,
-    threshold: float = 3.5,
-) -> dict:
-    """
-    Modified Z-Score: bền vững với các điểm ngoại lai trong cửa sổ lịch sử.
-    Tốt nhất cho các cửa sổ nhỏ (15-60 phút) có khả năng chứa các bất thường cũ.
-    """
-    median = np.median(history)
-    mad = np.median(np.abs(history - median))
-
-    if mad == 0:
-        # Tất cả các giá trị lịch sử giống hệt nhau — bất kỳ sai lệch nào cũng là bất thường
-        if current_value != median:
-            return {"anomaly": True, "score": 1.0, "reason": "deviation_from_constant"}
-        return {"anomaly": False, "score": 0.0}
-
-    modified_z = 0.6745 * abs(current_value - median) / mad
-
-    return {
-        "anomaly": modified_z > threshold,
-        "score": min(modified_z / threshold, 1.0),
-        "modified_z": modified_z,
-        "median": median,
-        "mad": mad,
-        "direction": "spike" if current_value > median else "drop",
-    }
-```
-
-</details>
 
 ### Z-Score Window Selection
 
@@ -566,22 +373,24 @@ def modified_z_score(
 | 7 ngày | Rất chậm | Rất thấp | Xác định baseline chu kỳ hàng tuần |
 
 **Mẫu thiết kế trong production**: Sử dụng đồng thời nhiều cửa sổ thời gian khác nhau:
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
 
-```python
-# Cấu hình đa cửa sổ cho Z-Score
-scores = {}
-for window in [5, 60, 1440]:  # 5 phút, 1 giờ, 24 giờ
-    history = get_history_window(metric, minutes=window)
-    scores[f"z_{window}m"] = modified_z_score(history, current_value)
+### Case bằng số: vì sao mean/std có thể che incident
 
-# Kích hoạt cảnh báo nếu bất kỳ cửa sổ nào phát hiện bất thường
-# Cửa sổ ngắn = cảnh báo nhanh (tỷ lệ FP cao hơn)
-# Cửa sổ dài = cảnh báo chậm hơn (tỷ lệ FP thấp hơn, độ tin cậy cao hơn)
-```
+Giả sử latency lịch sử là **[99, 100, 101, 100, 99, 160] ms** và điểm mới là **150 ms**. Cửa sổ đã nhiễm một spike 160 từ incident trước. Mean lịch sử là 109,8 ms; standard deviation xấp xỉ 22,5 ms. Z của 150 chỉ khoảng **1,79**, dưới ngưỡng 3, nên standard Z im lặng.
 
-</details>
+Median của lịch sử là 100 ms. Các độ lệch tuyệt đối là **[1, 0, 1, 0, 1, 60]**; MAD theo định nghĩa median là 1 ms nếu dùng quy ước phù hợp cho cửa sổ chẵn. Modified Z của 150 xấp xỉ **33,7**, rõ ràng bất thường. Điểm cũ 160 không kéo tâm và scale robust lên nhiều. Đây là lý do modified Z thường là mặc định tốt hơn cho telemetry có incident lẫn trong history.
+
+Nhưng MAD có failure mode riêng. Với dãy **[100, 100, 100, 100, 100, 101]**, MAD bằng 0. Không thể chia cho 0 và cũng không nên kết luận mọi sai lệch 1 đơn vị là P1. Cách xử lý phải dựa trên độ phân giải metric: đặt scale floor, chẳng hạn 1 ms cho latency; hoặc dùng IQR/scale từ cửa sổ dài hơn. Quy tắc “MAD=0 thì mọi giá trị khác median đều bất thường” chỉ hợp với tín hiệu thực sự rời rạc như desired replicas.
+
+### Case multi-window: spike nhanh hay thay đổi bền vững
+
+Error count mỗi phút là **[2, 1, 2, 2, 3, 14, 15, 13]**. Cửa sổ 5 phút phát hiện 14 ngay, nhưng chỉ có ít mẫu nên dễ nhiễu. Cửa sổ 1 giờ, với baseline quanh 2, xác nhận khi 14–15 lặp lại. Policy thực tế có thể cho tín hiệu 5 phút vào Slack ở điểm đầu và chỉ page khi cửa sổ 1 giờ đồng thuận hoặc error-budget burn vượt ngưỡng.
+
+Ngược lại, chuỗi **[2, 1, 2, 2, 3, 14, 2, 1]** là spike một phút. Nếu service có retry che được và SLO không burn, gate “hai hoặc ba cửa sổ liên tiếp” loại page. Nếu metric là số replica ready và 14 đại diện lỗi dữ liệu bất khả thi, domain rule lại có thể xử lý ngay. Thuật toán không thay policy.
+
+### Khi Z-score cho câu trả lời sai dù phép tính đúng
+
+RPS 24 giờ có chuỗi thấp ban đêm và cao ban ngày. Mean toàn ngày 500, standard deviation 300; điểm 100 lúc 14:00 có Z chỉ −1,33 nên tưởng bình thường, trong khi cùng giờ thường phải 800. Điểm 850 lúc 02:00 cũng chỉ khoảng +1,17 nhưng là bot storm. Vấn đề không nằm ở Z-score; reference window đã trộn hai regime. Trước khi chỉnh ngưỡng, hãy sửa cohort so sánh: cùng minute-of-day, cùng weekday hoặc residual sau STL.
 
 ### Output
 
@@ -636,23 +445,7 @@ Nhiều metrics mang **tính chu kỳ theo mùa (seasonal patterns)**: cao hơn 
 
 **STL** (Seasonal and Trend decomposition using Loess) phân tách chuỗi thời gian thành:
 
-```
-Metric = Trend + Seasonal + Residual
 
-Trong đó:
-  Trend:    Xu hướng dài hạn (CPU tăng dần qua các tuần)
-  Seasonal: Thành phần lặp lại theo chu kỳ (mô hình hàng ngày/hàng tuần)
-  Residual: Phần dư còn lại sau khi loại bỏ xu hướng và chu kỳ — đây là phần chúng ta sử dụng để phát hiện bất thường
-```
-
-```
-Dữ liệu gốc:  [50, 45, 40, 70, 80, 85, 75, 50, 45, 40, 200, ...]
-                                                          ↑ điểm bất thường
-Sau phân tách:
-Trend:     [50, 50, 50, 50, 50, 50, 50, 51, 51, 51, 51, ...]
-Seasonal:  [-5, -10, -15, +20, +30, +35, +25, -5, -10, -15, -15, ...]
-Residual:  [5, 5, 5, 0, 0, 0, 0, 4, 4, 4, 164, ...]  ← 164 rõ ràng là bất thường!
-```
 
 ### Input data trên pipeline AIOps
 
@@ -677,89 +470,33 @@ Residual:  [5, 5, 5, 0, 0, 0, 0, 4, 4, 4, 164, ...]  ← 164 rõ ràng là bất
 5. Score = `|residual| / threshold`; bất thường nếu score > 1.
 6. Cache seasonal+trend; điểm streaming: residual ≈ `x − trend_est − seasonal_tại_pha` đến lần re-fit sau.
 
-### STL Implementation
+### Case bằng số: cùng giá trị 145, một lần bình thường và một lần bất thường
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Giả sử ta lấy một điểm mỗi bốn giờ. Bốn ngày bình thường có hình dạng lặp:
 
-```python
-from statsmodels.tsa.seasonal import STL
-import numpy as np
-import pandas as pd
+| Pha trong ngày | Ngày 1 | Ngày 2 | Ngày 3 | Ngày 4 | Seasonal kỳ vọng gần đúng |
+|----------------|--------|--------|--------|--------|---------------------------|
+| 00:00 | 22 | 20 | 23 | 21 | 21,5 |
+| 04:00 | 28 | 30 | 29 | 31 | 29,5 |
+| 08:00 | 82 | 85 | 84 | 86 | 84,3 |
+| 12:00 | 143 | 147 | 145 | 149 | 146,0 |
+| 16:00 | 121 | 124 | 122 | 126 | 123,3 |
+| 20:00 | 68 | 71 | 70 | 72 | 70,3 |
 
-class STLDetector:
-    def __init__(
-        self,
-        period: int = 288,       # 24 giờ với khoảng cách 5 phút (288 điểm)
-        seasonal: int = 7,       # Băng thông bộ làm mịn chu kỳ (phải là số lẻ)
-        trend: int = None,       # Bộ làm mịn xu hướng (None = tự động: phải > period)
-        threshold_multiplier: float = 3.0,
-    ):
-        self.period = period
-        self.seasonal = seasonal
-        self.trend = trend
-        self.threshold = threshold_multiplier
+Ngày thứ năm, RPS lúc 12:00 là **145**. Nếu dùng threshold toàn ngày “trên 130 là cao”, điểm này bị gắn cờ; nếu dùng Z-score trên toàn bộ 24 điểm, nó cũng nằm ở phần đuôi trên. STL lại tách seasonal khoảng 124,5 cao hơn mức trung bình ngày và trend khoảng 21,5, cho expected xấp xỉ 146. Residual là **−1**, hoàn toàn bình thường.
 
-    def detect(self, values: pd.Series) -> pd.DataFrame:
-        """
-        Phát hiện bất thường sử dụng phân tách STL.
-        Yêu cầu tối thiểu 2×period quan sát để có kết quả tin cậy.
-        """
-        if len(values) < 2 * self.period:
-            raise ValueError(f"Yêu cầu tối thiểu {2 * self.period} quan sát, hiện có {len(values)}")
+Cũng giá trị **145** nhưng xuất hiện lúc 00:00. Expected lúc đó xấp xỉ 22; residual **+123**. Đây có thể là crawler, retry storm hoặc timestamp sai. STL phát hiện vì nó so với đúng pha mùa vụ. Điểm mạnh không phải một công thức threshold mới mà là thay câu hỏi từ “145 có lớn không?” thành “145 có hợp lý vào lúc 00:00 không?”.
 
-        # Khớp mô hình STL
-        stl = STL(
-            values,
-            period=self.period,
-            seasonal=self.seasonal,
-            trend=self.trend,
-            robust=True,          # Bền vững với các điểm ngoại lai khi fitting
-        )
-        result = stl.fit()
+### Case trend: tăng trưởng không nên bị gọi là incident
 
-        # Phần dư (Residuals) là những gì còn lại sau khi loại bỏ trend + seasonal
-        residuals = result.resid
+Đỉnh trưa qua bảy tuần là **[100, 104, 108, 112, 116, 120, 124]** do lượng khách tăng đều. Seasonal pattern vẫn giống nhau, trend tăng khoảng 4 mỗi tuần. Một baseline cố định từ tuần đầu sẽ gọi 120 và 124 là anomaly. STL đưa phần tăng chậm vào trend; residual vẫn nhỏ. Nhưng nếu capacity chỉ chịu được 130, “không bất thường” không có nghĩa “không rủi ro”: forecasting/capacity alert phải cảnh báo time-to-saturation. Anomaly detection và capacity planning giải hai bài toán khác nhau.
 
-        # Tính toán robust threshold cho bất thường từ phần dư
-        mad = np.median(np.abs(residuals - np.median(residuals)))
-        threshold = self.threshold * mad * 1.4826  # Đưa MAD về đơn vị độ lệch chuẩn
+### STL không tốt khi nào, và vì sao
 
-        # Anomaly score: trị tuyệt đối của phần dư đã chuẩn hóa
-        anomaly_scores = np.abs(residuals) / threshold
+Nếu period khai báo sai, phép trừ seasonal tạo ra anomaly giả. Metric có chu kỳ 24 giờ nhưng cấu hình 12 giờ sẽ buộc peak sáng và peak tối vào cùng một pha. Residual hình răng cưa dù hệ thống khỏe. Với tuần có cuối tuần rất khác ngày thường, chỉ period ngày cũng chưa đủ; cần multiple seasonality hoặc tách weekday/weekend.
 
-        return pd.DataFrame({
-            "original": values,
-            "trend": result.trend,
-            "seasonal": result.seasonal,
-            "residual": residuals,
-            "anomaly_score": anomaly_scores,
-            "anomaly": anomaly_scores > 1.0,
-        }, index=values.index)
+STL cũng yếu khi lịch hoạt động thay đổi bất quy tắc. Một chiến dịch marketing bắt đầu 19:37, một kỳ nghỉ không lặp hàng tuần, hay batch được dời lịch đều là event context chứ không phải seasonality ổn định. Dãy **[20, 22, 21, 23, 95, 98, 96]** sau khi campaign bắt đầu có thể là normal mới; STL cũ sẽ báo liên tục cho đến khi trend/season hấp thụ nó. Change calendar và re-baseline có kiểm soát phải đứng cạnh detector.
 
-
-# Vận hành trong thực tế: chạy rolling STL với dữ liệu lịch sử 7 ngày
-def detect_streaming(metric_name: str, current_window: pd.Series) -> dict:
-    detector = STLDetector(
-        period=288,           # 24 giờ ở độ phân giải 5 phút
-        seasonal=7,
-        threshold_multiplier=3.5,
-    )
-    
-    result = detector.detect(current_window)
-    latest = result.iloc[-1]
-    
-    return {
-        "anomaly": bool(latest["anomaly"]),
-        "score": float(latest["anomaly_score"]),
-        "trend": float(latest["trend"]),
-        "seasonal_component": float(latest["seasonal"]),
-        "residual": float(latest["residual"]),
-        "algorithm": "stl",
-    }
-```
-
-</details>
 
 ### STL Latency and Compute
 
@@ -839,36 +576,19 @@ Threshold residual STL thuần có thể (a) miss nhiều outlier đồng thời
 5. So critical value ở mức `alpha`; significant thì đánh dấu và loại; không thì dừng.
 6. Trả danh sách index bất thường (và có thể thứ hạng).
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+### Case bằng số: bóc nhiều outlier thay vì để chúng che nhau
 
-```python
-# SHESD khả dụng thông qua pyod hoặc thư viện anomalydetection
-from anomalydetection.exceptions import InvalidInputDataError
+Sau khi loại seasonal và trend, residual của 12 cửa sổ là **[1, −2, 0, 1, 2, −1, 38, 0, −2, 35, 1, −1]**. Hai điểm 38 và 35 có thể là hai phút lỗi trong cùng giờ. Nếu dùng mean/std trực tiếp trên toàn bộ residual, cả hai cực trị cùng kéo mean lên khoảng 6 và độ phân tán lên mạnh, làm mỗi điểm trông bớt cực đoan.
 
-def shesd_detect(values: list, max_anomalies: float = 0.05, alpha: float = 0.05) -> list:
-    """
-    Seasonal Hybrid ESD (SHESD)
-    
-    max_anomalies: tỷ lệ điểm bất thường tối đa kỳ vọng trong dữ liệu (ví dụ: 0.05 = 5%)
-    alpha: mức ý nghĩa cho kiểm định thống kê
-    
-    Trả về danh sách các chỉ mục (indices) của các điểm bất thường
-    """
-    from anomalydetection.algorithms import SHESD
-    
-    detector = SHESD(
-        max_anoms=max_anomalies,
-        alpha=alpha,
-        direction="both",          # Phát hiện cả tăng đột biến và sụt giảm đột biến
-        e_value=False,
-        longterm=True,             # Sử dụng trung vị từng đoạn cho chuỗi có xu hướng trôi
-    )
-    
-    return detector.detect(values)
-```
+ESD xử lý lặp. Vòng đầu, 38 xa tâm nhất; detector kiểm tra nó có vượt critical value ở mức ý nghĩa đã chọn hay không. Nếu có, 38 được ghi nhận và tạm loại. Scale được tính lại trên 11 điểm còn lại; lúc này 35 nổi bật hơn rất nhiều và được kiểm tra ở vòng hai. Sau khi loại 35, các residual còn lại chỉ từ −2 đến 2; vòng ba dừng. Output là hai timestamp, không phải mười hai score rời rạc.
 
-</details>
+`max_anomalies` là một budget chứ không phải “tỷ lệ sự cố thật”. Với 100 điểm và mức 5%, thuật toán chỉ được kiểm tra tối đa 5 ứng viên. Nếu một outage kéo dài 20 điểm, SHESD có thể chỉ nhãn năm điểm cực đoan; correlation phải hiểu đó là một episode, không kết luận mười lăm điểm còn lại bình thường. Nếu tăng budget lên 30% để bắt cả outage, detector dễ bắt luôn residual bình thường khi dữ liệu ít. Tham số phải khớp mục tiêu: tìm vài điểm bẩn trong window hay phân đoạn một incident dài.
+
+### Case SHESD không tốt: level shift kéo dài
+
+Residual **[0, 1, −1, 0, 1, 20, 21, 20, 22, 21, 20, 21]** không phải vài outlier độc lập mà là một level shift từ vị trí thứ sáu. ESD có thể lần lượt bóc các điểm 22, 21, 21… cho tới khi chạm budget, tạo ấn tượng có nhiều spike. Hành động đúng là change-point/regime detector hoặc incident segmentation: đánh dấu một sự kiện bắt đầu tại điểm 6 và kéo dài. Khi failure mode là “đổi trạng thái”, thuật toán point-outlier không mô tả đúng bản chất dù vẫn tìm thấy số lạ.
+
+Với cửa sổ chỉ 10–20 điểm, critical value và scale rất không ổn định. SHESD cần đủ dữ liệu qua nhiều period; không nên dùng nó làm first alert cho service vừa tạo sáng nay. EWMA có warm-up hoặc rule nghiệp vụ phù hợp hơn cho cold start.
 
 ### Output
 
@@ -929,27 +649,7 @@ Xây dựng nhiều cây quyết định ngẫu nhiên (random trees):
 
 **Điểm bất thường = độ sâu trung bình của cây quyết định mà tại đó điểm dữ liệu bị cô lập**
 
-```
-Điểm bình thường: cần nhiều lần phân tách để cô lập (nằm sâu trong cây) → điểm bất thường thấp
-Điểm bất thường: bị cô lập rất nhanh (nằm gần gốc cây) → điểm bất thường cao
-```
 
-```mermaid
-graph TD
-    subgraph Tree["Isolation Tree"]
-        ROOT[Root\nfeature=cpu_usage\nsplit=0.5] 
-        L1[Left\ncpu < 0.5]
-        R1[Right\ncpu >= 0.5]
-        L2[Left\nerror_rate < 0.02]
-        ANOMALY[⚠️ ANOMALY\nbị cô lập ở độ sâu 2!\ncpu=0.95, error=0.8]
-        NORMAL1[Cụm bình thường\nbị cô lập ở độ sâu 6]
-        ROOT --> L1 --> L2 --> NORMAL1
-        ROOT --> R1 --> ANOMALY
-    end
-
-    style ANOMALY fill:#dbeafe,color:#1e293b
-    style NORMAL1 fill:#dcfce7,color:#1e293b
-```
 
 ### Input data trên pipeline AIOps
 
@@ -971,89 +671,32 @@ graph TD
 5. Tuỳ chọn: nhãn cứng qua `predict` theo contamination.
 6. Emit event kèm top feature đóng góp nếu có lớp explainability.
 
-### Implementation
+### Case bằng số: từng metric bình thường, tổ hợp lại bất thường
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Một service khỏe có các snapshot `(CPU %, error %, p99 ms)` như sau:
 
-```python
-from sklearn.ensemble import IsolationForest
-import numpy as np
-from typing import List
+| Snapshot | CPU | Error | p99 | Diễn giải |
+|----------|-----|-------|-----|-----------|
+| A | 35 | 0,4 | 110 | tải thấp |
+| B | 58 | 0,8 | 145 | tải vừa |
+| C | 78 | 1,3 | 205 | tải cao nhưng ổn |
+| D | 82 | 1,5 | 220 | gần saturation hợp lệ |
+| X | 42 | 7,8 | 310 | ứng viên mới |
 
-class IsolationForestDetector:
-    def __init__(
-        self,
-        contamination: float = 0.05,    # Tỷ lệ bất thường kỳ vọng
-        n_estimators: int = 100,         # Số lượng cây
-        max_samples: int = 256,          # Số mẫu trên mỗi cây (nhỏ hơn = nhanh hơn, ít memory hơn)
-        random_state: int = 42,
-    ):
-        self.model = IsolationForest(
-            contamination=contamination,
-            n_estimators=n_estimators,
-            max_samples=max_samples,
-            random_state=random_state,
-            n_jobs=-1,                   # Sử dụng tất cả các cores CPU
-        )
-        self.is_trained = False
+CPU 42 của X không lạ; error 7,8 có thể vẫn dưới một threshold 10%; p99 310 có thể dưới SLO 350 ms. Nhưng lịch sử không có vùng “CPU thấp, error và latency cùng cao”. Nhiều cây Isolation Forest sẽ cô lập X sớm bằng một split trên error hoặc p99, rồi thêm một split trên CPU. Path trung bình ngắn tạo score cao.
 
-    def train(self, features: np.ndarray):
-        """
-        Huấn luyện trên dữ liệu bình thường (lý tưởng nhất là không chứa bất thường).
-        features: shape (n_samples, n_features)
-        """
-        self.model.fit(features)
-        self.is_trained = True
-        
-    def detect(self, features: np.ndarray) -> np.ndarray:
-        """
-        Trả về điểm bất thường trong khoảng [0, 1]. Cao hơn = bất thường hơn.
-        """
-        if not self.is_trained:
-            raise RuntimeError("Mô hình phải được huấn luyện trước khi phát hiện")
-            
-        # sklearn trả về raw_score trong khoảng [-0.5, 0.5]
-        # Giá trị âm = bất thường hơn (đặc trưng đặt tên riêng của sklearn)
-        raw_scores = self.model.score_samples(features)
-        
-        # Chuẩn hóa về khoảng [0, 1] trong đó 1 = bất thường nhất
-        normalized_scores = (raw_scores.max() - raw_scores) / (raw_scores.max() - raw_scores.min())
-        
-        return normalized_scores
+Điểm cần nhấn mạnh là model chỉ biết **hình học của feature**, không biết nguyên nhân. X có thể là dependency trả lỗi nhanh, traffic chuyển sang request nặng, hoặc lỗi join feature. Event phải giữ snapshot A–X và context để RCA kiểm tra. Nói “Isolation Forest score 0,91” mà không hiển thị CPU 42/error 7,8/p99 310 gần như vô dụng cho on-call.
 
-# Xây dựng ma trận đặc trưng đa biến cho Isolation Forest
-def build_feature_matrix(
-    metrics: dict,
-    window_minutes: int = 5,
-) -> np.ndarray:
-    """
-    Xây dựng ma trận đặc trưng từ nhiều metrics đồng thời.
-    Đây là thế mạnh của Isolation Forest — phát hiện đa biến.
-    """
-    features = []
-    
-    # Các giá trị hiện tại
-    features.append(metrics.get("cpu_usage", 0))
-    features.append(metrics.get("memory_usage", 0))
-    features.append(metrics.get("error_rate", 0))
-    features.append(metrics.get("request_rate", 0))
-    features.append(metrics.get("latency_p99", 0))
-    
-    # Các thống kê trượt (bắt xu hướng)
-    features.append(metrics.get("cpu_usage_delta_5m", 0))    # Tốc độ thay đổi
-    features.append(metrics.get("error_rate_delta_5m", 0))
-    
-    # Đặc trưng thời gian (mã hóa tính chu kỳ theo mùa)
-    import datetime
-    now = datetime.datetime.utcnow()
-    features.append(now.hour / 24.0)                          # Giờ trong ngày (0-1)
-    features.append(now.weekday() / 7.0)                      # Ngày trong tuần (0-1)
-    
-    return np.array(features).reshape(1, -1)
-```
+### Case contamination làm hỏng quyết định
 
-</details>
+Giả sử mỗi ngày pipeline buộc `contamination=1%` trên 10.000 snapshot. Nó sẽ gắn khoảng 100 điểm bất thường ngay cả ngày hoàn toàn khỏe, vì contamination thường xác định vị trí cắt score chứ không chứng minh có đúng 1% sự cố. Nếu ngày Black Friday hợp lệ có 5% điểm ở regime tải chưa từng train, model lại có thể nhãn 100 điểm cực nhất và bỏ qua phần còn lại. Production nên hiệu chuẩn threshold bằng precision/recall trên incident review, có vùng “không chắc”, và cho phép ngày không có anomaly.
+
+### Case model không tốt: thứ tự thời gian và feature leakage
+
+Hai chuỗi memory cùng chứa các giá trị **[60, 65, 70, 75]**. Chuỗi một đi 60→65→70→75, dấu hiệu leak; chuỗi hai đi 75→60→70→65, chỉ dao động. Nếu Isolation Forest nhận từng snapshot `(memory, CPU, error)` độc lập, nó thấy đúng bốn điểm giống nhau và không phân biệt thứ tự. Thêm slope 15 phút, rolling max, thời gian từ lần giảm gần nhất có thể giúp; nếu quỹ đạo phức tạp, dùng sequence model.
+
+Feature leakage cũng tạo độ chính xác ảo. Nếu vector train có trường “incident_status” hoặc ticket severity được điền sau sự cố, model học một tín hiệu tương lai mà online không có. Split train/test phải theo thời gian và chỉ dùng feature tồn tại tại thời điểm chấm điểm.
+
 
 ### Output
 
@@ -1092,7 +735,7 @@ def build_feature_matrix(
 
 ## 8. DBSCAN — Density-Based Clustering
 
-### Intuition
+### Vấn đề và trực giác
 
 DBSCAN nhóm các điểm dữ liệu nằm gần nhau trong không gian (vùng mật độ cao = cụm dữ liệu bình thường) và gắn nhãn các điểm nằm cô lập (vùng mật độ thấp) là bất thường.
 
@@ -1100,69 +743,30 @@ Các tham số:
 - `epsilon (ε)`: Khoảng cách tối đa giữa hai điểm để được coi là lân cận
 - `min_samples`: Số lượng điểm tối thiểu trong một vùng lân cận để hình thành một cụm
 
-```
-Core point (Điểm lõi): có ≥ min_samples điểm lân cận trong khoảng cách ε → bình thường
-Border point (Điểm biên): nằm trong khoảng cách ε của một core point → bình thường
-Noise point (Điểm nhiễu): không phải điểm lõi cũng không gần điểm lõi nào → BẤT THƯỜNG
-```
+### Case bằng số: tìm trace lạc đàn
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Ta biểu diễn mỗi trace bằng `(duration ms, số span)` và đã scale hai chiều về độ lớn tương đương. Dữ liệu gồm:
 
-```python
-from sklearn.cluster import DBSCAN
-from sklearn.preprocessing import StandardScaler
-import numpy as np
+| Nhóm | Các điểm đại diện | Ý nghĩa |
+|------|-------------------|---------|
+| Fast path | (100, 5), (105, 5), (98, 6), (110, 5) | cache hit |
+| Slow path hợp lệ | (390, 18), (405, 17), (398, 19), (410, 18) | cache miss |
+| Điểm X | (245, 47) | duration giữa hai nhóm nhưng fan-out rất lớn |
 
-def dbscan_detect(
-    features: np.ndarray,
-    epsilon: float = 0.5,
-    min_samples: int = 5,
-) -> np.ndarray:
-    """
-    Phát hiện bất thường dưới dạng các điểm nhiễu (noise points - nhãn=-1) từ DBSCAN.
-    """
-    # Scale các đặc trưng (rất quan trọng đối với DBSCAN - thuật toán nhạy cảm với khoảng cách)
-    scaler = StandardScaler()
-    features_scaled = scaler.fit_transform(features)
-    
-    db = DBSCAN(
-        eps=epsilon,
-        min_samples=min_samples,
-        metric="euclidean",
-        n_jobs=-1,
-    )
-    
-    labels = db.fit_predict(features_scaled)
-    
-    # Nhãn -1 = bất thường (noise point)
-    anomaly_scores = (labels == -1).astype(float)
-    
-    return anomaly_scores, labels
+Với ε đủ để nối các điểm trong từng nhóm và `min_samples=3`, DBSCAN tạo hai cụm normal rồi gắn X là noise. Điều thú vị là slow path 410 ms không bị coi bất thường dù duration cao hơn X, vì nó có hàng xóm cùng hành vi. DBSCAN trả lời “điểm có thuộc một vùng hành vi lặp lại không?”, không trả lời “giá trị có lớn không?”.
 
-# Tìm kiếm epsilon tối ưu: sử dụng biểu đồ k-distance
-from sklearn.neighbors import NearestNeighbors
+Nếu quên scale, duration trải từ 98 đến 410 còn số span chỉ 5 đến 47. Khoảng cách bị duration thống trị; X có thể bị nối nhầm với vùng giữa hai cluster hoặc cấu trúc span gần như bị bỏ qua. Mọi ví dụ khoảng cách đều vô nghĩa nếu đơn vị chưa được xử lý.
 
-def suggest_epsilon(features: np.ndarray, k: int = 5) -> float:
-    """
-    Phương pháp xác định điểm khuỷu (Elbow method) cho epsilon.
-    Vẽ biểu đồ các khoảng cách k-distances và tìm điểm khuỷu (tăng đột biến).
-    """
-    nn = NearestNeighbors(n_neighbors=k)
-    nn.fit(features)
-    distances, _ = nn.kneighbors(features)
-    k_distances = distances[:, -1]
-    k_distances.sort()
-    
-    # Điểm khuỷu của biểu đồ k-distance đã sắp xếp là giá trị epsilon gợi ý
-    # Sử dụng đạo hàm bậc hai để xác định điểm khuỷu lập trình được
-    second_deriv = np.diff(np.diff(k_distances))
-    elbow_idx = np.argmax(second_deriv) + 1
-    
-    return k_distances[elbow_idx]
-```
+### Chọn ε bằng hậu quả, không chỉ bằng elbow
 
-</details>
+ε quá nhỏ biến các điểm biên bình thường thành noise. Trong ví dụ trên, jitter 10–15 ms có thể làm cụm slow path vỡ. ε quá lớn nối fast path và slow path qua các điểm cầu, khiến X cũng được nuốt vào một cụm. Biểu đồ k-distance chỉ đưa ra ứng viên; quyết định phải được kiểm tra trên các trace đã review và trên tỷ lệ noise theo service/version.
+
+DBSCAN đặc biệt yếu khi mật độ khác nhau. Fast path có hàng nghìn trace tụ rất chặt, slow path chỉ vài chục trace rải hơn. Một ε phù hợp fast path có thể xé slow path; ε phù hợp slow path lại nuốt outlier quanh fast path. HDBSCAN hoặc LOF thường tốt hơn, hoặc đơn giản tách cohort cache-hit/cache-miss trước khi cluster.
+
+### Tại sao không dùng DBSCAN trực tiếp cho stream
+
+Khi thêm điểm mới, cấu trúc core/border/noise có thể thay đổi cho cả điểm cũ; DBSCAN cổ điển không sinh score ổn định và không có `predict` tự nhiên như classifier. Trong AIOps, nó hợp với job batch: mỗi 15 phút cluster trace, tìm nhóm lạ, rồi gửi đại diện. Nếu cần scoring từng event với latency cố định, Isolation Forest hoặc một centroid/rule đã đóng băng thực dụng hơn.
+
 
 **DBSCAN Trade-offs**:
 - ✅ Không yêu cầu định nghĩa trước số lượng cụm
@@ -1190,10 +794,6 @@ DBSCAN và khoảng cách global khó khi vùng normal có **mật độ khác n
 
 LOF giải quyết điểm hạn chế của DBSCAN đối với các cụm có mật độ biến thiên. Nó tính toán tỷ lệ mật độ lân cận của một điểm dữ liệu so với mật độ lân cận của chính các điểm hàng xóm của nó.
 
-```
-LOF ≈ 1.0: mật độ tương đương với các điểm lân cận → bình thường
-LOF >> 1.0: mật độ thưa thớt hơn nhiều so với các điểm lân cận → bất thường
-```
 
 Trực giác: nếu 20 láng giềng gần nhất tụ chặt với nhau nhưng xa bạn, bạn là local outlier — kể cả khi bạn nằm trong vùng "bận" của không gian global.
 
@@ -1217,34 +817,21 @@ Trực giác: nếu 20 láng giềng gần nhất tụ chặt với nhau nhưng 
 5. Map LOF (hoặc `score_samples` sklearn) về 0–1 cho ensemble.
 6. Với `novelty=True`, fit history normal rồi chấm điểm mới.
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+### Case bằng số: hai vùng normal có mật độ khác nhau
 
-```python
-from sklearn.neighbors import LocalOutlierFactor
-import numpy as np
+Sau chuẩn hóa, một nhóm API ổn định có latency gần **[0,00; 0,05; 0,08; 0,10; 0,12]**, còn nhóm batch hợp lệ thưa hơn ở **[2,0; 2,4; 2,8; 3,2; 3,6]**. Xét hai điểm mới: A = 0,35 gần nhóm API và B = 4,0 gần nhóm batch.
 
-class LOFDetector:
-    def __init__(self, n_neighbors: int = 20, contamination: float = 0.05):
-        self.model = LocalOutlierFactor(
-            n_neighbors=n_neighbors,
-            contamination=contamination,
-            novelty=True,           # True = cho phép gọi predict() trên dữ liệu mới
-            n_jobs=-1,
-        )
-        
-    def train(self, normal_data: np.ndarray):
-        self.model.fit(normal_data)
-        
-    def detect(self, features: np.ndarray) -> np.ndarray:
-        # negative_outlier_factor_: giá trị càng âm = bất thường hơn
-        scores = -self.model.score_samples(features)
-        # Chuẩn hóa về [0, 1]
-        scores = (scores - scores.min()) / (scores.max() - scores.min() + 1e-10)
-        return scores
-```
+Khoảng cách tới hàng xóm gần nhất của A khoảng 0,23, trong khi các hàng xóm của A cách nhau chỉ 0,02–0,05. Mật độ tại A thấp hơn nhiều mật độ hàng xóm, nên LOF cao: A là local outlier. B cách 3,6 là 0,4, nhưng các điểm batch vốn cách nhau 0,4; mật độ B tương đương hàng xóm, LOF gần 1 và B bình thường. Một distance threshold toàn cục rất dễ xử ngược hai điểm này.
 
-</details>
+### K thay đổi câu hỏi như thế nào
+
+Với k=2, detector nhìn cực cục bộ và dễ phản ứng với jitter hay duplicate. Với k=20, nó so qua nhiều regime và dần giống một phép đo global. Giả sử một canary mới chỉ có 5 pod; k=20 buộc pod canary so với production fleet lớn, nên toàn bộ canary có thể bị gọi lạ dù chúng nhất quán với nhau. Chọn k phải phản ánh kích thước “láng giềng có ý nghĩa” của domain, không phải lấy mặc định thư viện.
+
+LOF còn có vấn đề ở biên cluster và khi feature space nhiều chiều. Khi số chiều tăng, khoảng cách gần và xa trở nên giống nhau; khái niệm hàng xóm mất sức phân biệt. Nếu có 200 tag trace one-hot, hãy giảm chiều hoặc chọn feature theo failure hypothesis trước khi chạy LOF.
+
+### Batch outlier và novelty là hai bài toán khác
+
+Trong batch mode, LOF chấm chính tập đang fit và có thể tìm điểm lạ trong snapshot lịch sử. Trong novelty mode, model phải fit trên dữ liệu normal rồi chấm điểm mới; không được dùng cùng một API/threshold một cách mù quáng vì phân phối score khác. Production cần lưu rõ mode, tập reference và version trong event để postmortem tái lập được quyết định.
 
 ### Output
 
@@ -1310,33 +897,17 @@ One-Class SVM học một **biên giới hạn bao quanh dữ liệu bình thư�
 4. Score thấp/âm → ngoài biên → bất thường; chuẩn hóa 0–1 cho ensemble.
 5. Tune `nu` theo FP holdout; retrain sau shift hành vi lớn.
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+### Case bằng số: biên cong quanh hành vi bình thường
 
-```python
-from sklearn.svm import OneClassSVM
-import numpy as np
+Giả sử hai feature đã scale là CPU và RPS. Hệ thống bình thường đi theo quan hệ gần tuyến tính cong nhẹ: **(20, 100), (30, 170), (40, 250), (50, 340), (60, 440), (70, 550)**. Điểm A = (65, 500) nằm gần dải quan hệ này. Điểm B = (65, 130) có CPU cao nhưng RPS thấp bất thường, có thể do spin loop. Threshold riêng từng chiều không gắn cờ: CPU 65 và RPS 130 đều từng xuất hiện. Kernel RBF có thể tạo biên quanh dải normal và đặt B ra ngoài.
 
-class OneClassSVMDetector:
-    def __init__(
-        self,
-        nu: float = 0.05,      # Giới hạn trên của tỷ lệ outliers
-        kernel: str = "rbf",   # Sử dụng kernel Radial basis function
-        gamma: str = "scale",  # Hệ số kernel
-    ):
-        self.model = OneClassSVM(nu=nu, kernel=kernel, gamma=gamma)
-        
-    def train(self, normal_data: np.ndarray):
-        self.model.fit(normal_data)
-        
-    def detect(self, features: np.ndarray) -> np.ndarray:
-        raw_scores = self.model.score_samples(features)
-        # Càng âm = bất thường hơn. Chuẩn hóa về [0, 1].
-        scores = (-raw_scores - (-raw_scores).min()) / ((-raw_scores).max() - (-raw_scores).min() + 1e-10)
-        return scores
-```
+`gamma` quyết định độ uốn của biên. Gamma quá nhỏ tạo biên rộng, mượt và có thể nuốt B; gamma quá lớn tạo nhiều “hòn đảo” ôm sát từng điểm train, khiến A cũng bị loại chỉ vì lệch nhẹ. `nu` cho phép một phần train nằm ngoài biên; đặt nu=0,1 không có nghĩa production chắc chắn có 10% anomaly, mà là một ràng buộc/giả định trong quá trình fit.
 
-</details>
+### Case không tốt: train “chỉ normal” nhưng thực ra chứa incident
+
+Nếu tập train thêm các điểm **(60, 120), (65, 130), (70, 140)** từ một tuần spin loop không được gắn incident, model mở biên để bao luôn failure mode. B ở trên trở thành normal. Đây là rủi ro cốt lõi của novelty detection: nhãn “không có ticket” không đồng nghĩa dữ liệu khỏe. Trước khi train, nên loại maintenance, deploy lỗi, SLO-burn window và kiểm tra bằng domain review.
+
+OC-SVM cũng khó mở rộng. Với hàng trăm nghìn snapshot, số support vector và ma trận kernel làm train/inference tốn kém; Isolation Forest thường đạt trade-off tốt hơn. Dùng OC-SVM khi có một manifold normal rõ, dữ liệu cỡ vừa và giá trị của biên phi tuyến đã được chứng minh trên holdout—not chỉ vì thuật toán nghe tinh vi hơn.
 
 ### Output
 
@@ -1388,32 +959,6 @@ LSTM (Long Short-Term Memory) là mạng neural hồi quy (recurrent neural netw
 2. Anomaly score = **sai số dự đoán** (giữa giá trị thực tế và giá trị dự đoán)
 3. Sai số dự đoán lớn = chuỗi dữ liệu hiện tại không khớp với các quy luật đã học = bất thường
 
-```mermaid
-graph LR
-    subgraph Input["Input Sequence last 60 values"]
-        T1["X(t-60)"] --> T2["X(t-59)"] --> T3["..."] --> T4["X(t-1)"]
-    end
-
-    subgraph LSTM["LSTM Model"]
-        H1["Hidden State h1"]
-        H2["Hidden State h2"]
-        H3["..."]
-        PRED["Prediction Layer y_hat(t)"]
-    end
-
-    subgraph Compare["Anomaly Score"]
-        ERR["MAE or RMSE |X(t) - y_hat(t)|"]
-        THRESH["Threshold over 3 sigma of training errors?"]
-    end
-
-    T4 --> H1 --> H2 --> H3 --> PRED
-    PRED --> ERR
-    ERR --> THRESH
-
-    style Input fill:#dbeafe,color:#1e293b
-    style LSTM fill:#f3e8ff,color:#1e293b
-    style Compare fill:#dcfce7,color:#1e293b
-```
 
 ### Input data trên pipeline AIOps
 
@@ -1436,161 +981,33 @@ graph LR
 5. `z = (error − μ_err) / σ_err`; bất thường nếu `z > k`.
 6. Score cho ensemble; kèm prediction và error trong context event.
 
-### Implementation
+### Case bằng số: giá trị cuối không lạ, quỹ đạo mới là điều lạ
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Xét hai chuỗi memory percentage, mỗi chuỗi dài 8 điểm:
 
-```python
-import torch
-import torch.nn as nn
-import numpy as np
-from collections import deque
+- Chuỗi bình thường sau batch: **[52, 58, 65, 71, 63, 58, 55, 54]**.
+- Chuỗi nghi rò rỉ: **[52, 55, 58, 61, 64, 67, 70, 73]**.
 
-class LSTMAnomalyDetector(nn.Module):
-    def __init__(
-        self,
-        input_size: int = 1,      # Số lượng đặc trưng trên mỗi bước thời gian
-        hidden_size: int = 64,    # Số hidden units của LSTM
-        num_layers: int = 2,      # Số lớp LSTM xếp chồng
-        seq_len: int = 60,        # Chiều dài chuỗi đầu vào (ví dụ: 60 điểm = 5 phút với khoảng cách 5s)
-        prediction_horizon: int = 1,  # Dự đoán N bước tiếp theo
-        dropout: float = 0.2,
-    ):
-        super().__init__()
-        self.seq_len = seq_len
-        
-        self.lstm = nn.LSTM(
-            input_size=input_size,
-            hidden_size=hidden_size,
-            num_layers=num_layers,
-            batch_first=True,
-            dropout=dropout if num_layers > 1 else 0,
-        )
-        
-        self.fc = nn.Linear(hidden_size, prediction_horizon)
-        
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x shape: (batch_size, seq_len, input_size)
-        lstm_out, _ = self.lstm(x)
-        # Sử dụng hidden state cuối cùng để dự đoán
-        last_hidden = lstm_out[:, -1, :]
-        prediction = self.fc(last_hidden)
-        return prediction
+Giá trị 73 từng xuất hiện trong các batch bình thường nên threshold 80% im lặng, Isolation Forest trên snapshot cũng có thể coi 73 là hợp lệ. Nhưng LSTM đã học rằng sau 3–4 bước tăng, memory thường giảm khi batch kết thúc. Từ context `[58, 61, 64, 67, 70]`, model có thể dự đoán điểm tiếp theo quanh 62; thực tế 73 tạo error 11. Nếu error bình thường trên validation có trung vị 1,8 và ngưỡng 6, điểm này bất thường. Tín hiệu không nằm ở “73 cao”, mà ở “đáng lẽ phải giảm nhưng vẫn tăng”.
 
+Một alert tốt hiển thị cả `actual=73`, `predicted=62`, error 11 và 10 điểm context. Nếu chỉ hiện score 0,94, on-call không biết model đang phản ứng với level, slope hay một feature khác.
 
-class LSTMDetectionService:
-    def __init__(self, model_path: str, seq_len: int = 60, threshold_sigma: float = 3.0):
-        self.model = LSTMAnomalyDetector(seq_len=seq_len)
-        self.model.load_state_dict(torch.load(model_path, map_location="cpu"))
-        self.model.eval()
-        
-        self.seq_len = seq_len
-        self.threshold_sigma = threshold_sigma
-        self.buffer = deque(maxlen=seq_len)
-        
-        # Được hiệu chuẩn từ tập validation
-        self.error_mean = 0.0
-        self.error_std = 1.0
-        
-    def calibrate(self, validation_errors: np.ndarray):
-        """Gọi hàm này với sai số từ tập validation sạch để thiết lập ngưỡng."""
-        self.error_mean = validation_errors.mean()
-        self.error_std = validation_errors.std()
-        
-    def update(self, value: float) -> dict:
-        self.buffer.append(value)
-        
-        if len(self.buffer) < self.seq_len:
-            return {"anomaly": False, "score": 0.0, "reason": "warming_up"}
-        
-        # Xây dựng tensor đầu vào
-        seq = np.array(list(self.buffer), dtype=np.float32)
-        # Chuẩn hóa (sử dụng min-max thu được từ thống kê huấn luyện)
-        seq_normalized = (seq - seq.mean()) / (seq.std() + 1e-8)
-        
-        x = torch.FloatTensor(seq_normalized).unsqueeze(0).unsqueeze(-1)  # (1, seq_len, 1)
-        
-        with torch.no_grad():
-            prediction = self.model(x).item()
-        
-        # Dự đoán cho bước tiếp theo. So sánh với giá trị thực tế tiếp theo
-        # (hoặc với giá trị cuối cùng trong chuỗi đối với thời gian thực)
-        actual = seq_normalized[-1]
-        error = abs(actual - prediction)
-        
-        # Tính toán Z-score của sai số này so với baseline đã hiệu chuẩn
-        z_score = (error - self.error_mean) / (self.error_std + 1e-8)
-        
-        return {
-            "anomaly": z_score > self.threshold_sigma,
-            "score": min(z_score / self.threshold_sigma, 1.0),
-            "error": float(error),
-            "z_score": float(z_score),
-            "prediction": float(prediction),
-            "algorithm": "lstm",
-        }
-```
+### Case false positive: model dự đoán trung bình của hai tương lai hợp lệ
 
-</details>
+Sau chuỗi queue **[3, 4, 5, 4, 5]**, hệ thống có hai workflow bình thường: worker thức dậy làm queue về 0, hoặc batch mới đến làm queue lên 10. Nếu dùng loss bình phương và mô hình không nhận feature lịch batch, dự đoán tối ưu có thể quanh 5. Actual 0 sai 5 và actual 10 cũng sai 5; cả hai path bình thường đều trông bất thường. Đây là multimodality, không phải model “chưa đủ layer”.
 
-### LSTM Training Pipeline
+Cách sửa là thêm context có quan hệ nhân quả như lịch worker/batch, dự đoán một phân phối hoặc nhiều quantile thay vì một con số, hoặc tách hai regime. Tăng sequence length vô hạn không giúp nếu input không chứa tín hiệu phân biệt tương lai nào sẽ xảy ra.
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+### Case train contamination và temporal leakage
 
-```python
-import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
+Tuần train có một outage kéo dài với latency **[120, 125, 310, 480, 500, 470, 220, 130]** nhưng không được loại. Model có thể học cả hình dạng tăng-vọt-rồi-hồi-phục như một sequence hợp lệ. Tháng sau cùng pattern xuất hiện, error dự báo nhỏ và detector im lặng. “Unsupervised” không miễn nghĩa vụ làm sạch training window.
 
-def train_lstm(
-    normal_data: np.ndarray,  # Dữ liệu huấn luyện (lý tưởng nhất là không chứa bất thường)
-    seq_len: int = 60,
-    epochs: int = 50,
-    batch_size: int = 64,
-    learning_rate: float = 1e-3,
-    device: str = "cpu",    # hoặc "cuda"
-) -> LSTMAnomalyDetector:
-    
-    # Xây dựng dataset dạng cửa sổ trượt
-    X, y = [], []
-    for i in range(len(normal_data) - seq_len):
-        X.append(normal_data[i:i + seq_len])
-        y.append(normal_data[i + seq_len])
-    
-    X = torch.FloatTensor(np.array(X)).unsqueeze(-1)  # (n, seq_len, 1)
-    y = torch.FloatTensor(np.array(y))
-    
-    dataset = TensorDataset(X, y)
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-    
-    model = LSTMAnomalyDetector(seq_len=seq_len).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    criterion = nn.MSELoss()
-    
-    for epoch in range(epochs):
-        total_loss = 0
-        for batch_X, batch_y in loader:
-            batch_X, batch_y = batch_X.to(device), batch_y.to(device)
-            
-            optimizer.zero_grad()
-            predictions = model(batch_X).squeeze()
-            loss = criterion(predictions, batch_y)
-            loss.backward()
-            
-            # Gradient clipping (ngăn chặn hiện tượng bùng nổ gradient - exploding gradients của LSTM)
-            nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            
-            optimizer.step()
-            total_loss += loss.item()
-        
-        if epoch % 10 == 0:
-            print(f"Epoch {epoch}, Loss: {total_loss / len(loader):.6f}")
-    
-    return model
-```
+Temporal leakage còn tinh vi hơn: nếu scale toàn bộ tháng trước khi chia train/test, min/max của tuần test đã rò vào train; nếu dùng window vượt qua ranh giới incident, input trước incident có thể chứa điểm tương lai. Chia dữ liệu phải theo thời gian, fit scaler chỉ trên train và đảm bảo mọi feature tồn tại tại event time.
 
-</details>
+### LSTM Training Pipeline dưới góc nhìn quyết định
+
+Không chọn model dựa trên training loss thấp nhất. Hãy replay các incident đã biết và đo: detector cảnh báo sớm hơn SLO bao lâu, có bao nhiêu page giả mỗi service-day, recovery có tạo anomaly ngược không, và model mới có tốt hơn modified Z/slope baseline đủ nhiều để trả chi phí MLOps hay không. Nếu LSTM chỉ cải thiện một chút AUC nhưng tăng gấp ba false page, nó không phải bản nâng cấp production.
+
 
 ### Output
 
@@ -1671,79 +1088,25 @@ Transformers sử dụng cơ chế **tự chú ý (self-attention)** để khai 
 
 ### Key Architecture: Anomaly Transformer
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Điểm khác biệt của Anomaly Transformer là so sánh association học từ dữ liệu với một prior thiên về lân cận thời gian: khi một timestep liên hệ với các điểm khác theo cách rất khác normal, discrepancy tăng. Trong production, vẫn phải quy đổi discrepancy thành threshold đã hiệu chuẩn và cung cấp feature/timestep đóng góp; tên kiến trúc không tự giải quyết bài toán decision.
 
-```python
-import torch
-import torch.nn as nn
-import math
+### Case bằng số: phụ thuộc xa mà window ngắn bỏ lỡ
 
-class AnomalyTransformer(nn.Module):
-    """
-    Mô hình Anomaly Transformer rút gọn cho chuỗi thời gian.
-    Dựa trên nghiên cứu: "Anomaly Transformer: Time Series Anomaly Detection with Association Discrepancy"
-    (Xu et al., ICLR 2022)
-    """
-    def __init__(
-        self,
-        d_model: int = 64,        # Chiều không gian embedding
-        n_heads: int = 8,         # Số lượng attention heads
-        d_ff: int = 256,          # Chiều của lớp feedforward
-        n_layers: int = 3,        # Số lớp Transformer
-        seq_len: int = 100,       # Chiều dài chuỗi đầu vào
-        n_features: int = 5,      # Số lượng đặc trưng đầu vào
-        dropout: float = 0.1,
-    ):
-        super().__init__()
-        
-        # Chiếu đầu vào (Input projection)
-        self.input_proj = nn.Linear(n_features, d_model)
-        
-        # Mã hóa vị trí (Positional encoding)
-        pe = torch.zeros(seq_len, d_model)
-        pos = torch.arange(0, seq_len).float().unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
-        pe[:, 0::2] = torch.sin(pos * div_term)
-        pe[:, 1::2] = torch.cos(pos * div_term)
-        self.register_buffer("pe", pe.unsqueeze(0))
-        
-        # Bộ mã hóa Transformer (Transformer encoder)
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=d_model, nhead=n_heads, dim_feedforward=d_ff,
-            dropout=dropout, batch_first=True
-        )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=n_layers)
-        
-        # Lớp chiếu tái cấu trúc đầu ra (Output reconstruction)
-        self.output_proj = nn.Linear(d_model, n_features)
-        
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x shape: (batch, seq_len, n_features)
-        x = self.input_proj(x) + self.pe[:, :x.size(1), :]
-        x = self.transformer(x)
-        reconstruction = self.output_proj(x)
-        return reconstruction
+Một job settlement chạy qua 12 bước, volume theo checkpoint là **[10, 20, 35, 55, 80, 110, 145, 180, 220, 265, 315, 370]**. Ở execution bình thường, checkpoint 12 phải tương xứng checkpoint 1 và tổng số partition đã mở. Một lần lỗi có dãy **[10, 20, 35, 55, 80, 110, 145, 180, 220, 265, 315, 210]**: điểm 210 tự nó từng là bình thường ở checkpoint 9, nhưng không hợp ở checkpoint 12 sau khi đã đạt 315.
 
-# Điểm bất thường = sai số tái cấu trúc (reconstruction error)
-def compute_anomaly_score(
-    model: AnomalyTransformer,
-    sequence: np.ndarray,     # (seq_len, n_features)
-) -> float:
-    model.eval()
-    x = torch.FloatTensor(sequence).unsqueeze(0)
-    
-    with torch.no_grad():
-        reconstruction = model(x)
-    
-    # Tính sai số tái cấu trúc theo từng điểm
-    error = torch.mean((x - reconstruction) ** 2, dim=-1)  # (1, seq_len)
-    
-    # Trả về sai số cực đại trong chuỗi (phát hiện bước thời gian bất thường nhất)
-    return float(error.max().item())
-```
+EWMA chắc chắn thấy drop và cũng có thể đủ dùng. Transformer chỉ đáng giá nếu quan hệ xa phức tạp hơn: đồng thời có 12 checkpoint, 15 feature và nhiều path hợp lệ; attention giúp mỗi timestep đối chiếu những mốc liên quan trong toàn window. Mô hình có thể tái cấu trúc expected checkpoint cuối là 365, actual 210, error 155 và cho biết feature `completed_partition` đóng góp lớn nhất.
 
-</details>
+### Reconstruction error cũng có thể nói dối
+
+Một autoencoder/Transformer có capacity quá lớn có thể tái cấu trúc cả anomaly tốt. Với dãy train khỏe quanh **[98, 101, 100, 102]**, một model học gần như identity có thể nhận điểm 500 rồi trả lại 498; reconstruction error chỉ 2 và bỏ lỡ spike. Bottleneck, masking, regularization và validation trên anomaly đại diện quan trọng hơn việc thêm tham số.
+
+Chiều ngược lại, một feature rất nhiễu có scale lớn chi phối MSE. Ví dụ error rate lệch 4 điểm phần trăm nhưng network bytes lệch 5.000 đơn vị bình thường; nếu chưa normalize, loss tập trung tái tạo bytes và bỏ qua error. Score tổng phải đi kèm error theo feature, nếu không operator không biết anomaly đến từ tín hiệu kinh doanh hay noise hạ tầng.
+
+### Khi Transformer không đáng dùng
+
+Nếu sequence chỉ là **[100, 101, 99, 100, 180]**, modified Z hoặc EWMA giải thích được, phát hiện nhanh hơn và rẻ hơn. Nếu mỗi service chỉ có ba ngày dữ liệu, Transformer học deployment cụ thể thay vì hành vi tổng quát. Nếu topology đổi hàng tuần, chi phí retrain và drift monitoring có thể vượt giá trị accuracy. Điều kiện để chọn Transformer không phải “dữ liệu là time series” mà là: dependency tầm xa hoặc đa biến đã được chứng minh, đủ lịch sử sạch, replay cho thấy baseline đơn giản thất bại, và tổ chức có khả năng vận hành model versioned.
+
+Một deployment hợp lý thường chạy shadow trước. Ví dụ trong 30 ngày, baseline tạo 18 page với 12 TP; Transformer đề xuất 11 page với 10 TP và phát hiện sớm hơn trung vị 7 phút. Khi đó có bằng chứng để promote. Nếu chỉ báo AUC 0,97 trên random split, chưa có bằng chứng production vì random split phá thứ tự thời gian và dễ leakage.
 
 ### Output
 
@@ -1775,7 +1138,7 @@ def compute_anomaly_score(
 | Research→prod KPI giá trị cao | Chỉ cần toán audit đơn giản |
 | Backfill offline incident lịch sử | Detection edge sub-ms |
 
-**Vận hành**: Transformers mang lại độ chính xác cao nhất hiện nay nhưng đòi hỏi tài nguyên tính toán lớn hơn LSTM. Nên ưu tiên sử dụng cho **huấn luyện mô hình offline** và **phân tích theo lô**. Đối với pipeline AIOps thời gian thực, LSTM là giải pháp thực tế và cân bằng hơn.
+**Vận hành**: Transformer có thể thắng trên dataset có dependency tầm xa và đa biến, nhưng không có thuật toán nào mặc định “chính xác nhất” cho mọi telemetry. Nên ưu tiên nó cho **huấn luyện offline**, **phân tích theo lô** hoặc một số stream giá trị cao sau khi replay chứng minh lợi ích. Đối với pipeline thời gian thực quy mô lớn, thống kê hoặc model nhẹ thường có trade-off tốt hơn; LSTM cũng chỉ hợp lý khi sequence thực sự thêm tín hiệu.
 
 ---
 
@@ -1793,11 +1156,6 @@ Log thô cardinality cao, ồn; match chuỗi không scale. Cần **loại sự 
 
 Logs được ghi nhận từ nhiều dịch vụ khác nhau và chứa cả **văn bản tĩnh** (log template) và **các giá trị động** (các phần biến đổi như IDs, timestamps, values):
 
-```
-Dòng log thô:       "User john@example.com logged in from 192.168.1.1"
-Template (tĩnh):    "User <*> logged in from <*>"
-Các biến động:      ["john@example.com", "192.168.1.1"]
-```
 
 **Drain** nhóm dòng log vào **templates** hiệu quả bằng prefix tree độ sâu cố định và similarity token. Lớp detection phía trên:
 
@@ -1828,122 +1186,31 @@ Các biến động:      ["john@example.com", "192.168.1.1"]
 5. Không thì tăng count template; đưa rate vào EWMA/Z cho anomaly tần suất.
 6. Publish event kèm template string, id, snippet thô, `trace_id` nếu có.
 
-### Drain Implementation
+### Case bằng dữ liệu: từ sáu dòng log thành ba template
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Giả sử service phát các message sau:
 
-```python
-from drain3 import TemplateMiner
-from drain3.template_miner_config import TemplateMinerConfig
-import json
+1. “Payment 8241 completed in 118 ms”
+2. “Payment 8242 completed in 123 ms”
+3. “Payment 8243 completed in 121 ms”
+4. “Payment 8244 failed: upstream timeout”
+5. “Payment 8245 failed: upstream timeout”
+6. “Payment 8246 failed: signature mismatch”
 
-class DrainLogDetector:
-    def __init__(
-        self,
-        sim_threshold: float = 0.4,     # Ngưỡng tương đồng để khớp template
-        depth: int = 4,                  # Độ sâu của cây tiền tố
-        new_template_score: float = 0.9, # Điểm bất thường cao áp cho template mới
-    ):
-        config = TemplateMinerConfig()
-        config.drain_sim_th = sim_threshold
-        config.drain_depth = depth
-        config.drain_max_children = 100
-        
-        self.miner = TemplateMiner(config=config)
-        self.template_counts = {}       # template_id → count
-        self.new_template_score = new_template_score
-        
-    def process(self, log_line: str) -> dict:
-        result = self.miner.add_log_message(log_line)
-        
-        template_id = result["cluster_id"]
-        template = result["template_mined"]
-        is_new_template = result["change_type"] == "created"
-        
-        # Cập nhật số lượng cho template này
-        self.template_counts[template_id] = self.template_counts.get(template_id, 0) + 1
-        
-        # Template mới = nguy cơ bất thường (có code thay đổi, xuất hiện loại lỗi mới)
-        if is_new_template and self.template_counts[template_id] < 3:
-            return {
-                "anomaly": True,
-                "score": self.new_template_score,
-                "reason": "new_log_template",
-                "template": template,
-                "algorithm": "drain",
-            }
-        
-        # Tần suất xuất hiện bất thường cũng có thể là lỗi (được phát hiện riêng qua rate)
-        return {
-            "anomaly": False,
-            "score": 0.0,
-            "template": template,
-            "template_id": template_id,
-            "count": self.template_counts[template_id],
-        }
+Drain hợp nhất ba dòng đầu thành template “Payment <*> completed in <*> ms”, hai dòng tiếp thành “Payment <*> failed: upstream timeout”, và dòng cuối tạo template “Payment <*> failed: signature mismatch”. Từ sáu chuỗi gần như unique, ta có ba event key ổn định với count **[3, 2, 1]**.
 
-# Tích hợp với luồng log stream từ Kafka
-def process_log_stream(kafka_consumer, drain_detector: DrainLogDetector):
-    for msg in kafka_consumer:
-        log_event = json.loads(msg.value())
-        log_line = log_event.get("message", "")
-        
-        result = drain_detector.process(log_line)
-        
-        if result["anomaly"]:
-            publish_anomaly(
-                signal_type="LOG",
-                service=log_event.get("service"),
-                anomaly_type="new_log_template",
-                score=result["score"],
-                context={
-                    "template": result["template"],
-                    "raw_log": log_line[:500],  # Cắt ngắn khi gửi qua Kafka
-                    "trace_id": log_event.get("trace_id"),
-                }
-            )
-```
-
-</details>
+Template thứ ba mới và hiếm, nhưng “mới” không tự động là sự cố. Sau deploy, một log INFO “cache warmed” cũng mới. Severity, release window và nội dung tĩnh phải điều chỉnh quyết định. Với `signature mismatch`, nếu đồng thời payment success giảm, tín hiệu mạnh; nếu chỉ một request từ client cũ và KPI không đổi, ghi nhận/ticket có thể đủ.
 
 ### Log Frequency Anomaly
 
 Bên cạnh các templates mới, tần suất thay đổi đột biến của các templates đã biết cũng phản ánh bất thường:
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Template timeout không mới nên Drain không cảnh báo chỉ vì novelty. Nhưng count mỗi phút **[1, 0, 2, 1, 1, 38, 45, 41]** cho thấy rate storm. Ta đưa count của từng template qua EWMA/modified Z và phát hiện ở 38. Ngược lại, template “node elected leader” có count **[1, 0, 0, 0, 1]**; một lần xuất hiện hiếm nhưng hợp với restart đã biết. Frequency phải được so theo đúng lifecycle.
 
-```python
-from collections import defaultdict, deque
-import time
+Case khó là cardinality explosion. Nếu parser không nhận UUID là biến, ba dòng completed ở trên thành ba template mới; sau 10.000 payment, hệ thống tạo 10.000 anomaly. Nếu parser quá rộng và thay cả token “completed”/“failed” bằng wildcard, success và failure lại bị gộp, làm mất tín hiệu. Chất lượng template được theo dõi bằng tốc độ tạo template mới, tỷ lệ singleton và số template trên nghìn log—không chỉ throughput parser.
 
-class LogFrequencyDetector:
-    def __init__(self, window_seconds: int = 300, threshold_sigma: float = 3.0):
-        self.window = window_seconds
-        self.threshold = threshold_sigma
-        # template_id → deque chứa các timestamps
-        self.template_timestamps = defaultdict(lambda: deque())
-        
-    def update(self, template_id: str) -> dict:
-        now = time.time()
-        
-        # Loại bỏ các timestamps cũ ngoài cửa sổ
-        timestamps = self.template_timestamps[template_id]
-        while timestamps and timestamps[0] < now - self.window:
-            timestamps.popleft()
-        
-        timestamps.append(now)
-        current_rate = len(timestamps) / self.window  # Tần suất số sự kiện/giây
-        
-        # Sử dụng EWMA để theo dõi baseline rate của template
-        # (Trong thực tế, duy trì EWMA riêng cho từng template)
-        # ...
-        
-        return {"template_id": template_id, "rate": current_rate}
-```
+Log JSON đã có field `event_type` ổn định thì không cần ép qua Drain. Dùng trực tiếp event enum chính xác hơn, còn message chỉ phục vụ con người. Drain là giải pháp cho phần cấu trúc bị giấu trong free text, không phải nghi thức bắt buộc cho mọi log.
 
-</details>
 
 ### Output
 
@@ -1997,28 +1264,6 @@ DeepLog dùng **LSTM trên event key log**:
 2. Train LSTM dự đoán **event key tiếp theo** từ history gần  
 3. Anomaly: sự kiện quan sát **không nằm trong top-k** ứng viên  
 
-```mermaid
-graph LR
-    subgraph Parse["Drain"]
-        L[Log lines] --> T[Template IDs]
-    end
-    subgraph Seq["Recent window"]
-        E1[e_{t-10}] --> E2[e_{t-9}] --> E3[...] --> E4[e_{t-1}]
-    end
-    subgraph Model["DeepLog LSTM"]
-        PRED[Top-k next events]
-    end
-    subgraph Decision["Decision"]
-        OBS[Observed e_t]
-        CMP{e_t in top-k?}
-    end
-    T --> Seq --> PRED --> CMP
-    OBS --> CMP
-
-    style Parse fill:#dbeafe,color:#1e293b
-    style Model fill:#f3e8ff,color:#1e293b
-    style Decision fill:#dcfce7,color:#1e293b
-```
 
 ### Input data trên pipeline AIOps
 
@@ -2044,61 +1289,26 @@ graph LR
 6. Score tuỳ chọn: rank sự kiện thật hoặc 1 − softmax probability.  
 7. Emit event kèm window context, top-k, id quan sát.
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+### Case bằng chuỗi ID: đúng thành phần nhưng sai thứ tự
 
-```python
-import torch
-import torch.nn as nn
+Quy ước template ID: 10 = request received, 20 = auth passed, 30 = inventory reserved, 40 = payment charged, 50 = order confirmed, 90 = compensation. Các sequence khỏe lặp:
 
-class DeepLog(nn.Module):
-    """
-    Mô hình LSTM dự đoán sự kiện log tiếp theo trong chuỗi.
-    Bất thường = sự kiện quan sát được nằm ngoài top-k dự đoán.
-    """
-    def __init__(
-        self,
-        num_event_types: int = 1000,    # Từ vựng chứa các loại sự kiện log
-        hidden_size: int = 64,
-        num_layers: int = 2,
-        top_k: int = 9,                 # Coi là bất thường nếu nằm ngoài top-k dự đoán
-        seq_len: int = 10,             # Chiều dài chuỗi sự kiện lịch sử dùng để dự đoán
-    ):
-        super().__init__()
-        self.top_k = top_k
-        
-        self.embedding = nn.Embedding(num_event_types, hidden_size)
-        self.lstm = nn.LSTM(
-            input_size=hidden_size,
-            hidden_size=hidden_size,
-            num_layers=num_layers,
-            batch_first=True,
-            dropout=0.2,
-        )
-        self.fc = nn.Linear(hidden_size, num_event_types)
-        
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        embedded = self.embedding(x)  # shape: (batch, seq_len, hidden_size)
-        lstm_out, _ = self.lstm(embedded)
-        last_out = lstm_out[:, -1, :]
-        logits = self.fc(last_out)
-        return logits
-    
-    def is_anomaly(self, context: list, next_event: int) -> bool:
-        """
-        Dựa trên bối cảnh các sự kiện gần đây, sự kiện next_event tiếp theo có bất thường không?
-        Trả về True nếu next_event KHÔNG nằm trong danh sách top-k dự đoán.
-        """
-        x = torch.LongTensor([context]).unsqueeze(0)  # (1, 1, seq_len)
-        
-        with torch.no_grad():
-            logits = self.forward(x.squeeze(0))
-            top_k_events = torch.topk(logits[0], self.top_k).indices.tolist()
-        
-        return next_event not in top_k_events
-```
+- **[10, 20, 30, 40, 50]** — happy path.
+- **[10, 20, 30, 90]** — inventory được hoàn tác khi payment từ chối.
 
-</details>
+Sequence lỗi là **[10, 20, 40, 30, 50]**. Tất cả ID đều quen thuộc; count từng template trong giờ có thể hoàn toàn bình thường. Nhưng sau context `[10, 20]`, model thường dự đoán 30 nằm trong top-k, không phải 40. Event 40 tạo sequence anomaly: payment bị charge trước khi reserve inventory.
+
+Một case khác là retry storm **[10, 20, 30, 30, 30, 30, 90]**. Template 30 không mới, nhưng việc lặp liên tục sau chính nó hiếm. DeepLog bắt sự chuyển tiếp sai; rate detector cũng có thể bắt nếu storm đủ lớn. Hai detector cung cấp bằng chứng bổ sung: một cái nói workflow lệch, một cái nói volume tăng.
+
+### Top-k: dung sai hay cái cớ để bỏ lỡ
+
+Nếu top-k=1, workflow có nhiều nhánh hợp lệ tạo false positive. Sau inventory 30, cả payment 40 và compensation 90 đều bình thường tùy kết quả gateway. Nếu top-k bằng gần toàn vocabulary, hầu như event nào cũng “được dự đoán” và recall sụp. Chọn k dựa trên coverage các path khỏe và replay path lỗi, đồng thời giữ xác suất/rank để phân biệt ứng viên thứ hai 40% với ứng viên thứ chín 0,01%.
+
+### Grouping sai phá toàn bộ ý nghĩa sequence
+
+Hai request đồng thời có sequence riêng `[10A,20A,30A,40A,50A]` và `[10B,20B,30B,90B]`. Nếu Kafka arrival order bị trộn thành **[10A,10B,20A,20B,30B,30A,90B,40A,50A]** rồi coi đó là một chuỗi service-level, mọi chuyển tiếp đều lạ. Phải group theo trace/session/request và xử lý event đến trễ. Nếu không có identity đáng tin, frequency/template anomaly thực tế hơn DeepLog.
+
+Template drift cũng làm model hỏng dù hệ thống khỏe. Khi thay wording, ID 30 có thể thành ID 73; mọi sequence sau deploy chứa token ngoài từ vựng. Cần version vocabulary cùng model, map template tương đương hoặc chạy shadow/retrain. Suppress mù toàn bộ log mới sau deploy sẽ che chính error template mà deployment gây ra.
 
 ### Output
 
@@ -2134,30 +1344,27 @@ class DeepLog(nn.Module):
 
 ## 15. Algorithm Selection Guide
 
-```mermaid
-graph TD
-    START[Phát hiện bất thường trên metric/log mới] --> Q1{Yêu cầu\nthời gian thực?}
-    
-    Q1 -->|Có| Q2{Có dữ liệu\nhuấn luyện?}
-    Q1 -->|Không, chạy batch| BATCH[Isolation Forest\nhoặc DBSCAN\nhoặc Transformer]
-    
-    Q2 -->|Không| STAT[Thống kê:\nEWMA + Z-Score\n✅ Bắt đầu từ đây]
-    Q2 -->|Có, một phần| Q3{Có tính\nchu kỳ?}
-    Q2 -->|Có, nhiều >2 tuần| Q4{Có tính tuần tự\nthời gian?}
-    
-    Q3 -->|Có| STL_DET[STL + SHESD\nhoặc seasonal Z-Score]
-    Q3 -->|Không| IF[Isolation Forest\ncho đa biến]
-    
-    Q4 -->|Có| LSTM_DET[Mô hình LSTM]
-    Q4 -->|Không| IF2[Isolation Forest\nhoặc One-Class SVM]
-    
-    STAT -.->|Sau 2+ tuần| STL_DET
-    STL_DET -.->|Tổng hợp cùng| LSTM_DET
+Chọn thuật toán từ failure mode đã quan sát, không từ danh sách model đang thịnh hành. Bắt đầu bằng câu hỏi “rule hiện tại bỏ lỡ hoặc báo sai trên dãy nào?”, lưu chính dãy đó thành replay case, rồi chọn detector giải đúng case với chi phí thấp nhất.
 
-    style STAT fill:#dcfce7,color:#1e293b
-    style LSTM_DET fill:#f3e8ff,color:#1e293b
-    style BATCH fill:#dbeafe,color:#1e293b
-```
+### Ba bài toán giống dashboard nhưng cần ba lựa chọn khác nhau
+
+**Case A — spike đơn:** latency **[100, 102, 101, 99, 240, 103]**. EWMA hoặc modified Z bắt rõ, giải thích trong một câu, không cần LSTM.
+
+**Case B — nhịp ngày:** RPS **[20, 80, 140, 75, 22, 82, 145, 78]**. EWMA báo hai lần mỗi ngày; STL tách seasonality và chỉ báo nếu pha tương ứng lệch.
+
+**Case C — quỹ đạo:** memory **[50, 54, 58, 62, 66, 70, 74]**, trong khi peak 74 từng bình thường nhưng luôn phải giảm sau batch. Feature slope + rule time-to-exhaustion có thể đủ; nếu nhiều path và feature tương tác, LSTM mới có lý do tồn tại.
+
+Quy tắc chọn tối giản:
+
+1. Có ranh giới vật lý/nghiệp vụ rõ → threshold, freshness hoặc SLO burn-rate.
+2. Chỉ một metric, không seasonality → modified Z/EWMA.
+3. Có seasonality lặp → STL; cần bóc nhiều outlier trong batch → SHESD.
+4. Tổ hợp snapshot đa metric → Isolation Forest; manifold nhỏ, phi tuyến và curated → OC-SVM/LOF.
+5. Thứ tự/quỹ đạo là tín hiệu cốt lõi → feature temporal trước, LSTM sau.
+6. Context dài, đa biến và baseline đã chứng minh thất bại → cân nhắc Transformer.
+7. Log free text → Drain; thứ tự template theo session → DeepLog.
+
+Mỗi bước đi xuống làm tăng data requirement, latency, drift surface và chi phí giải thích. Chỉ đi xuống khi replay chứng minh lợi ích.
 
 ### Production Recommendation Table
 
@@ -2175,267 +1382,72 @@ graph TD
 
 ## 16. Feature Engineering
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Một model tốt với feature sai vẫn cho kết quả sai rất tự tin. Trong AIOps, feature engineering chủ yếu là làm rõ **tỷ lệ, ngữ cảnh, quỹ đạo và quan hệ nhân quả gần**.
 
-```python
-import numpy as np
-import pandas as pd
-from typing import Dict
+### Case counter: số tuyệt đối tạo anomaly giả
 
-def extract_features(
-    metric_name: str,
-    current_value: float,
-    history: pd.Series,  # N quan sát gần nhất
-    timestamp: pd.Timestamp,
-) -> Dict[str, float]:
-    """
-    Trích xuất các đặc trưng (features) cho mô hình phát hiện bất thường dựa trên ML.
-    """
-    features = {}
-    
-    # === Giá trị hiện tại ===
-    features["value"] = current_value
-    
-    # === Thống kê trượt (trên nhiều cửa sổ thời gian) ===
-    for window in [5, 15, 60, 1440]:    # 5 phút, 15 phút, 1 giờ, 24 giờ (độ phân giải 1 phút)
-        w_data = history.tail(window)
-        if len(w_data) > 0:
-            features[f"mean_{window}m"] = w_data.mean()
-            features[f"std_{window}m"] = w_data.std()
-            features[f"min_{window}m"] = w_data.min()
-            features[f"max_{window}m"] = w_data.max()
-            features[f"z_score_{window}m"] = (
-                (current_value - w_data.mean()) / (w_data.std() + 1e-10)
-            )
-    
-    # === Tốc độ thay đổi (delta) ===
-    if len(history) >= 2:
-        features["delta_1"] = current_value - history.iloc[-1]
-        features["delta_5"] = current_value - history.iloc[-5] if len(history) >= 5 else 0
-        features["delta_15"] = current_value - history.iloc[-15] if len(history) >= 15 else 0
-    
-    # === Đặc trưng thời gian (mã hóa vòng tuần hoàn) ===
-    # Mã hóa thời gian dạng cyclic để giờ 23 nằm gần giờ 0
-    hour = timestamp.hour
-    features["hour_sin"] = np.sin(2 * np.pi * hour / 24)
-    features["hour_cos"] = np.cos(2 * np.pi * hour / 24)
-    
-    dow = timestamp.dayofweek
-    features["dow_sin"] = np.sin(2 * np.pi * dow / 7)
-    features["dow_cos"] = np.cos(2 * np.pi * dow / 7)
-    
-    # Đánh dấu giờ làm việc hành chính (Thứ 2 - Thứ 6, từ 9h đến 18h)
-    features["is_business_hours"] = float(
-        0 <= timestamp.dayofweek <= 4 and 9 <= timestamp.hour < 18
-    )
-    
-    # === Đặc trưng trễ (Lag features) ===
-    for lag in [1, 5, 10, 30, 60]:
-        if len(history) >= lag:
-            features[f"lag_{lag}"] = float(history.iloc[-lag])
-        else:
-            features[f"lag_{lag}"] = current_value
-    
-    # === Đặc trưng Fourier (cho các mô hình lặp định kỳ) ===
-    if len(history) >= 288:  # Tối thiểu 24 giờ dữ liệu ở độ phân giải 5 phút
-        fft_values = np.abs(np.fft.rfft(history.tail(288).values))
-        # Lấy 3 tần số vượt trội nhất
-        top_freqs = np.argsort(fft_values)[-3:]
-        for i, freq in enumerate(top_freqs):
-            features[f"dominant_freq_{i}"] = float(fft_values[freq])
-    
-    return features
-```
+Hai phút có request lỗi **[50, 100]**. Nhìn count, phút hai tăng gấp đôi. Nhưng total request tương ứng **[5.000, 20.000]**, nên error rate là **[1%, 0,5%]**—chất lượng thực ra tốt hơn. Detector nên nhận rate từ hai counter cùng cửa sổ và cùng tập label. Nếu numerator bị trễ 30 giây so với denominator, rate có thể nhảy giả; alignment là một phần của feature, không phải việc dọn dữ liệu phụ.
 
-</details>
+### Case aggregation: trung bình che một pod hỏng
+
+Latency p99 của bốn pod là **[100, 105, 102, 620] ms**. Trung bình 231,75 có thể dưới threshold 300 và che pod thứ tư. Các feature fleet nên gồm max, p95 giữa pod, độ phân tán và tỷ lệ pod vượt ngưỡng; đồng thời giữ identity để route. Ngược lại, chạy detector cho mọi pod ephemeral tạo cardinality/state explosion. Một chiến lược tốt là detect ở service-level trước rồi drill down pod khi service có tín hiệu.
+
+### Case slope và acceleration
+
+Disk usage **[70, 71, 72, 73, 74]** chưa vượt 90 nhưng slope +1 điểm mỗi giờ dự báo còn 16 giờ. Chuỗi **[70, 71, 73, 76, 80]** có acceleration tăng và nguy hiểm hơn dù endpoint mới 80. Level, slope, acceleration và time-to-limit trả lời các câu hỏi khác nhau. Tuy nhiên derivative khuếch đại noise; với **[70, 72, 69, 73, 70]**, slope từng bước rất ồn dù trend gần phẳng. Tính trên window đủ dài và giữ raw value cho giải thích.
+
+### Context feature có thể biến anomaly thành normal
+
+CPU **[45, 47, 46, 88]** trông bất thường. Nếu điểm 88 đi cùng `batch_active=1` và lịch sử batch luôn 85–92%, đó là normal có điều kiện. Nếu thêm `deploy_age_minutes=2`, detector/correlation biết thay đổi vừa xảy ra. Nhưng feature context chỉ dùng được nếu sẵn có đúng event time; không đưa “rollback_successful” được ghi 20 phút sau vào model chấm điểm lúc hiện tại.
+
+### Checklist chất lượng feature
+
+- Đơn vị có nhất quán giữa service, version và tenant không?
+- Missing là 0, unknown hay data gap? Ba nghĩa này không được nhập làm một.
+- Cardinality có bị user ID, URL động hoặc trace ID làm nổ không?
+- Train và online có cùng phép resample, scale, timezone và thứ tự field không?
+- Feature có tồn tại tại thời điểm dự đoán hay là dữ liệu tương lai?
+- Operator có nhìn lại được giá trị raw tạo ra score không?
 
 ---
 
 ## 17. Production Architecture
 
-```mermaid
-flowchart TD
-    subgraph Input["Input Layer"]
-        KF[Kafka Consumer\naiops-raw-metrics]
-        PROM[Prometheus Puller\nfor backfill/training]
-    end
+Kiến trúc production không kết thúc ở model endpoint. Nó cần năm đường độc lập: data path để chấm điểm, state path để giữ baseline/window, context path cho deploy/maintenance/topology, decision path cho dedup/correlation/policy, và feedback path trả TP/FP về đánh giá.
 
-    subgraph StatLayer["Statistical Layer (Real-time)"]
-        EWMA_S[EWMA Service\nPer-metric state\nRedis backend]
-        ZSCORE[Z-Score Service\nRolling window\nRedis backend]
-        STL_S[STL Service\nHourly batch job\nS3 cache]
-    end
+### Failure drill: detector restart giữa incident
 
-    subgraph MLLayer["ML Layer (Near Real-time)"]
-        IF_S[Isolation Forest Service\nBatch inference\nEvery 30s]
-        LSTM_S[LSTM Service\nSequential inference\nGPU optional]
-    end
+Error rate đang đi **[0,7%; 0,8%; 5,2%; 6,1%]** thì replica detector restart. Nếu state chỉ nằm trong memory, replica mới thấy 6,1% như điểm đầu và bước vào warm-up; incident biến mất. Nếu mọi replica cùng đọc/ghi state mà không partition ownership, update có thể đúp và baseline chạy nhanh gấp đôi. State phải có key theo `(tenant, service, metric, label-set)`, version schema, event-time cuối, và ownership nhất quán.
 
-    subgraph LogLayer["Log Anomaly Layer"]
-        DRAIN_S[Drain Service\nReal-time template matching]
-        DEEPLOG_S[DeepLog Service\nSequence prediction]
-    end
+Khi Redis/state store không truy cập được, lựa chọn không chỉ là “crash hay chạy”. Detector thống kê có thể dùng cache local và đánh dấu degraded; model cần window dài có thể ngừng page nhưng tiếp tục kiểm tra freshness; decision layer phải biết confidence giảm. Fail-open tạo page sai từ state rỗng, fail-closed bỏ lỡ incident. Policy khác nhau theo service tier.
 
-    subgraph Ensemble["Ensemble + Threshold"]
-        ENS[Ensemble Combiner\nWeighted voting\nContextual weights]
-        GATE[Confidence Gate\nscore > 0.65?]
-        DEDUP[Deduplicator\nRedis 30s window]
-    end
+### Event contract đủ để điều tra
 
-    subgraph Output["Output"]
-        PUB[Kafka Publisher\naiops-anomalies]
-        METRICS[Prometheus Metrics\nanomaly detection health]
-    end
-
-    KF --> StatLayer
-    KF --> MLLayer
-    KF --> LogLayer
-
-    StatLayer --> ENS
-    MLLayer --> ENS
-    LogLayer --> ENS
-
-    ENS --> GATE --> DEDUP --> PUB
-    StatLayer --> METRICS
-    MLLayer --> METRICS
-
-    style Input fill:#dbeafe,color:#1e293b
-    style StatLayer fill:#dcfce7,color:#1e293b
-    style MLLayer fill:#f3e8ff,color:#1e293b
-    style LogLayer fill:#ffedd5,color:#1e293b
-    style Ensemble fill:#fecaca,color:#1e293b
-```
+Một anomaly event tối thiểu cần: entity và signal identity; event time lẫn processing time; current, expected, residual/score; algorithm và model/state version; window/period; direction và duration; data-quality flags; deploy/maintenance context; top contributing feature; dedup key. Thiếu model version khiến replay không tái lập; thiếu expected khiến on-call không hiểu; thiếu data-quality flag biến scrape gap thành outage application.
 
 ### Ensemble Weighting Strategy
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Không cộng ba score thô nếu chúng không cùng ý nghĩa. Score 0,8 của Isolation Forest là thứ hạng/chuẩn hóa model; Z-score 0,8 có thể là mức dưới threshold; xác suất LSTM cũng chưa chắc calibrated. Trước ensemble, hiệu chuẩn từng output trên validation theo một đại lượng chung như xác suất TP ước lượng hoặc precision bucket.
 
-```python
-def ensemble_score(
-    scores: Dict[str, float],
-    context: Dict[str, str],
-) -> float:
-    """
-    Tính trọng số phối hợp các bộ phát hiện dựa trên ngữ cảnh và lịch sử độ chính xác.
-    """
-    # Trọng số cơ bản dựa trên độ chính xác lịch sử của từng loại metric
-    weights = {
-        "ewma": 0.20,
-        "zscore": 0.20,
-        "stl": 0.25,
-        "isolation_forest": 0.20,
-        "lstm": 0.15,
-    }
-    
-    # Điều chỉnh trọng số theo ngữ cảnh
-    signal_type = context.get("signal_type", "metric")
-    if signal_type == "log":
-        weights = {"drain": 0.50, "deeplog": 0.50}
-    
-    # Tăng trọng số STL trong giờ hành chính (thành phần chu kỳ thời gian quan trọng hơn)
-    if context.get("is_business_hours", False):
-        weights["stl"] *= 1.5
-    
-    # Chuẩn hóa tổng trọng số về 1
-    total = sum(weights.values())
-    weights = {k: v / total for k, v in weights.items()}
-    
-    # Tính điểm số trung bình có trọng số
-    total_score = 0.0
-    total_weight = 0.0
-    
-    for algo, score in scores.items():
-        if algo in weights and score is not None:
-            total_score += weights[algo] * score
-            total_weight += weights[algo]
-    
-    if total_weight == 0:
-        return 0.0
-    
-    return total_score / total_weight
-```
-
-</details>
+Ví dụ EWMA, IF, LSTM cho score **[0,95; 0,42; 0,78]**. Any-vote page ngay; majority với threshold 0,7 có hai vote và cũng page; weighted average có thể khác tùy trọng số. Nhưng nếu EWMA phản ứng với RPS spike hợp lệ sau campaign, còn IF/LSTM thấy health bình thường, majority có thể đúng hơn. Nếu metric là liveness critical và spike/drop một điểm đã là outage, majority lại nguy hiểm. Ensemble policy phải theo failure mode và signal class, không phải một công thức toàn fleet.
 
 ---
 
 ## 18. Model Training and Retraining Pipeline
 
-```mermaid
-graph TD
-    subgraph Collection["Data Collection"]
-        HIST[Historical Prometheus\nmetrics 30+ days]
-        LABEL[Labeled Incidents\nfrom PagerDuty / Jira]
-    end
+Training set cần có manifest: khoảng thời gian, service/version, incident window bị loại, feature schema, scaler, timezone, query source và checksum. “30 ngày gần nhất” không đủ để tái lập vì dữ liệu monitoring có thể downsample hoặc retention thay đổi.
 
-    subgraph Prep["Data Preparation"]
-        CLEAN[Cleaning\nremove incidents from training]
-        SPLIT[Train/Val/Test\n70/15/15 split]
-        NORM[Normalization\nStandard Scaler per metric]
-    end
+### Replay trước khi promote
 
-    subgraph Train["Training"]
-        TRAIN_IF[Train Isolation Forest\nper service cluster]
-        TRAIN_LSTM[Train LSTM\nper metric type]
-        TRAIN_DL[Train DeepLog\nper service]
-    end
+Giả sử model cũ trên 30 ngày tạo 20 page: 15 TP, 5 FP; phát hiện trước customer impact trung vị 4 phút. Model mới tạo 14 page: 13 TP, 1 FP; phát hiện sớm 7 phút. Đây là trade-off có thể promote nếu hai TP bị bỏ không phải P1. Nếu model mới có F1 cao hơn nhưng bỏ đúng outage payment quan trọng nhất, aggregate metric đã che severity.
 
-    subgraph Eval["Evaluation"]
-        PREC[Precision / Recall\non labeled incidents]
-        FPR[False Positive Rate\non normal data]
-        LAT[Inference Latency\nP99 < 100ms]
-    end
-
-    subgraph Deploy["Deployment"]
-        CANARY[Canary: shadow mode\n1 week, compare with prod]
-        PROMOTE[Promote: replace current model]
-        ROLLBACK[Rollback trigger:\nif FPR > 30%]
-    end
-
-    Collection --> Prep --> Train --> Eval
-    Eval -->|Pass threshold| CANARY --> PROMOTE
-    PROMOTE -.->|FPR spike| ROLLBACK
-
-    style Collection fill:#dbeafe,color:#1e293b
-    style Train fill:#f3e8ff,color:#1e293b
-    style Deploy fill:#dcfce7,color:#1e293b
-```
+Quy trình an toàn gồm backtest theo thời gian, replay incident, shadow trên traffic hiện tại, canary một nhóm service, rồi promote có khả năng rollback. Model artifact và threshold/policy phải version cùng nhau; đổi threshold từ 0,8 xuống 0,6 có thể ảnh hưởng lớn hơn đổi weights model.
 
 ### Retraining Schedule
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Không retrain chỉ vì lịch đến ngày. Retrain hàng tháng khi phân phối ổn định là housekeeping; retrain theo sự kiện khi feature schema, topology hoặc traffic mix đổi; retrain khẩn khi FPR/recall suy giảm có bằng chứng. Ngược lại, một spike score sau incident không tự động là concept drift.
 
-```yaml
-retraining_schedule:
-  isolation_forest:
-    frequency: monthly
-    trigger_conditions:
-      - model_drift_detected: true  # Phát hiện lệch phân phối điểm số (KL-divergence)
-      - major_deployment: true      # Triển khai phiên bản dịch vụ mới
-    training_data: last_30_days_normal
-
-  lstm:
-    frequency: weekly
-    trigger_conditions:
-      - false_positive_rate > 0.20
-      - recall < 0.80
-    training_data: last_14_days_clean
-
-  drain_templates:
-    frequency: continuous           # Cập nhật trực tiếp khi xuất hiện mẫu log mới
-    # Không cần huấn luyện theo lô - Drain hoạt động online
-
-  deeplog:
-    frequency: monthly
-    trigger_conditions:
-      - new_service_version: true
-    training_data: last_30_days_logs
-```
-
-</details>
+Với baseline score theo tuần có median **[0,18; 0,19; 0,20; 0,22; 0,31; 0,38]**, cùng FPR tăng 3%→14%, drift đáng điều tra. Nếu median tăng chỉ trong hai giờ deploy rồi về 0,2, đó là transient shift. Retrain lên đúng hai giờ bất thường có thể dạy model rằng deploy lỗi là normal.
 
 ---
 
@@ -2453,62 +1465,11 @@ Dương tính giả (False Positives - FPs) là nguyên nhân hàng đầu gây 
 
 ### FP Reduction Techniques
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Xét anomaly score theo phút **[0,20; 0,91; 0,24; 0,22]**. Gate ba phút liên tiếp loại spike 0,91. Với chuỗi **[0,20; 0,76; 0,83; 0,88]**, gate xác nhận ở phút thứ tư. Ta đổi giảm FP lấy thêm hai phút latency. Với hard-down `up=0`, không nên áp cùng gate; rule liveness có thể page ngay sau hai probe từ hai vị trí.
 
-```python
-def apply_fp_reduction(
-    anomaly_event: dict,
-    recent_anomalies: list,
-    deployment_events: list,
-    maintenance_windows: list,
-) -> dict:
-    """
-    Áp dụng các kỹ thuật giảm thiểu dương tính giả sau khi phát hiện.
-    """
-    
-    # 1. Bỏ qua cảnh báo trong khung thời gian bảo trì (maintenance window) đã lên lịch
-    if is_in_maintenance_window(anomaly_event["timestamp"], maintenance_windows):
-        return {**anomaly_event, "suppressed": True, "reason": "maintenance_window"}
-    
-    # 2. Giảm điểm số nếu bất thường xuất hiện ngay sau một đợt deploy (<15 phút)
-    recent_deployments = [
-        d for d in deployment_events
-        if abs((anomaly_event["timestamp"] - d["timestamp"]).seconds) < 900
-        and d["service"] == anomaly_event["service"]
-    ]
-    if recent_deployments:
-        # Giảm nhẹ điểm số, không bỏ qua hoàn toàn (bất thường sau deploy vẫn cần lưu ý)
-        anomaly_event["score"] *= 0.7
-        anomaly_event["context"]["deployment_correlation"] = True
-    
-    # 3. Liên kết tương quan với kiến trúc phụ thuộc dịch vụ (service dependencies)
-    # Nếu dịch vụ upstream đang có sự cố, bất thường ở downstream
-    # nhiều khả năng là hệ quả kéo theo
-    if has_upstream_incident(anomaly_event["service"]):
-        anomaly_event["score"] *= 0.5
-        anomaly_event["context"]["upstream_incident"] = True
-    
-    # 4. Yêu cầu bất thường phải duy trì liên tục (tránh cảnh báo các đỉnh nhiễu đơn lẻ)
-    same_metric_anomalies = [
-        a for a in recent_anomalies
-        if a["metric"] == anomaly_event["metric"]
-        and a["service"] == anomaly_event["service"]
-        and (anomaly_event["timestamp"] - a["timestamp"]).seconds < 180
-    ]
-    if len(same_metric_anomalies) < 2:  # Bất thường phải kéo dài tối thiểu 3 phút
-        anomaly_event["score"] *= 0.8
-        anomaly_event["context"]["single_spike"] = True
-    
-    # 5. Giảm điểm số trong các khung thời gian có sự kiện tăng tải biết trước (Black Friday, v.v.)
-    if is_known_traffic_event(anomaly_event["timestamp"]):
-        anomaly_event["score"] *= 0.6
-        anomaly_event["context"]["known_traffic_event"] = True
-    
-    return anomaly_event
-```
+Hysteresis ngăn alert rung: mở khi score >0,8 ba phút, chỉ đóng khi score <0,4 năm phút. Chuỗi recovery **[0,85; 0,72; 0,81; 0,55; 0,38; 0,42; 0,35; 0,30; 0,28]** sẽ tạo một incident liên tục thay vì đóng/mở nhiều lần quanh 0,8.
 
-</details>
+Suppression phải có scope và expiry. Maintenance database không được mute latency của mọi service trong region; deploy window không được mute SLO burn; data-gap alert không được suppress chỉ vì detector metric thiếu input. Mỗi suppression cần owner, lý do, service/signal scope và thời điểm hết hạn.
 
 ---
 
@@ -2531,61 +1492,20 @@ def apply_fp_reduction(
 
 ## 21. Monitoring the Detection System
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Detector cũng là production system và có thể “xanh” trong khi hoàn toàn vô dụng. Bốn nhóm chỉ số cần theo dõi:
 
-```promql
-# Throughput xử lý phát hiện bất thường
-rate(aiops_anomaly_detection_events_processed_total[5m])
+| Nhóm | Dấu hiệu | Câu hỏi khi lệch |
+|------|----------|------------------|
+| Input | freshness, gap rate, late-event rate, schema reject | Detector có đang nhìn dữ liệu thật không? |
+| Runtime | throughput, queue lag, inference latency, state hit rate | Kết quả có tới trước khi incident gây hại không? |
+| Output | anomaly rate, score distribution, disagreement, events/page | Threshold/model có bị kẹt hoặc bắn loạn không? |
+| Outcome | precision-at-page, recall incident, lead time, pages/service-day | Hệ thống có giúp on-call không? |
 
-# Tỷ lệ dương tính giả (thống kê từ phản hồi của kỹ sư)
-rate(aiops_anomaly_feedback_total{outcome="false_positive"}[1d])
-/
-rate(aiops_anomaly_feedback_total[1d])
-
-# Phân phối điểm số bất thường của các thuật toán
-histogram_quantile(0.95, rate(aiops_anomaly_score_bucket[5m]))
-
-# Độ trễ suy luận của mô hình
-histogram_quantile(0.99,
-  rate(aiops_detector_inference_duration_seconds_bucket[5m])
-)
-
-# Chỉ số consumer lag (giám sát sức khỏe pipeline)
-kafka_consumer_group_lag_sum{group="anomaly-detector-group"}
-```
-
-</details>
+Canary synthetic là cách kiểm tra end-to-end. Mỗi ngày bơm một series test **[10, 10, 10, 50]** có identity riêng và mong anomaly đi qua topic, correlation tới notification test trong 60 giây. Nếu metric health đều xanh nhưng canary không tới, pipeline có blind spot. Canary không dùng cho đánh giá accuracy, chỉ chứng minh đường truyền và policy còn sống.
 
 ### Critical Alerts
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```yaml
-- alert: AnomalyDetectionHighFPRate
-  expr: |
-    rate(aiops_anomaly_feedback_total{outcome="false_positive"}[24h])
-    /
-    rate(aiops_anomaly_feedback_total[24h]) > 0.20
-  for: 0m
-  labels:
-    severity: warning
-
-- alert: AnomalyDetectorLagHigh
-  expr: kafka_consumer_group_lag_sum{group="anomaly-detector-group"} > 10000
-  for: 10m
-  labels:
-    severity: critical
-
-- alert: AnomalyDetectorDown
-  expr: up{job="anomaly-detector"} == 0
-  for: 2m
-  labels:
-    severity: critical
-```
-
-</details>
+Nên tự page platform team khi consumer lag vượt detection SLO kéo dài, state store unavailable làm detector critical mất context, schema reject tăng đột biến, hoặc không có bất kỳ output/canary nào trong khoảng đáng ngờ. Không page chỉ vì “24 giờ không có anomaly” trên một service yên; so với expected anomaly volume theo fleet và kiểm tra canary trước.
 
 ---
 
@@ -2595,56 +1515,11 @@ kafka_consumer_group_lag_sum{group="anomaly-detector-group"}
 
 Mỗi dịch vụ detector được thiết kế **không trạng thái ở tầng suy luận** (trạng thái lịch sử được lưu trữ tại Redis):
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```yaml
-deployment:
-  statistical_detector:
-    replicas: 3
-    resources:
-      cpu: "1"
-      memory: "2Gi"
-    # Trạng thái: Lưu trữ dữ liệu lịch sử EWMA/Z-Score trên Redis
-    
-  ml_detector:
-    replicas: 2
-    resources:
-      cpu: "2"
-      memory: "4Gi"
-    # Trạng thái: Load các file mô hình từ S3 khi khởi chạy
-    
-  lstm_detector:
-    replicas: 2
-    resources:
-      cpu: "4"
-      memory: "8Gi"
-    # Sử dụng GPU (tùy chọn): Định tuyến tới GPU node pool để suy luận bằng GPU
-    nodeSelector:
-      node.kubernetes.io/instance-type: "g4dn.xlarge"  # Dòng EC2 hỗ trợ GPU của AWS
-```
-
-</details>
 
 ### Partitioned Processing
 
 Để mở rộng quy mô, phân bổ các Kafka partitions cho các replicas detector tương ứng:
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-# Mỗi replica detector chỉ xử lý các partitions được gán cho nó
-# Kafka consumer group sẽ tự động xử lý việc phân bổ này
-# Đối với LSTM (có trạng thái tuần tự): cấu hình sticky assignment để giữ bối cảnh thời gian liên tục trên cùng node
-
-consumer_config = {
-    "partition.assignment.strategy": "sticky",  # Ưu tiên giữ nguyên partition đã gán
-    "group.id": "lstm-detector-group",
-}
-```
-
-</details>
 
 ---
 
@@ -2656,11 +1531,33 @@ consumer_config = {
 - **API endpoints**: Nếu detector phơi bày dịch vụ qua HTTP API, bắt buộc xác thực token OAuth2
 - **Dữ liệu PII**: Không bao giờ đưa các thông tin nhạy cảm của người dùng (user_id, email) vào ma trận đặc trưng tính toán của mô hình
 
+Security của detector không chỉ là mã hóa đường truyền. Một attacker hoặc một lỗi cấu hình có thể thao túng baseline, làm cạn state store, hoặc dùng anomaly event để làm lộ dữ liệu.
+
+### Case baseline poisoning
+
+Giả sử login failure bình thường **[2, 3, 2, 4, 3]** mỗi phút. Attacker tăng rất chậm thành **[5, 7, 9, 12, 16, 21, 27]** để EWMA học theo, thay vì spike ngay lên 100. Nếu detector cập nhật mọi điểm và không có rule security độc lập, baseline bị đẩy lên; brute-force trở thành new normal. Với tín hiệu security, freeze/capped update, slope detector và ngưỡng nghiệp vụ phải tồn tại song song. Không cho anomaly detector tự động “chấp nhận normal mới” chỉ vì hành vi kéo dài.
+
+### Case cardinality denial of service
+
+Một label `path=/search?q=<random>` tạo hàng triệu series và từng state EWMA riêng. Dù mỗi state chỉ vài chục byte, key metadata, TTL và network có thể làm Redis/Kafka quá tải. Trước detection phải chuẩn hóa route, drop query động, enforce quota theo tenant và giới hạn số identity mới mỗi phút. Một spike cardinality là data-plane/security incident, không phải lý do autoscale detector vô hạn.
+
+### Model artifact và feature integrity
+
+Artifact cần checksum, chữ ký/provenance, quyền đọc tối thiểu và audit promotion. Nếu model version bị thay mà registry metadata không đổi, replay không thể giải thích. Feature schema cũng là attack surface: đổi thứ tự CPU và error rate vẫn tạo vector số hợp lệ nhưng score vô nghĩa. Consumer phải kiểm tra schema version, range, đơn vị và compatibility; không “best effort” chấm một vector thiếu field critical.
+
+### Dữ liệu trong anomaly event
+
+Không copy nguyên log chứa token, email hay payment payload vào notification. Drain template có thể giữ phần tĩnh, còn snippet thô cần redaction và link có kiểm soát tới hệ log. Trace ID thường ít nhạy hơn payload nhưng vẫn là identifier nội bộ; áp dụng retention và access control. Feedback endpoint phải xác thực và audit vì nhãn FP hàng loạt có thể poison retraining hoặc tạo global suppression.
+
+Khi phát hiện input có dấu hiệu thao túng, detector không nên tự remediation dựa riêng trên anomaly score. Route tới security correlation, giữ raw evidence bất biến theo retention policy, và yêu cầu tín hiệu xác nhận trước hành động gây ảnh hưởng người dùng như block tenant.
+
 ---
 
 ## 24. Cost
 
 ### Compute Cost (Quy mô trung bình: 100 dịch vụ)
+
+Các con số dưới đây chỉ là **kịch bản minh họa**, không phải báo giá cloud cố định. Region, discount, retention và nhịp sampling có thể làm tổng chi phí khác nhiều. Cách đúng là tính theo workload: số series × điểm/giây × detector được kích hoạt × state/window mỗi series.
 
 | Thành phần | Số lượng Replica | Loại Instance sử dụng | Chi phí hàng tháng |
 |-----------|----------|----------|-------------|
@@ -2676,11 +1573,15 @@ consumer_config = {
 - Sử dụng suy luận bằng CPU cho mô hình LSTM nếu yêu cầu độ trễ cho phép (chấp nhận tăng từ 10ms → 100ms)
 - Tổng chi phí sau tối ưu: khoảng **~$1,824/tháng**
 
+Một phép tính thực tế hơn: 100 service × 100 series × một điểm/15 giây tạo khoảng **667 điểm/giây**. Nếu mọi điểm đều đi qua LSTM 20 ms CPU, cần khoảng 13,3 CPU-second mỗi giây trước overhead—không khả thi trên vài core. Nếu EWMA chấm toàn bộ và chỉ 0,5% ứng viên đi vào model nặng, tải LSTM còn khoảng 3,3 điểm/giây. Cascade rẻ→đắt thường tiết kiệm lớn hơn tối ưu vài phần trăm inference.
+
+Cardinality là cost multiplier nguy hiểm. Thêm `user_id` 100.000 giá trị vào key biến 10.000 series thành quy mô không kiểm soát, kéo theo state, window, model calls và anomaly events. Loại label động trước detection thường là biện pháp cost quan trọng nhất.
+
 ---
 
 ## 25. Tư duy sâu: Drift, Ensemble, Feedback Loop & Khi nào KHÔNG dùng ML
 
-Phần này bổ sung **tư duy vận hành** mà code/thuật toán thuần túy không giải quyết được: khi mô hình "đúng về mặt thống kê" nhưng **sai về mặt on-call**, và khi nào bạn nên **cố ý không dùng ML**.
+Phần này bổ sung **tư duy vận hành** mà thuật toán thuần túy không giải quyết được: khi mô hình "đúng về mặt thống kê" nhưng **sai về mặt on-call**, và khi nào bạn nên **cố ý không dùng ML**.
 
 ### 25.1 Concept Drift vs Seasonal vs Deploy-Induced Shift
 
@@ -2696,51 +1597,9 @@ Ba hiện tượng trông giống nhau trên dashboard nhưng đòi hỏi phản
 > [!WARNING]
 > **Anti-pattern**: Coi mọi shift là anomaly. Sau Black Friday hoặc sau migration, mô hình cũ sẽ "la hét" liên tục. Nếu không có **change-aware suppression + retrain**, on-call sẽ mute detector — và bạn mất cả lớp detection khi sự cố thật xảy ra.
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-def classify_shift(
-    metric_series,
-    deploy_events: list,
-    psi_score: float,
-    stl_seasonal_strength: float,
-    now,
-) -> str:
-    """
-    Phân loại kiểu shift trước khi quyết định alert / suppress / retrain.
-    """
-    recent_deploys = [
-        d for d in deploy_events
-        if 0 <= (now - d["ts"]).total_seconds() < 1800  # 30 phút
-        and d["service"] == metric_series.service
-    ]
-    if recent_deploys:
-        return "deploy_induced"
-
-    if stl_seasonal_strength > 0.6 and abs(metric_series.seasonal_z) > 3 and abs(metric_series.trend_z) < 1.5:
-        return "seasonal_expected"
-
-    if psi_score > 0.25:
-        return "concept_drift"
-
-    if metric_series.step_change_detected and metric_series.post_step_stability > 0.8:
-        return "regime_change"
-
-    return "point_or_contextual_anomaly"
-```
-
-</details>
 
 **Playbook quyết định**:
 
-```
-shift_type == seasonal_expected     → không page; ghi annotation Grafana
-shift_type == deploy_induced        → giảm score ×0.7; gắn context deploy; page nếu residual tiếp tục tăng sau warm-up
-shift_type == concept_drift         → alert platform team; trigger retrain; giữ model cũ + shadow
-shift_type == regime_change         → reset baseline; require human "accept new normal"
-shift_type == point_or_contextual   → pipeline anomaly bình thường → Kafka aiops-anomalies
-```
 
 Xem thêm kịch bản seasonality thương mại tại [15 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md) và các sự cố drift thực tế tại [16 — Famous Incidents](../16-famous-incidents/README.vi.md).
 
@@ -2768,26 +1627,6 @@ Xem thêm kịch bản seasonality thương mại tại [15 — E-commerce & Ban
 | Service-tier policy (P1 chỉ cho checkout/payment) | Bảo vệ sleep | Blind spot service nội bộ |
 | Feedback-driven threshold | Học từ on-call | Bias nếu label kém |
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```yaml
-# Policy theo tier — tránh "mọi metric đều page được"
-detection_policy:
-  tier_critical:   # payment, checkout, auth
-    page_min_score: 0.75
-    min_consecutive_windows: 3
-    ensemble: majority  # ≥2 detectors
-  tier_standard:
-    page_min_score: 0.65
-    min_consecutive_windows: 2
-    ensemble: weighted
-  tier_internal:
-    page_min_score: 0.85
-    notify: slack_only  # không PagerDuty
-```
-
-</details>
 
 ### 25.3 Ensemble disagreement — edge cases
 
@@ -2808,47 +1647,6 @@ Ensemble không phải lúc nào cũng "an toàn hơn một model". Các case kh
 > - **3/3 fire ngay sau deploy** → **không** tin ngay; kiểm tra change window trước
 > - **Disagreement kéo dài > 1 giờ trên cùng metric** → ticket cho ML platform (model drift / feature bug)
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-def ensemble_decision(votes: dict, context: dict) -> dict:
-    """
-    votes: {"ewma": 0.9, "iforest": 0.2, "lstm": 0.85}
-    """
-    firing = {k: v for k, v in votes.items() if v >= 0.65}
-    n = len(firing)
-
-    if context.get("in_deploy_window") and n >= 2:
-        return {
-            "action": "annotate_only",
-            "reason": "ensemble_agree_but_deploy_window",
-            "score": sum(votes.values()) / len(votes) * 0.6,
-        }
-
-    if n == 0:
-        return {"action": "drop", "score": 0.0}
-
-    if n == 1 and context.get("tier") == "critical":
-        only = next(iter(firing))
-        # EWMA-only spike trên critical: soft path, chờ confirm
-        return {
-            "action": "soft_alert" if only == "ewma" else "candidate",
-            "score": firing[only],
-            "disagreement": True,
-        }
-
-    if n >= 2:
-        return {
-            "action": "page_candidate",
-            "score": sum(firing.values()) / n,
-            "detectors": list(firing),
-        }
-
-    return {"action": "log_only", "score": max(votes.values())}
-```
-
-</details>
 
 ### 25.4 Labeling feedback loop từ on-call
 
@@ -2865,45 +1663,7 @@ Không có label sạch → không có retrain có ý nghĩa. Nhưng **label t�
 
 **Thiết kế feedback tối thiểu có giá trị**:
 
-```
-Slack/PagerDuty button:
-  [✅ True Positive]  [❌ False Positive]  [🤷 Unsure]  [🔁 Duplicate]
 
-Sau resolve:
-  - Nếu remediation thành công + metric normalize → weak label TP
-  - Nếu auto-close trong 5 phút không action → weak label likely-FP
-  - Postmortem root_cause_service → gán TP cho anomaly cùng service ± window
-```
-
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```python
-def build_retrain_labels(feedback_rows: list, auto_signals: list) -> list:
-    """
-    Kết hợp human feedback + weak labels; loại bỏ low-confidence.
-    """
-    labels = []
-    for row in feedback_rows:
-        if row["label"] == "unsure":
-            continue
-        conf = 0.9 if row["source"] == "postmortem" else 0.7
-        if row["label"] == "false_positive" and row.get("ack_latency_s", 999) < 30:
-            conf *= 0.8  # ack siêu nhanh có thể là "mute fatigue", không chắc FP
-        labels.append({**row, "label_confidence": conf})
-
-    for sig in auto_signals:
-        if sig["type"] == "normalized_after_fix":
-            labels.append({
-                "anomaly_id": sig["anomaly_id"],
-                "label": "true_positive",
-                "label_confidence": 0.6,
-                "source": "auto_verify",
-            })
-    return [x for x in labels if x["label_confidence"] >= 0.55]
-```
-
-</details>
 
 **Chống poisoning feedback**: rate-limit label per user; audit user có tỷ lệ FP > 90% liên tục; tách "mute for me" khỏi "global FP".
 
@@ -2925,15 +1685,6 @@ def build_retrain_labels(feedback_rows: list, auto_signals: list) -> list:
 
 **Cây quyết định nhanh**:
 
-```
-Metric có ngưỡng nghiệp vụ rõ?
-  YES → static / burn-rate / probe
-  NO  → có seasonality mạnh?
-          YES → STL + residual threshold (vẫn chưa cần DL)
-          NO  → multivariate / sequential phức tạp?
-                  YES → IF / LSTM / ensemble
-                  NO  → EWMA + modified z-score là đủ
-```
 
 ### 25.6 Problem-solving playbook khi detector "hỏng im lặng"
 
@@ -2950,6 +1701,102 @@ Metric có ngưỡng nghiệp vụ rõ?
 
 Liên hệ vận hành platform-level: [13 — Production](../13-production/README.vi.md). Cách Big Tech tách detection theo tier: [14 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md).
 
+### 25.7 Case study end-to-end: checkout chậm sau deploy
+
+Phần này ghép các mảnh trong chapter thành một tình huống duy nhất. Mục tiêu là thấy cùng một dãy số đi qua nhiều detector sẽ tạo các bằng chứng khác nhau, và vì sao page không được quyết định chỉ bằng score cao nhất.
+
+#### Dữ liệu quan sát
+
+Service `checkout-api` lấy mẫu mỗi phút. Lúc 19:58 có release mới lên 20% canary; 20:05 rollout đạt 100%. Ba mươi phút dữ liệu được rút gọn thành các chuỗi sau:
+
+| Khoảng | RPS | Error rate | p99 latency | CPU | Memory |
+|--------|-----|------------|-------------|-----|--------|
+| 19:50–19:57 | [790, 805, 798, 812, 808, 801, 815, 807] | [0,7; 0,8; 0,7; 0,9; 0,8; 0,7; 0,8; 0,7]% | [118, 121, 119, 123, 120, 122, 121, 120] ms | [51, 52, 52, 53, 52, 51, 53, 52]% | [61, 61, 62, 62, 62, 63, 63, 63]% |
+| 19:58–20:04 | [810, 806, 799, 803, 811, 808, 805] | [1,0; 1,4; 2,1; 2,9; 3,8; 4,9; 5,7]% | [126, 135, 158, 190, 244, 302, 365] ms | [53, 54, 54, 55, 54, 55, 54]% | [64, 65, 66, 67, 68, 69, 70]% |
+| 20:05–20:11 | [804, 797, 809, 812, 800, 806, 811] | [6,4; 6,9; 7,2; 7,1; 7,4; 7,0; 6,8]% | [410, 438, 452, 449, 461, 447, 440] ms | [55, 54, 55, 56, 55, 55, 54]% | [71, 72, 73, 74, 75, 76, 77]% |
+| 20:12–20:18 sau rollback | [806, 814, 810, 808, 803, 809, 812] | [5,1; 3,4; 2,0; 1,2; 0,9; 0,8; 0,7]% | [390, 310, 228, 170, 135, 124, 121] ms | [54, 54, 53, 53, 52, 52, 52]% | [76, 73, 69, 66, 64, 63, 62]% |
+
+RPS gần như không đổi. Error và latency tăng dần ngay sau canary; CPU cũng không tăng. Memory tăng liên tục rồi giảm sau rollback. Đây là dấu vết của regression ứng dụng/dependency, không giống saturation do tải.
+
+#### Lớp data quality hỏi trước khi hỏi model
+
+Trước khi tin các chuỗi, pipeline kiểm tra bốn điều. Thứ nhất, request total và error counter có cùng label set và cửa sổ hay không. Thứ hai, p99 được tính từ histogram đủ sample, không phải quantile trung bình giữa pod. Thứ ba, điểm 20:02 đến trễ 50 giây có vẫn đặt đúng event time không. Thứ tư, canary và stable có bị aggregate chung đến mức che khác biệt không.
+
+Nếu error counter của canary scrape mỗi 60 giây còn request counter scrape 15 giây, tỷ lệ 3,8% có thể là artifact alignment. Nếu chỉ một pod canary lỗi nhưng aggregate fleet 0,9%, service-level detector có thể báo muộn. Vì vậy giữ cả cohort `version=old/new` trong drill-down nhưng không dùng version làm state key vĩnh viễn sau mỗi deploy.
+
+#### EWMA nhìn thấy gì?
+
+Baseline error trước deploy quanh 0,76%. Với α = 0,3, điểm 1,0% chỉ lệch nhẹ; 1,4% bắt đầu đáng chú ý; chuỗi 2,1→2,9→3,8 tạo residual tăng liên tục. Nếu threshold đã hiệu chuẩn khoảng 0,6 điểm phần trăm, detector có thể fire từ 20:00. Latency EWMA cũng fire quanh 20:01–20:02.
+
+EWMA cho lead time tốt nhưng không biết release 19:58. Nếu decision layer suppress cứng mọi anomaly 30 phút sau deploy, cả cảnh báo biến mất đến 20:28—quá muộn. Policy tốt hơn là đánh dấu `in_change_window`, cho canary anomaly đi qua với route tới deployment controller, và yêu cầu thêm một tín hiệu health hoặc persistence. Ở đây error và latency đồng thuận nên confidence tăng, không giảm.
+
+Khi rollback lúc 20:12, latency vẫn 390 rồi mới giảm. Nếu baseline đã học dãy 440, detector có thể coi 390 là drop anomaly và thậm chí đóng incident quá sớm. Freeze state trước incident giúp recovery được đo so với 120 ms; chỉ resolve khi error/latency gần baseline đủ năm phút.
+
+#### Modified Z và STL nhìn thấy gì?
+
+Modified Z trên cửa sổ một giờ dùng median error gần 0,8% và MAD nhỏ. 2,1% đã cực đoan; nó xác nhận EWMA mà không bị các điểm 6–7% sau đó làm scale phình nhanh. Nhưng sau nhiều giờ nếu incident không đóng và sliding window bị lấp bởi 7%, median sẽ dịch. Incident state/persistence vẫn cần thiết.
+
+STL biết 20:00 là peak traffic tối. Lịch sử có RPS expected 800–850, latency expected 118–130 ms. RPS 805 là seasonal normal, residual nhỏ; latency 365 có residual khoảng +240 ms, rõ bất thường. Nhờ đó pipeline không nhầm traffic cao thông thường với regression. Nếu tối đó là flash sale đã lên lịch và expected RPS 1.600, STL cũ có thể báo RPS spike; campaign context phải giúp chấp nhận regime traffic mới, nhưng không được hợp thức hóa error 5,7%.
+
+#### Isolation Forest nhìn thấy gì?
+
+Vector lúc 20:05 là `(RPS 804, error 6,4%, p99 410, CPU 55%, memory 71%)`. Trong history, p99 400 thường chỉ xuất hiện khi RPS 1.500 và CPU 85%; model chưa thấy “latency rất cao trong khi RPS/CPU bình thường”. Path cô lập ngắn nên score cao. Top contribution nên nói error và latency là khác biệt chính, còn RPS bình thường là context quan trọng.
+
+Nếu model train chỉ trên tháng trước nhưng tháng này serialization mới làm baseline memory cao hơn 10 điểm, memory có thể đóng góp anomaly giả. Đó là lý do feature contribution không được coi là causal attribution và model version phải gắn với release regime.
+
+#### Sequence model nhìn thấy gì?
+
+LSTM thấy memory **[64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77]** tăng không có lần giảm. Nếu batch bình thường chỉ tăng bốn phút rồi hạ, model dự đoán giảm từ khoảng 68 nhưng actual tiếp tục 71–77. Nó bổ sung bằng chứng slow accumulation mà snapshot IF chỉ thấy muộn.
+
+Tuy nhiên latency/error đã đủ để phát hiện. LSTM không nên trì hoãn page chỉ vì chưa đủ sequence length. Vai trò hợp lý là tăng confidence, gợi ý failure shape và giúp phát hiện sớm ở các incident mà error chưa tăng. Đây là ví dụ ensemble không đối xứng: detector nhanh có quyền mở candidate; detector chậm thêm bằng chứng, không có quyền phủ quyết hard signal.
+
+#### Log detector nhìn thấy gì?
+
+Trước deploy, template count mỗi phút cho “upstream request completed” là khoảng 800 và “payload decode fallback” là 0–1. Sau deploy, fallback có dãy **[2, 8, 35, 91, 160, 240]**. Template không mới vì từng xuất hiện hiếm, nên novelty Drain không fire; frequency detector fire mạnh. Một template mới “schema v3 missing optional field” xuất hiện 120 lần và nối bằng trace ID tới các request latency cao.
+
+DeepLog thấy workflow bình thường `[received, validate, call_inventory, call_payment, completed]`. Path lỗi là `[received, validate, decode_fallback, validate, decode_fallback, call_inventory, timeout]`. Lặp fallback và thiếu completed nằm ngoài top-k. Log evidence gợi ý serialization/schema, gần root cause hơn metric anomaly, nhưng correlation phải tránh tạo ba incident riêng từ metric, template rate và sequence.
+
+#### Từ bảy detector xuống một page
+
+Tại 20:02, pipeline có các evidence: EWMA error fire, EWMA latency fire, modified Z xác nhận, STL residual latency cao, Isolation Forest score cao, Drain frequency spike, DeepLog sequence lệch. Nếu page theo detector, on-call nhận bảy notification. Correlation gom theo `checkout-api`, cùng thời gian, cùng release và trace sample; output là một incident card:
+
+| Trường quyết định | Giá trị |
+|-------------------|---------|
+| Tác động | error 3,8% và tăng; p99 244 ms và tăng; RPS ổn định |
+| Bắt đầu | 19:59, một phút sau canary |
+| Thay đổi gần nhất | release `checkout-v3`, rollout 20% lúc 19:58 |
+| Bằng chứng | 4 metric detector đồng thuận; fallback log tăng 160 lần/phút; workflow lệch |
+| Giả thuyết | schema decode fallback làm request chậm và timeout; đây là inference, chưa phải root cause đã xác minh |
+| Hành động | dừng rollout; rollback canary; so sánh trace old/new version |
+| Resolve gate | error <1%, p99 <140 ms, fallback log về baseline trong 5 phút |
+
+Điểm quan trọng là card phân biệt **observation** với **inference**. “Error 3,8%” là đo được; “schema regression” là giả thuyết dựa trên temporal/log correlation. Gắn chữ root cause quá sớm tạo automation nguy hiểm.
+
+#### False-positive đối chứng: chiến dịch hợp lệ
+
+Một tuần sau có campaign lúc 20:00. RPS **[810, 920, 1.150, 1.420, 1.600]**, CPU **[54, 60, 68, 77, 84]**, latency **[121, 126, 134, 148, 165]**, error **[0,8; 0,8; 0,9; 1,0; 1,1]%**. EWMA RPS/CPU fire, STL cũ có thể fire nếu campaign không nằm lịch, Isolation Forest có thể coi vector tải cao là novel. Nhưng health relation vẫn hợp lý: tải tăng cùng CPU, latency tăng vừa phải, error gần baseline; campaign context tồn tại.
+
+Decision layer annotate “expected business event”, mở dashboard capacity nhưng không page incident. Nếu CPU lên 96%, error 4% thì context campaign không được suppress; nó chỉ giải thích nguyên nhân tải, không xóa customer impact. Đây là sự khác biệt giữa **expected change** và **acceptable health**.
+
+#### Data-gap đối chứng: không biến missing thành zero
+
+Nếu scrape bị đứt, RPS có thể được render **[810, 805, null, null, 800]**. Điền null bằng 0 tạo dãy **[810, 805, 0, 0, 800]**, mọi detector báo traffic drop rồi recovery spike. Forward-fill thành 805 lại che mất outage telemetry. Đúng hơn là giữ missing mask, ngừng chấm metric phụ thuộc, và tạo data-quality anomaly “không có mẫu hai phút”. Nếu blackbox probe vẫn cho success, route cho observability pipeline thay vì checkout team.
+
+#### Đánh giá detector trên incident này
+
+Không đếm mỗi phút fire là một TP. Incident từ 19:59 đến 20:17 là một episode. Detector fire 15 phút liên tiếp tạo **một true-positive incident**, không phải 15 TP. Một detector khác fire ba lần trong cùng episode và hai lần ở campaign hợp lệ có confusion theo event: 1 TP, 2 FP; theo point lại có thể trông như 3 TP, 2 FP. Metric point-level thưởng spam.
+
+Các số nên ghi cho replay này là:
+
+- **Detection delay:** từ canary 19:58 đến candidate 20:00 là 2 phút.
+- **Lead time:** từ candidate 20:00 đến SLO breach giả định 20:04 là 4 phút.
+- **Incident recall:** detector/correlation có phát hiện episode hay không.
+- **Page precision:** campaign một tuần sau không page; incident thật có page.
+- **Notification multiplicity:** một incident card, không bảy detector alerts.
+- **Recovery correctness:** chỉ resolve sau năm phút khỏe, không đóng ở điểm rollback đầu tiên.
+
+Case study này là mẫu acceptance test có thể tái sử dụng: thay dãy bằng failure mode thật của từng service, thêm negative control hợp lệ, rồi replay mỗi lần đổi feature, model, threshold hoặc suppression policy. Nếu không có replay bằng số, lời khẳng định “model mới tốt hơn” vẫn chỉ là cảm giác.
+
 ---
 
 ## 26. Production Review
@@ -2958,32 +1805,34 @@ Liên hệ vận hành platform-level: [13 — Production](../13-production/READ
 
 **Các vấn đề nghiêm trọng phát hiện được**:
 
-1. **Kiến trúc phân phối mô hình**: Hướng dẫn trong chương này đang tích hợp chạy trực tiếp mô hình ngay trong code dịch vụ Python. Ở quy mô lớn, điều này gây bất tiện: mỗi lần cập nhật mô hình lại yêu cầu deploy lại dịch vụ. Hãy cân nhắc tách biệt **lớp dịch vụ phục vụ mô hình (model serving layer)** chuyên dụng (như TorchServe, MLflow, SageMaker) kết hợp quản lý phiên bản qua model registry.
+1. **Kiến trúc phân phối mô hình**: Ở quy mô lớn, đóng model artifact vào từng detector khiến mỗi lần cập nhật phải phát hành lại toàn dịch vụ. Cân nhắc tách **lớp model serving** và quản lý phiên bản qua model registry, nhưng chỉ khi độ trễ mạng và vận hành thêm được bù bởi nhu cầu rollout độc lập.
 
-2. **Feature store**: Mã nguồn trích xuất đặc trưng hiện đang bị trùng lặp logic ở nhiều dịch vụ detector khác nhau. Sử dụng một hệ thống **feature store** trung tâm (dựa trên Redis hoặc Feast) giúp thống nhất logic trích xuất và hỗ trợ tái sử dụng đặc trưng hiệu quả.
+2. **Tính nhất quán feature**: Logic trích xuất lặp ở nhiều detector dễ gây training-serving skew. Feature store có thể giúp, nhưng một thư viện/schema versioned và kiểm thử replay thường là bước đầu đơn giản hơn.
 
 3. **Giám sát trôi khái niệm (concept drift)**: Các mô hình có thể bị suy giảm độ chính xác một cách âm thầm. Hãy thiết lập theo dõi phân phối điểm số bất thường sử dụng chỉ số Population Stability Index (PSI). Cảnh báo khi PSI > 0.2 (cho thấy phân phối dữ liệu đã bị lệch và cần kích hoạt huấn luyện lại mô hình).
 
 4. **Tránh rò rỉ thông tin khi gán nhãn**: Khi thực hiện gán nhãn dữ liệu để huấn luyện, cần đặc biệt lưu ý tránh hiện tượng rò rỉ dữ liệu tương lai (temporal leakage). Mô hình LSTM có thể vô tình học trước các thông tin của tương lai. Luôn áp dụng chia tập dữ liệu train/val/test nghiêm ngặt theo dòng thời gian.
 
-5. **Giải pháp LSTM đa biến (LSTNet / TPA-LSTM)**: Đối với các nhóm metrics có mối liên hệ mật thiết (như CPU + memory + error rate), mô hình LSTM đa biến sẽ mang lại hiệu quả tốt hơn so với việc chạy ba mô hình LSTM độc lập cho từng metric. Phần này chưa được đề cập ở phiên bản hiện tại — đánh dấu để bổ sung ở phiên bản V2.
+5. **Sequence đa biến**: Với các metric liên hệ chặt như CPU, memory, error rate, model đa biến có thể hữu ích hơn ba model độc lập, nhưng chỉ sau khi alignment, missing data và feature contribution được xử lý rõ.
 
 6. **Ensemble + change-awareness là bắt buộc production**: Không deploy anomaly detection "trần" không có deploy window, maintenance window, và precision-at-page policy. Xem §25.
 
-### Chapter Scores
+### Production acceptance checklist
 
-| Tiêu chí | Điểm số | Ghi chú |
-|-----------|-------|-------|
-| Technical Accuracy | 9.7/10 | Toàn bộ các thuật toán được trình bày đầy đủ công thức toán học xác thực |
-| Production Readiness | 9.7/10 | Ensemble, FP reduction, drift taxonomy, feedback loop |
-| Depth | 9.8/10 | Giới thiệu đầy đủ 12 thuật toán từ EWMA đến Transformer + edge thinking |
-| Practical Value | 9.8/10 | Có code triển khai Python thực tế + playbook vận hành |
-| Architecture Quality | 9.6/10 | Thiết kế pipeline hoàn chỉnh tích hợp cùng Kafka |
-| Observability | 9.6/10 | Có các câu lệnh PromQL để theo dõi tỷ lệ FP, lag, độ trễ hệ thống |
-| Security | 9.5/10 | Có cấu hình mã hóa model artifacts, chính sách bảo vệ PII |
-| Scalability | 9.6/10 | Hỗ trợ mở rộng ngang, suy luận tối ưu bằng GPU |
-| Cost Awareness | 9.7/10 | Phân rã chi tiết chi phí từng thành phần và phương án tối ưu |
-| Diagram Quality | 9.7/10 | Biểu đồ luồng quyết định, sơ đồ pipeline và LSTM rõ ràng |
+Trước khi cho một detector quyền page, đội vận hành phải trả lời “có” cho các câu sau:
+
+- Có ít nhất một replay dãy số chứng minh baseline đơn giản thất bại và detector mới bắt đúng không?
+- Có replay negative cho seasonality, deploy, maintenance, data gap và recovery không?
+- Alert có current, expected, duration, direction, model/state version và context thay đổi không?
+- Train/test có chia theo thời gian và loại temporal leakage không?
+- Có precision-at-page, incident recall và lead time theo service tier không?
+- Có shadow/canary, rollback model lẫn threshold, và synthetic end-to-end signal không?
+- Khi state store, Kafka hoặc feature join hỏng, hệ thống degrade theo policy nào?
+- Suppression có scope, owner và expiry không?
+- On-call có thể đánh TP/FP/duplicate/unsure mà không làm label trở thành ground truth mù quáng không?
+- Chi phí trên mỗi 1.000 series và cardinality growth có ngân sách không?
+
+Nếu chưa trả lời được, detector vẫn có thể chạy shadow để thu bằng chứng, nhưng chưa nên đánh thức con người lúc 03:00.
 
 ---
 
