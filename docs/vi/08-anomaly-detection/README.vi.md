@@ -16,9 +16,9 @@
 - [10 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — sử dụng ngữ cảnh bất thường
 - [11 — LLM Agent](../11-llm-agent/README.vi.md) — sử dụng tín hiệu bất thường phục vụ điều tra sự cố
 - [13 — Production Operations](../13-production/README.vi.md) — vận hành detector trên production, SLO platform
-- [14 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md) — cách Google/Meta/Netflix vận hành detection ở quy mô lớn
-- [15 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md) — seasonality Black Friday, compliance, latency-critical detection
-- [16 — Famous Incidents](../16-famous-incidents/README.vi.md) — case study drift/deploy-induced false alarms trong sự cố thực
+- [14 — Pattern Library](../14-bigtech-aiops/README.vi.md) — pattern detection và production forces
+- [15 — Domain Packs](../15-ecommerce-banking/README.vi.md) — peak, calendar, compliance và money-path detection
+- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md) — drift, confounder và long-incident scenarios
 
 ## Next Reading
 
@@ -1601,7 +1601,7 @@ Ba hiện tượng trông giống nhau trên dashboard nhưng đòi hỏi phản
 **Playbook quyết định**:
 
 
-Xem thêm kịch bản seasonality thương mại tại [15 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md) và các sự cố drift thực tế tại [16 — Famous Incidents](../16-famous-incidents/README.vi.md).
+Xem thêm seasonality semantics tại [15 — Domain Packs](../15-ecommerce-banking/README.vi.md) và regression scenarios tại [16 — Benchmark Replay](../16-famous-incidents/README.vi.md).
 
 ### 25.2 Alert Fatigue từ mô hình quá nhạy
 
@@ -1699,7 +1699,7 @@ Không có label sạch → không có retrain có ý nghĩa. Nhưng **label t�
 > [!NOTE]
 > **Câu hỏi kiểm tra**: Detector im ắng 48h trên production 100 service — bạn kiểm tra **3 tín hiệu nào trước** trước khi tin rằng "hệ thống khỏe"?
 
-Liên hệ vận hành platform-level: [13 — Production](../13-production/README.vi.md). Cách Big Tech tách detection theo tier: [14 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md).
+Liên hệ vận hành platform-level: [13 — Production](../13-production/README.vi.md). Cách chọn detection pattern theo tier: [14 — Pattern Library](../14-bigtech-aiops/README.vi.md).
 
 ### 25.7 Case study end-to-end: checkout chậm sau deploy
 
@@ -1954,3 +1954,5 @@ Nếu chưa trả lời được, detector vẫn có thể chạy shadow để t
 5. [Anomaly Transformer — Xu et al., ICLR 2022](https://arxiv.org/abs/2110.02642)
 6. [STL Decomposition — Cleveland et al. 1990](https://www.tandfonline.com/doi/abs/10.1080/01621459.1990.10476438)
 7. [LOF: Identifying Density-Based Local Outliers — Breunig et al. 2000](https://dl.acm.org/doi/10.1145/342009.335388)
+
+--8<-- "docs/includes/acceptance-footer.vi.md"

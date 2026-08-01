@@ -985,5 +985,7 @@ Trong case payment, engine không tăng gấp đôi pool dù RCA nói pool exhau
 
 - [11 — Investigation Engine](../11-llm-agent/README.vi.md)
 - [13 — Production Engine](../13-production/README.vi.md)
-- [15 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md)
-- [16 — Famous Incidents](../16-famous-incidents/README.vi.md)
+- [15 — Domain Packs](../15-ecommerce-banking/README.vi.md)
+- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md)
+
+--8<-- "docs/includes/acceptance-footer.vi.md"

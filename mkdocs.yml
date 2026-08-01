@@ -94,6 +94,7 @@ nav:
   - Curriculum: CURRICULUM.md
   - Tiếng Việt:
       - 00 Introduction: vi/00-introduction.vi.md
+      - Acceptance Template: vi/acceptance-template.vi.md
       - 01 Observability: vi/01-observability/README.vi.md
       - 02 OpenTelemetry: vi/02-opentelemetry/README.vi.md
       - 03 Prometheus: vi/03-prometheus/README.vi.md
@@ -108,9 +109,9 @@ nav:
       - 11 LLM Agent: vi/11-llm-agent/README.vi.md
       - 12 Remediation: vi/12-remediation/README.vi.md
       - 13 Production: vi/13-production/README.vi.md
-      - 14 Big Tech AIOps: vi/14-bigtech-aiops/README.vi.md
-      - 15 E-commerce & Banking: vi/15-ecommerce-banking/README.vi.md
-      - 16 Famous Incidents: vi/16-famous-incidents/README.vi.md
+      - 14 AIOps Pattern Library: vi/14-bigtech-aiops/README.vi.md
+      - 15 AIOps Domain Packs: vi/15-ecommerce-banking/README.vi.md
+      - 16 AIOps Benchmark Replay: vi/16-famous-incidents/README.vi.md
   - English:
       - 00 Introduction: en/00-introduction.md
       - 01 Observability: en/01-observability/README.md

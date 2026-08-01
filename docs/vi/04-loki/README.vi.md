@@ -1704,3 +1704,5 @@ North-star:
 4. [Grafana Alloy Documentation](https://grafana.com/docs/alloy/latest/)
 5. [Loki Helm Chart](https://github.com/grafana/loki/tree/main/production/helm/loki)
 6. [Loki TSDB Index](https://grafana.com/blog/2023/11/01/how-grafana-loki-new-tsdb-storage-format-enables-10x-performance-improvements/)
+
+--8<-- "docs/includes/acceptance-footer.vi.md"

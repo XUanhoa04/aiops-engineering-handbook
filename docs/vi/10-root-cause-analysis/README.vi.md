@@ -16,9 +16,9 @@
 - [10 — LLM Agent](../11-llm-agent/README.vi.md) — sử dụng đầu ra của RCA để điều tra và xử lý
 - [11 — Remediation](../12-remediation/README.vi.md) — kết quả RCA giúp định hướng lựa chọn phương án khắc phục
 - [12 — Production Operations](../13-production/README.vi.md) — đo accuracy RCA, game day drills
-- [13 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md) — RCA / incident diagnosis patterns ở Big Tech
-- [14 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md) — RCA cho payment cascade, fraud false-positive confounds
-- [15 — Famous Incidents](../16-famous-incidents/README.vi.md) — bài học correlation≠causation từ outage thực
+- [14 — Pattern Library](../14-bigtech-aiops/README.vi.md) — causal diagnosis patterns
+- [15 — Domain Packs](../15-ecommerce-banking/README.vi.md) — RCA cho payment cascade và fraud confounders
+- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md) — correlation≠causation scenarios
 
 ## Next Reading
 
@@ -773,7 +773,7 @@ Theo dõi cost per RCA result, bytes log scanned, traces fetched, graph nodes vi
 > 4) Giả thuyết có **counter-evidence** đã bị bác?
 > Nếu chỉ (1) temporal gần — ghi `confidence_cap=0.55`.
 
-Bài học outage thật: [15 — Famous Incidents](../16-famous-incidents/README.vi.md).
+Bài kiểm chứng outage class: [16 — Benchmark Replay](../16-famous-incidents/README.vi.md).
 
 ### 20.2 Confounding: deploy + traffic spike cùng lúc
 
@@ -848,7 +848,7 @@ RCA không được thành black hole CPU. On-call cần **hypothesis lúc t+45s
 > [!NOTE]
 > **Câu hỏi kiểm tra**: Confidence 0.94 nhưng chỉ có metric correlation, không log/trace/change — bạn **có được** kích hoạt auto-remediate không? Vì sao?
 
-Drill RCA trên famous outages: [15 — Famous Incidents](../16-famous-incidents/README.vi.md) · vận hành accuracy: [12 — Production](../13-production/README.vi.md).
+Drill RCA bằng [16 — Benchmark Replay](../16-famous-incidents/README.vi.md) · vận hành accuracy: [13 — Production](../13-production/README.vi.md).
 
 ### 20.7 Case study end-to-end: một incident, ba giả thuyết và hai root
 
@@ -1143,3 +1143,5 @@ Nếu chưa đạt, engine chạy shadow và chỉ cung cấp investigation hint
 5. [PC Algorithm — Causal Discovery](https://cran.r-project.org/web/packages/pcalg/vignettes/pcalgDoc.pdf)
 6. [PyTorch Geometric — GNN Library](https://pytorch-geometric.readthedocs.io/)
 7. [Weaviate — Vector Database](https://weaviate.io/developers/weaviate)
+
+--8<-- "docs/includes/acceptance-footer.vi.md"

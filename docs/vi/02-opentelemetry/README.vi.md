@@ -1501,7 +1501,7 @@ Luôn hỏi:
 
 > [!TIP]
 > **Vì sao**
-> Vendor-neutral không miễn nhiễm operational failure. Map sang [Ch13 Big Tech](../14-bigtech-aiops/README.vi.md) / [Ch15 Famous Incidents](../16-famous-incidents/README.vi.md).
+> Vendor-neutral không miễn nhiễm operational failure. Map sang [Ch14 Pattern Library](../14-bigtech-aiops/README.vi.md) và [Ch16 Benchmark Replay](../16-famous-incidents/README.vi.md).
 
 ### 21.1 Agent/sidecar blast radius
 
@@ -1647,3 +1647,5 @@ North-star gợi ý:
 4. [OTLP Specification](https://opentelemetry.io/docs/specs/otlp/)
 5. [OTel Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/)
 6. [Tail Sampling Processor](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/tailsamplingprocessor)
+
+--8<-- "docs/includes/acceptance-footer.vi.md"

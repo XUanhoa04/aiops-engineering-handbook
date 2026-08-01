@@ -17,13 +17,13 @@ Toàn bộ các chương trước đó. Đây là chương tổng hợp các v�
 - [09 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — accuracy feedback, time budget
 - [10 — LLM Agent](../11-llm-agent/README.vi.md) — cost runaway LLM, human override
 - [11 — Remediation](../12-remediation/README.vi.md) — safety gates, blast radius
-- [13 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md) — operating models & maturity at scale
-- [14 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md) — cost/compliance constraints by industry
-- [15 — Famous Incidents](../16-famous-incidents/README.vi.md) — game day scenarios từ outage công khai
+- [14 — Pattern Library](../14-bigtech-aiops/README.vi.md) — reusable production patterns và trade-offs
+- [15 — Domain Packs](../15-ecommerce-banking/README.vi.md) — domain invariants, cost và compliance constraints
+- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md) — game-day và regression scenarios
 
 ## Next Reading
 
-Sau chương này, hãy chuyển sang [13 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md) để học pattern từ Google/Netflix/AWS/Meta/Uber, rồi [14 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md) và [15 — Famous Incidents](../16-famous-incidents/README.vi.md).
+Sau chương này, chuyển sang [14 — Pattern Library](../14-bigtech-aiops/README.vi.md), áp semantics bằng [15 — Domain Packs](../15-ecommerce-banking/README.vi.md), rồi chứng minh bằng [16 — Benchmark Replay](../16-famous-incidents/README.vi.md).
 
 ---
 
@@ -1585,7 +1585,7 @@ kubectl -n aiops get deploy
 
 </details>
 
-Xem thêm kịch bản DR/outage công khai để drill: [15 — Famous Incidents](../16-famous-incidents/README.vi.md).
+Xem thêm kịch bản DR và dependency failure để drill: [16 — Benchmark Replay](../16-famous-incidents/README.vi.md).
 
 ### 15.3 Cost runaway: LLM + retention
 
@@ -1659,7 +1659,7 @@ Không có game day = DR/chaos chỉ là markdown.
 | Quarterly | Prompt injection canary log | Safety gate blocks action | Ch10 |
 | Quarterly | Region AZ loss MSK | DR Mode A | §15.2 |
 | Bi-annual | Full aiops namespace wipe (staging) | Restore order RTO | §15.2 Mode B |
-| Bi-annual | Famous incident replay | Organizational learning | [15 — Famous Incidents](../16-famous-incidents/README.vi.md) |
+| Bi-annual | Benchmark incident replay | Organizational learning | [16 — Benchmark Replay](../16-famous-incidents/README.vi.md) |
 
 <details>
 <summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
@@ -1710,7 +1710,7 @@ Scorecard review: mỗi quý
   Output: 3 improvement bets / quarter (không quá 3)
 ```
 
-Big Tech patterns để benchmark: [13 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md). Industry constraints: [14 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md).
+Reusable patterns: [14 — Pattern Library](../14-bigtech-aiops/README.vi.md). Industry constraints: [15 — Domain Packs](../15-ecommerce-banking/README.vi.md).
 
 ### 15.7 Link drills → famous incidents
 
@@ -1775,7 +1775,7 @@ aiops_flags:
 > [!TIP]
 > Khi leadership hỏi "AIOps xong chưa?", trả lời bằng **scorecard + 3 bets quý này**, không bằng list tools đã cài.
 
-Cross-read: [13 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md) · [14 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md) · [15 — Famous Incidents](../16-famous-incidents/README.vi.md).
+Cross-read: [14 — Pattern Library](../14-bigtech-aiops/README.vi.md) · [15 — Domain Packs](../15-ecommerce-banking/README.vi.md) · [16 — Benchmark Replay](../16-famous-incidents/README.vi.md).
 
 ### 15.10 Definition of Done — “AIOps production” theo 10 câu hỏi
 
@@ -1867,3 +1867,5 @@ Nếu ≥ 8/10: mở rộng theo tier service; scorecard quarterly bắt buộc.
 6. [Prophet: Facebook's Time-Series Forecasting](https://facebook.github.io/prophet/)
 7. [CNCF AIOps Landscape](https://landscape.cncf.io/guide#observability-and-analysis--aiops)
 8. [OpenTelemetry Collector Benchmark](https://opentelemetry.io/docs/collector/benchmarks/)
+
+--8<-- "docs/includes/acceptance-footer.vi.md"

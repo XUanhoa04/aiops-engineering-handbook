@@ -1699,3 +1699,5 @@ North-star:
 5. [AWS Managed Prometheus](https://docs.aws.amazon.com/prometheus/latest/userguide/)
 6. [Google SRE Book — Alerting](https://sre.google/sre-book/practical-alerting/)
 7. [Prometheus Operator](https://github.com/prometheus-operator/prometheus-operator)
+
+--8<-- "docs/includes/acceptance-footer.vi.md"

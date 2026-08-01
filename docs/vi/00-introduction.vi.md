@@ -21,9 +21,9 @@
 - [01 — Observability](01-observability/README.vi.md)
 - [07 — Anomaly Detection](08-anomaly-detection/README.vi.md)
 - [12 — Production](13-production/README.vi.md)
-- [13 — Big Tech AIOps Case Studies](14-bigtech-aiops/README.vi.md) *(case study tóm tắt; chi tiết ở chương riêng)*
-- [14 — E-commerce & Banking Patterns](15-ecommerce-banking/README.vi.md)
-- [15 — Famous Incidents](16-famous-incidents/README.vi.md)
+- [14 — AIOps Pattern Library](14-bigtech-aiops/README.vi.md)
+- [15 — AIOps Domain Packs](15-ecommerce-banking/README.vi.md)
+- [16 — AIOps Benchmark Replay](16-famous-incidents/README.vi.md)
 
 ## Next Reading
 
@@ -304,7 +304,7 @@ Dựa trên các triển khai thực tế trong môi trường production:
 AIOps không “thông minh hơn SRE senior”. Nó **scale được ba trục trên** khi (và chỉ khi) dữ liệu + topology + feedback loop đủ tốt.
 
 > [!TIP]
-> Case study big tech (tóm tắt): nhiều tổ chức hyperscale công bố giảm noise 80–95% nhờ correlation + topology, rồi mới nói tới auto-remediation. Chi tiết và pattern theo ngành xem [13 — Big Tech AIOps](14-bigtech-aiops/README.vi.md) và [14 — E-commerce & Banking](15-ecommerce-banking/README.vi.md).
+> Không copy kiến trúc hyperscale theo tên công ty. Hãy chọn capability theo forces, failure mode và acceptance trong [14 — Pattern Library](14-bigtech-aiops/README.vi.md), rồi áp domain semantics bằng [15 — Domain Packs](15-ecommerce-banking/README.vi.md).
 
 ---
 
@@ -408,7 +408,7 @@ Công cụ (Prometheus, Kafka, Isolation Forest, LLM) thay đổi 2–3 năm m�
 
 - Vendor demo “agent fix prod in 30s” thường giả định topology/runbook hoàn hảo — môi trường thật hiếm khi vậy.
 - Đánh giá agentic AI SRE bằng: *tool allowlist*, *blast radius*, *human approval gates*, *cost per investigation*, *false action rate* — không chỉ bằng demo latency.
-- Liên hệ incident lịch sử (retry storm, partial brownout): agent kém topology có thể **khuếch đại** thay vì chữa. Xem [15 — Famous Incidents](16-famous-incidents/README.vi.md).
+- Liên hệ incident lịch sử (retry storm, partial brownout): agent kém topology có thể **khuếch đại** thay vì chữa. Chứng minh bằng [16 — Benchmark Replay](16-famous-incidents/README.vi.md).
 
 > [!TIP]
 > **Quy tắc lựa chọn 2026**
@@ -704,7 +704,7 @@ Các chuẩn so sánh trong ngành (Gartner, IDC):
 | Healthcare | $5,000 – $9,000 |
 | SaaS B2B | $1,500 – $5,000 |
 
-Ngành dọc (pattern ROI khác nhau) được phân tích sâu hơn ở [14 — E-commerce & Banking](15-ecommerce-banking/README.vi.md).
+Ngành dọc với invariant, regime và remediation boundary khác nhau được đóng gói tại [15 — Domain Packs](15-ecommerce-banking/README.vi.md).
 
 ### AIOps Investment vs Return
 
@@ -1105,7 +1105,7 @@ flowchart LR
 
 ### Case study tóm tắt (pattern big tech)
 
-Nhiều tổ chức lớn công bố: sau khi có **mandatory incident tagging** + offline evaluation, precision detector tăng dần theo quý — không phải nhờ model phức tạp hơn, mà nhờ **dữ liệu phản hồi**. Chi tiết pattern: [13 — Big Tech AIOps](14-bigtech-aiops/README.vi.md).
+Khi có **mandatory incident tagging** và offline evaluation, precision có thể cải thiện nhờ dữ liệu phản hồi chứ không chỉ model phức tạp. Cách đóng gói quyết định tái sử dụng xem [14 — Pattern Library](14-bigtech-aiops/README.vi.md).
 
 > [!TIP]
 > KPI flywheel: `% incidents labeled`, `time-to-label`, `precision@k trend`, `% auto-actions verified`. Nếu chỉ đo “số model deploy” — bạn đang vanity metric.
@@ -1198,7 +1198,7 @@ Hiểu rõ các kịch bản lỗi cũng quan trọng như việc hiểu các tr
 >
 > Gợi ý: tháng 3 thường chưa có auto-remediation — **GIGO + trust collapse** nguy hiểm hơn hallucination remediation. Tháng 12 thì blast radius và metastable amplification đáng sợ hơn.
 
-Các postmortem công khai kinh điển (cascade, config, retry) được tổng hợp tại [15 — Famous Incidents](16-famous-incidents/README.vi.md).
+Các failure class cascade, config và retry được biến thành scenario kiểm chứng tại [16 — Benchmark Replay](16-famous-incidents/README.vi.md).
 
 ---
 
@@ -1624,7 +1624,7 @@ flowchart TB
 
 - [Practical AIOps — O'Reilly](https://www.oreilly.com/library/view/practical-aiops/9781492085652/)
 - [Building Microservices — Sam Newman (Observability chapters)](https://samnewman.io/books/building_microservices_2nd_edition/)
-- Handbook chapters: [13 Big Tech](14-bigtech-aiops/README.vi.md) · [14 E-commerce & Banking](15-ecommerce-banking/README.vi.md) · [15 Famous Incidents](16-famous-incidents/README.vi.md)
+- Handbook chapters: [14 Pattern Library](14-bigtech-aiops/README.vi.md) · [15 Domain Packs](15-ecommerce-banking/README.vi.md) · [16 Benchmark Replay](16-famous-incidents/README.vi.md)
 
 ### Further Reading (ngắn)
 
@@ -1635,3 +1635,9 @@ flowchart TB
 ---
 
 *Chapter 00 — kết thúc. Tiếp theo: xây đúng signal trước khi xây trí tuệ — [01 Observability](01-observability/README.vi.md).*
+
+---
+
+## Acceptance contract của chapter
+
+Chapter này tuân theo [Acceptance Template chung](acceptance-template.vi.md): capability chỉ được coi là hoàn tất khi có scope, input quality, timeline scenario, expected output, negative control, hard gates, thresholds và evidence artifact tái tạo được. Checklist hoặc demo không thay thế benchmark/replay.

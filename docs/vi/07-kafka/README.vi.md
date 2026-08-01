@@ -19,7 +19,7 @@
 - [08 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — tiêu thụ telemetry từ Kafka, publish anomaly events
 - [09 — Alert Correlation](../09-alert-correlation/README.vi.md) — tiêu thụ các sự kiện bất thường từ Kafka
 - [12 — Remediation](../12-remediation/README.vi.md) — gửi các kích hoạt remediation tới Kafka
-- [16 — Famous Incidents](../16-famous-incidents/README.vi.md) — các sự cố vận hành liên quan transport / cascade failure
+- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md) — scenario transport, lag và cascade failure
 
 ## Next Reading
 
@@ -1835,7 +1835,7 @@ graph TD
 Mỗi thêm 1 consumer group = thêm fetch load trên broker (gần như nhân bản đọc). 5 groups trên topic high-ingress raw-metrics đắt hơn 5 groups trên anomalies (volume nhỏ). **Fan-out mạnh ở tầng processed events; fan-out thận trọng ở raw high-volume.**
 
 > [!TIP]
-> **Audit trail cho remediation**: group `remediation-audit` trên `aiops-remediation-triggers` + `results` tạo immutable story "ai/cái gì trigger action lúc nào" — quan trọng post-incident và regulated environments ([§26](#26-msk-vs-self-managed-for-regulated-industries), [16 — Famous Incidents](../16-famous-incidents/README.vi.md)).
+> **Audit trail cho remediation**: group `remediation-audit` trên `aiops-remediation-triggers` + `results` tạo immutable story "ai/cái gì trigger action lúc nào" — quan trọng post-incident và regulated environments ([§26](#26-msk-vs-self-managed-for-regulated-industries), [16 — Benchmark Replay](../16-famous-incidents/README.vi.md)).
 
 ---
 
@@ -2036,4 +2036,6 @@ Dùng các câu hỏi này để review thiết kế Kafka/AIOps của team — 
 ## Further Reading
 
 - [Designing Event-Driven Systems (O'Reilly)](https://www.oreilly.com/library/view/designing-event-driven-systems/9781492038252/) · [Kafka Connect](https://kafka.apache.org/documentation/#connect) · [Flink + Kafka](https://flink.apache.org/connectors/kafka.html)
-- Downstream: [07 — AD](../08-anomaly-detection/README.vi.md) · [08 — Correlation](../09-alert-correlation/README.vi.md) · [15 — Incidents](../16-famous-incidents/README.vi.md)
+- Downstream: [08 — AD](../08-anomaly-detection/README.vi.md) · [09 — Correlation](../09-alert-correlation/README.vi.md) · [16 — Benchmark Replay](../16-famous-incidents/README.vi.md)
+
+--8<-- "docs/includes/acceptance-footer.vi.md"

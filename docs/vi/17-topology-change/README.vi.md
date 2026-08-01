@@ -34,9 +34,9 @@
 - [11 — LLM Agent](../11-llm-agent/README.vi.md) — context pack: owner, deps, recent changes
 - [12 — Remediation](../12-remediation/README.vi.md) — blast radius, freeze, dual-control
 - [13 — Production](../13-production/README.vi.md) — platform SLO, game days
-- [14 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md) — dependency graphs ở hyperscale
-- [15 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md) — payment path, audit, dual-control
-- [16 — Famous Incidents](../16-famous-incidents/README.vi.md) — cascade, partial failure, change-induced outages
+- [14 — Pattern Library](../14-bigtech-aiops/README.vi.md) — topology-aware correlation và stale-graph patterns
+- [15 — Domain Packs](../15-ecommerce-banking/README.vi.md) — payment path, audit và dual-control semantics
+- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md) — cascade, partial failure và change-confounder scenarios
 
 ## Next Reading
 
@@ -1954,9 +1954,9 @@ Tự chấm trước khi ship platform:
 - [11 — LLM Agent](../11-llm-agent/README.vi.md)
 - [12 — Remediation](../12-remediation/README.vi.md)
 - [13 — Production](../13-production/README.vi.md)
-- [14 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md)
-- [15 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md)
-- [16 — Famous Incidents](../16-famous-incidents/README.vi.md)
+- [14 — Pattern Library](../14-bigtech-aiops/README.vi.md)
+- [15 — Domain Packs](../15-ecommerce-banking/README.vi.md)
+- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md)
 - [Architecture diagrams](../../assets/diagrams/README.md)
 
 ### Khái niệm công nghiệp (đọc thêm)
@@ -1970,3 +1970,5 @@ Tự chấm trước khi ship platform:
 ---
 
 *Chapter 17 — Topology & Change Data Plane · AIOps Engineering Handbook · VI*
+
+--8<-- "docs/includes/acceptance-footer.vi.md"

@@ -34,8 +34,8 @@
 - [11 — LLM Agent](../11-llm-agent/README.vi.md) — context pack từ store / KB / embedding
 - [12 — Remediation](../12-remediation/README.vi.md) — audit store, verify metrics
 - [13 — Production](../13-production/README.vi.md) — SLO của chính pipeline
-- [15 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md) — retention & PII regulated
-- [16 — Famous Incidents](../16-famous-incidents/README.vi.md) — control vs data plane, cascade
+- [15 — Domain Packs](../15-ecommerce-banking/README.vi.md) — retention, PII và money-path semantics
+- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md) — control/data-plane failure scenarios
 
 ## Next Reading
 
@@ -324,7 +324,7 @@ Collect → Normalize → Enrich → Validate → Buffer/Store → Feature → D
 
 ### 1.4 Quan hệ với control plane
 
-Đừng nhầm **telemetry data plane** (chương này) với **Kubernetes control plane** hay **product data plane** trong [Famous Incidents](../16-famous-incidents/README.vi.md). Ở đây:
+Đừng nhầm **telemetry data plane** (chương này) với **Kubernetes control plane** hay **product data plane** trong [Benchmark Replay](../16-famous-incidents/README.vi.md). Ở đây:
 
 - **Telemetry Data Plane**: đường đi và biến đổi của metrics/logs/traces/events phục vụ AIOps.
 - **Intelligence Plane**: detect → correlate → RCA → LLM → decide.
@@ -1340,7 +1340,7 @@ flowchart TD
 | **Full FS (Feast/Tecton/custom)** | Nhiều model, entity keys, online low-latency | Cao — chỉ khi ROI |
 
 > [!TIP]
-> Org 30–100 eng thường thắng với **feature definitions trong Git + test parity online/offline**, chưa cần platform FS Uber-scale. Xem cảnh báo fixed cost trong [Big Tech AIOps](../14-bigtech-aiops/README.vi.md).
+> Org 30–100 eng thường thắng với **feature definitions trong Git + test parity online/offline**, chưa cần platform hyperscale. Xem cách chọn theo forces trong [Pattern Library](../14-bigtech-aiops/README.vi.md).
 
 ### 11.5 Entity keys AIOps
 
@@ -1998,3 +1998,5 @@ Telemetry data plane là **hạ tầng niềm tin** của AIOps. Không có norm
 ---
 
 *AIOps Engineering Handbook — Chapter 06 (vi). Data plane first; models second.*
+
+--8<-- "docs/includes/acceptance-footer.vi.md"

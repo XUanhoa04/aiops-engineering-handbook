@@ -1810,3 +1810,5 @@ Roadmap tư duy:
 6. [Apache Parquet Format](https://parquet.apache.org/docs/file-format/)
 7. [OpenTelemetry Tail Sampling Processor](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/tailsamplingprocessor)
 8. [W3C Trace Context](https://www.w3.org/TR/trace-context/)
+
+--8<-- "docs/includes/acceptance-footer.vi.md"
