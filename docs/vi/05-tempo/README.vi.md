@@ -282,6 +282,7 @@ Nguyên lý kiến trúc của Tempo: "Hãy cứ lưu trữ nó lại. Chúng ta
 ```
 
 **Sự đánh đổi**:
+
 - ✅ Khả năng mở rộng không giới hạn với chi phí S3 cực thấp ($0.023/GB/tháng)
 - ✅ Không cần vận hành và quản lý các clusters Cassandra/Elasticsearch phức tạp
 - ✅ Tích hợp tự nhiên với Grafana
@@ -327,6 +328,7 @@ Bạn hiếm khi cần phải tìm kiếm theo một thuộc tính span tùy ý 
 | **Giấy phép bản quyền** | AGPLv3 | Apache 2.0 | Sở hữu riêng của AWS |
 
 **Khuyến nghị**:
+
 - Dự án mới + sử dụng hệ thống Grafana: **Tempo** (tích hợp tự nhiên, chi phí S3 tối ưu)
 - Hệ thống đã chạy Jaeger và yêu cầu tìm kiếm tag: **Jaeger**
 - Hệ thống chạy hoàn toàn trên AWS quy mô nhỏ: **X-Ray** (nhưng bị lock-in nhà cung cấp)
@@ -520,6 +522,7 @@ Các cột của file data.parquet:
 ```
 
 **Tại sao nên dùng Parquet**:
+
 - Lưu trữ dạng cột (Columnar): Cho phép lọc nhanh theo `StatusCode == ERROR` mà không cần đọc dữ liệu các cột khác
 - Khả năng nén: Định dạng Parquet kết hợp thuật toán nén Snappy giúp nén dữ liệu trace đạt tỷ lệ từ 5–10:1
 - Tính năng S3 Select: Có thể thực hiện lọc các cột ngay tại phía server S3, giúp giảm thiểu băng thông truyền dữ liệu

@@ -925,6 +925,7 @@ Hybrid approach:              → CloudWatch Exporter → Prometheus
 | **Deduplication** | Qua Thanos | Built-in |
 
 **Khi nào chuyển sang VictoriaMetrics**:
+
 - Cardinality > 5M active series
 - RAM bị giới hạn
 - Write load > 2M samples/giây
@@ -1277,6 +1278,7 @@ basic_auth_users:
 | **Tổng 1B samples/tháng** | **~$9.39/tháng** |
 
 **Quyết định AMP vs Self-Hosted**:
+
 - Scale < 5M series, team nhỏ → AMP (giảm vận hành)
 - Scale > 5M series hoặc cần custom recording rules phức tạp → Self-hosted + Thanos
 - Multi-region, multi-cluster → Thanos + S3

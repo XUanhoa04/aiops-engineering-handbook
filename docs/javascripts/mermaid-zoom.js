@@ -1,8 +1,8 @@
 /**
- * Mermaid UX for MkDocs Material:
+ * Diagram UX for MkDocs Material:
  * 1) Prefer natural diagram size (no shrink-to-fit)
  * 2) Horizontal scroll when wider than content column
- * 3) Click diagram → fullscreen lightbox (scroll / pan-friendly)
+ * 3) Click Mermaid or Graphviz poster → fullscreen lightbox
  * 4) Esc / backdrop / button to close
  */
 (() => {
@@ -41,10 +41,10 @@
     const resetLabel = modal.querySelector('[data-zoom="reset"]');
 
     const applyScale = () => {
-      const svg = canvas.querySelector("svg");
-      if (!svg) return;
-      svg.style.transform = `scale(${scale})`;
-      svg.style.transformOrigin = "top left";
+      const visual = canvas.querySelector("svg, img");
+      if (!visual) return;
+      visual.style.transform = `scale(${scale})`;
+      visual.style.transformOrigin = "top left";
       if (resetLabel) resetLabel.textContent = `${Math.round(scale * 100)}%`;
     };
 
@@ -70,27 +70,28 @@
       if (e.key === "Escape" && !modal.hasAttribute("hidden")) closeModal();
     });
 
-    modal._setContent = (svgNode) => {
+    modal._setContent = (visualNode, title) => {
       scale = 1;
       canvas.innerHTML = "";
-      const clone = svgNode.cloneNode(true);
+      const clone = visualNode.cloneNode(true);
       clone.removeAttribute("width");
       clone.removeAttribute("height");
-      // Prefer intrinsic size from viewBox
       clone.style.maxWidth = "none";
       clone.style.width = "auto";
       clone.style.height = "auto";
       clone.style.display = "block";
       canvas.appendChild(clone);
+      const titleNode = modal.querySelector(".mermaid-lightbox__title");
+      if (titleNode) titleNode.textContent = title || "Diagram";
       applyScale();
     };
 
     return modal;
   }
 
-  function openModal(svg) {
+  function openModal(visual, title) {
     const modal = ensureModal();
-    modal._setContent(svg);
+    modal._setContent(visual, title);
     modal.removeAttribute("hidden");
     document.documentElement.classList.add("mermaid-lightbox-open");
   }
@@ -135,7 +136,7 @@
         e.preventDefault();
         e.stopPropagation();
         const s = host.querySelector("svg");
-        if (s) openModal(s);
+        if (s) openModal(s, "Mermaid diagram");
       });
     }
 
@@ -145,17 +146,53 @@
       // Avoid hijacking links inside labels
       if (e.target.closest("a")) return;
       const s = host.querySelector("svg");
-      if (s) openModal(s);
+      if (s) openModal(s, "Mermaid diagram");
     });
+  }
+
+  function enhancePoster(img) {
+    if (img.dataset.zoomReady === "1" || img.closest("#mermaid-lightbox"))
+      return;
+    img.dataset.zoomReady = "1";
+    img.classList.add("diagram-image--zoomable");
+    img.title = HINT;
+
+    const shell = img.parentElement;
+    if (shell && shell.tagName === "P") {
+      shell.classList.add("diagram-image-shell");
+      const badge = document.createElement("button");
+      badge.type = "button";
+      badge.className = "diagram-image-expand";
+      badge.textContent = "🔍 Enlarge";
+      badge.setAttribute(
+        "aria-label",
+        `Enlarge ${img.alt || "architecture diagram"}`,
+      );
+      badge.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openModal(img, img.alt || "Architecture diagram");
+      });
+      shell.appendChild(badge);
+    }
+
+    img.addEventListener("click", () =>
+      openModal(img, img.alt || "Architecture diagram"),
+    );
   }
 
   function enhanceAll(root) {
     const scope = root || document;
     // Material may render as pre.mermaid or div.mermaid
-    scope.querySelectorAll("pre.mermaid, div.mermaid, .mermaid").forEach((el) => {
-      // only if contains svg already rendered
-      if (el.querySelector("svg")) wrapDiagram(el);
-    });
+    scope
+      .querySelectorAll("pre.mermaid, div.mermaid, .mermaid")
+      .forEach((el) => {
+        // only if contains svg already rendered
+        if (el.querySelector("svg")) wrapDiagram(el);
+      });
+    scope
+      .querySelectorAll('img[src*="assets/diagrams/"]')
+      .forEach(enhancePoster);
   }
 
   function configureMermaid() {

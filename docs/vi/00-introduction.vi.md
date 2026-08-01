@@ -2,11 +2,11 @@
 
 > **Chương này không bắt đầu bằng định nghĩa. Ta sẽ đi qua một sự cố kéo dài 65 phút, xem từng stage của AIOps phải đưa ra quyết định gì, bằng chứng nào còn thiếu, khi nào máy phải từ chối hành động và cách chứng minh hệ thống thật sự tạo giá trị.**
 
-### Architecture poster — pipeline AIOps end-to-end
+**Sơ đồ kiến trúc — pipeline AIOps end-to-end**
 
 ![AIOps Platform Pipeline](../assets/diagrams/01-aiops-pipeline.png)
 
-*Poster kiến trúc (PNG): Collection → Kafka → Storage → Intelligence → Action. Các flowchart logic bên dưới vẫn dùng Mermaid.*
+*Collection → data contracts → stateful intelligence → safe action → independent verification.*
 
 ---
 
@@ -440,6 +440,7 @@ Công cụ (Prometheus, Kafka, Isolation Forest, LLM) thay đổi 2–3 năm m�
 | Chỉ một region/shard | Global average che local pain |
 
 **Xử lý tư duy**:
+
 - Alert trên **user-journey SLI** và **burn rate**, không chỉ binary up/down.
 - Anomaly theo **segment** (tenant, region, endpoint class).
 - RCA phải hiểu “degraded dependency” khác “dead dependency”.
@@ -469,6 +470,7 @@ Client retry không jitter + timeout ngắn → dependency quá tải → nhiề
 | Error budget burn đồng thời nhiều service | Cascade |
 
 **AIOps implication**:
+
 - Detection phải nhìn **client + server** cùng lúc.
 - Remediation ưu tiên **client-side** (circuit break, bulkhead) trước scale server mù quáng.
 - Ghi nhận class failure này trong knowledge base — đây là pattern lặp ở hầu hết hệ thống lớn.
@@ -1133,6 +1135,7 @@ Hiểu rõ các kịch bản lỗi cũng quan trọng như việc hiểu các tr
 **Nguyên nhân gốc rễ**: Nhãn metric (labels) không nhất quán, thiếu nhãn, bùng nổ cardinality (cardinality explosions), định dạng log bị thay đổi mà không có sự phối hợp
 
 **Ngăn ngừa**:
+
 - Áp dụng các tiêu chuẩn đặt tên metric với kiểm thử CI
 - Sử dụng quy ước ngữ nghĩa (semantic conventions) của OpenTelemetry
 - Sử dụng Schema registry cho định dạng log
@@ -1145,6 +1148,7 @@ Hiểu rõ các kịch bản lỗi cũng quan trọng như việc hiểu các tr
 **Nguyên nhân gốc rễ**: Mẫu lưu lượng (traffic patterns) thay đổi (triển khai tính năng mới, đỉnh tải theo mùa), nhưng các mô hình không được huấn luyện lại
 
 **Ngăn ngừa**:
+
 - Pipeline huấn luyện lại mô hình hàng tháng
 - Giám sát các metric hiệu năng của mô hình (precision, recall, F1)
 - Phát hiện độ lệch phân phối (distribution drift) bằng KL-divergence hoặc PSI
@@ -1157,6 +1161,7 @@ Hiểu rõ các kịch bản lỗi cũng quan trọng như việc hiểu các tr
 **Nguyên nhân gốc rễ**: Xác định sai nguyên nhân gốc rễ, chọn sai phương án khắc phục, hoặc không có bước xác minh (verification)
 
 **Ngăn ngừa**:
+
 - Cơ chế ngắt mạch khắc phục (Remediation circuit breakers - dừng lại nếu xác minh thất bại 2 lần)
 - Giới hạn blast radius (tối đa scale 20% số lượng pods cùng một lúc)
 - Khắc phục dạng Canary (áp dụng thử nghiệm trên 1 pod trước, xác minh, sau đó áp dụng toàn bộ)
@@ -1169,6 +1174,7 @@ Hiểu rõ các kịch bản lỗi cũng quan trọng như việc hiểu các tr
 **Nguyên nhân gốc rễ**: Cảnh báo đi qua correlation engine; correlation engine bị crash; cảnh báo bị mất
 
 **Ngăn ngừa**:
+
 - Luôn duy trì một đường dẫn dự phòng (bypass path): Alertmanager truyền trực tiếp → PagerDuty
 - AIOps pipeline chỉ là một **giải pháp tăng cường**, không bao giờ là **đường dẫn duy nhất**
 - Bản thân pipeline phải được giám sát bởi một hệ thống giám sát đơn giản hơn
@@ -1180,6 +1186,7 @@ Hiểu rõ các kịch bản lỗi cũng quan trọng như việc hiểu các tr
 **Nguyên nhân gốc rễ**: LLM tự bịa ra các bước khắc phục nghe có vẻ hợp lý nhưng thực ra không chính xác
 
 **Ngăn ngừa**:
+
 - LLM chỉ được phép chọn từ các hành động runbook đã được phê duyệt trước
 - Đầu ra của LLM là một **cấu trúc JSON** chứa các tham số, không phải các câu lệnh tự do
 - Tất cả các gợi ý của LLM yêu cầu phải vượt qua một ngưỡng điểm tin cậy (confidence score threshold)

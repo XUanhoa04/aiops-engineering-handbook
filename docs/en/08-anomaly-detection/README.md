@@ -50,7 +50,7 @@ After this chapter, continue to [09 — Alert Correlation](../09-alert-correlati
 
 ![AIOps Intelligence Layer](../../assets/diagrams/04-intelligence-layer.png)
 
-*Poster: ensemble detect → correlation → RCA → LLM agent → one incident card.*
+*Persistent detection preserves state through long incidents, isolates services, and forwards calibrated evidence to correlation and RCA.*
 
 > [!NOTE]
 > **KEY IDEA**
@@ -872,6 +872,7 @@ def shesd_detect(values: list, max_anomalies: float = 0.05, alpha: float = 0.05)
 | Extending STL with better multi-outlier handling | Log template / sequence anomalies |
 
 **Advantages over pure STL**:
+
 - Provides statistical significance (p-value) for anomaly decisions
 - Controls false detection rate via `max_anomalies`
 - More robust when multiple anomalies appear in the same window
@@ -1135,6 +1136,7 @@ def suggest_epsilon(features: np.ndarray, k: int = 5) -> float:
 </details>
 
 **DBSCAN Trade-offs**:
+
 - ✅ No need to predefine number of clusters
 - ✅ Finds arbitrary-shaped clusters
 - ✅ Works for sparse high-dimensional data with a good distance metric
@@ -2642,6 +2644,7 @@ consumer_config = {
 | **Total** | | | **~$2,580/month** |
 
 **Cost optimization**:
+
 - Run LSTM detectors on Spot instances (save ~60% on that line): $504 instead of $1,260
 - Use CPU inference for LSTM if latency allows (accept 10ms → 100ms)
 - Optimized total: about **~$1,824/month**

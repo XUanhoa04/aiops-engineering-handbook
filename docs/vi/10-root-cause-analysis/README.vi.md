@@ -1067,7 +1067,9 @@ Playbook không hard-code root; nó định nghĩa evidence nào kỳ vọng và
 
 #### Database pool exhaustion
 
-Positive evidence: acquire wait tăng trước application timeout; active connection gần pool max; first-origin span ở acquire; nhiều caller độc lập cùng bị; query duration DB có thể bình thường vì request chưa lấy được connection. Negative evidence: pool wait bình thường, lỗi xảy ra trước acquire, chỉ một version lỗi dù dùng chung pool. Bẫy thường gặp là thấy DB CPU thấp rồi loại DB; pool cạn do connection leak/limit không cần CPU cao. Remediation “tăng pool” nguy hiểm nếu database max connection/headroom không đủ; validation trước là active/idle/waiter và connection ownership.
+Positive evidence: acquire wait tăng trước application timeout; active connection gần pool max; first-origin span ở acquire; nhiều caller độc lập cùng bị; query duration DB có thể bình thường vì request chưa lấy được connection. Negative evidence: pool wait bình thường, lỗi xảy ra trước acquire, chỉ một version lỗi dù dùng chung pool.
+
+Bẫy thường gặp là thấy DB CPU thấp rồi loại DB; pool cạn do connection leak/limit không cần CPU cao. Remediation “tăng pool” nguy hiểm nếu database max connection/headroom không đủ; validation trước là active/idle/waiter và connection ownership.
 
 #### DNS hoặc service discovery
 
@@ -1079,7 +1081,9 @@ Positive evidence: TLS handshake origin, expiry/not-yet-valid/unknown-CA cụ th
 
 #### Queue consumer lag
 
-Positive evidence: producer rate vượt consumer rate hoặc processing latency tăng trước lag; partition-specific skew; poison message/retry; downstream freshness giảm sau lag. Negative evidence: lag metric nhảy do consumer group rebalance/offset reset nhưng event-time freshness khỏe; queue depth proxy sai. Bẫy chọn Kafka vì lag cao trong khi consumer DB call chậm mới root. Graph path cần `consumer → dependency`; temporal order và span/log xử lý message phân biệt broker, consumer code và downstream. Validation: throughput per partition, oldest event age, processing vs fetch latency.
+Positive evidence: producer rate vượt consumer rate hoặc processing latency tăng trước lag; partition-specific skew; poison message/retry; downstream freshness giảm sau lag. Negative evidence: lag metric nhảy do consumer group rebalance/offset reset nhưng event-time freshness khỏe; queue depth proxy sai. Bẫy chọn Kafka vì lag cao trong khi consumer DB call chậm mới root.
+
+Graph path cần `consumer → dependency`; temporal order và span/log xử lý message phân biệt broker, consumer code và downstream. Validation: throughput per partition, oldest event age, processing vs fetch latency.
 
 #### Node/AZ resource contention
 

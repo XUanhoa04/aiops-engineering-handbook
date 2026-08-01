@@ -257,12 +257,14 @@ Loki:          index(labels_only) + store(compressed_chunks) → rẻ, truy vấ
 ```
 
 **Khi nào sự đánh đổi này là hợp lý**:
+
 - Bạn chủ yếu truy vấn theo `service`, `namespace`, `level`, `region` — tất cả đều là các nhãn (labels)
 - Bạn hiếm khi cần tìm kiếm full-text trên hàng triệu trường thông tin khác nhau
 - Bạn muốn tối ưu chi phí hiệu quả ở quy mô lớn
 - Bạn đã sử dụng Prometheus — mô hình nhãn của Loki hoàn toàn tương tự
 
 **Khi nào sự đánh đổi này KHÔNG hợp lý**:
+
 - Bạn cần tìm kiếm full-text trên các log phi cấu trúc (unstructured logs)
 - Bạn cần các phép toán tổng hợp phức tạp ngay trên nội dung log
 - Bạn cần phân tích số liệu nghiệp vụ dựa trên log (hãy sử dụng kho dữ liệu data warehouse chuyên dụng thay thế)
@@ -288,6 +290,7 @@ Loki:          index(labels_only) + store(compressed_chunks) → rẻ, truy vấ
 | **AWS Managed** | Không có (sử dụng Grafana Cloud) | OpenSearch (AWS fork) |
 
 **Nhận định chung**:
+
 - Đội ngũ đang sử dụng Grafana + Prometheus → Loki (cùng mô hình nhãn, tích hợp tự nhiên)
 - Đội ngũ cần tìm kiếm full-text, phân tích phức tạp → Elasticsearch / OpenSearch
 - Đội ngũ cần tối ưu chi phí ở quy mô lớn → Loki (thường rẻ hơn từ 10–20 lần)
@@ -1276,6 +1279,7 @@ Tổng chi phí S3: ~$23/tháng cho luồng nạp 100MB/phút
 | **Tổng chi phí compute** | | | **~$1,350/tháng** |
 
 **Tối ưu hóa chi phí**:
+
 - Sử dụng Spot instances cho queriers (giúp tiết kiệm -60% chi phí phần này)
 - Thành phần Ingesters bắt buộc phải chạy trên On-Demand instances (do có trạng thái ghi đệm dữ liệu, không được phép mất WAL)
 - Tổng chi phí sau khi tối ưu Spot cho queriers: khoảng **~$1,100/tháng**

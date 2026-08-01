@@ -276,6 +276,7 @@ graph LR
 ```
 
 **Lợi ích**:
+
 - **Instrument once, export anywhere** — thay đổi backend mà không thay code ứng dụng
 - **Vendor neutral** — tốt nghiệp từ CNCF, không bị ràng buộc bản quyền
 - **Unified data model** — metrics, logs, traces dùng cùng mô hình resource/attribute

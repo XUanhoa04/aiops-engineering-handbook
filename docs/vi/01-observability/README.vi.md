@@ -222,7 +222,7 @@ Phần dưới giữ kiến thức metrics/logs/traces/SLO/kiến trúc để tr
 
 ![Observability Three Pillars + Correlation](../../assets/diagrams/02-observability-pillars.png)
 
-*Poster: Metrics / Logs / Traces hội tụ qua `trace_id` và labels → Grafana Explore.*
+*Evidence graph: metrics, logs, traces, synthetics và business SLI hội tụ bằng identity; profiles là đường bổ sung có maturity riêng.*
 
 > [!NOTE]
 > **Ý TƯỞNG**
@@ -299,6 +299,7 @@ graph LR
 Một metric là một **phép đo số học được tổng hợp theo thời gian** và được xác định bởi một tập hợp các nhãn (labels).
 
 **Ví dụ đọc Prometheus metric format**:
+
 ```
 # HELP http_requests_total Total number of HTTP requests
 # TYPE http_requests_total counter
@@ -307,6 +308,7 @@ http_requests_total{method="POST",endpoint="/api/orders",status="500",service="o
 ```
 
 **Các thành phần của một metric**:
+
 - **Name**: `http_requests_total` — những gì được đo lường
 - **Labels**: `{method, endpoint, status, service}` — các chiều dữ liệu để lọc/nhóm
 - **Value**: `12345` — giá trị đo lường
@@ -493,6 +495,7 @@ k8s_node_name: ip-10-0-1-50
 > **Vì sao bắt buộc phải có Structured Logs cho AIOps?** Hệ thống phát hiện bất thường log (Drain, DeepLog) tiêu thụ **các trường dữ liệu có cấu trúc**, không phải text thuần. Nếu log là free-text, ML model không thể parse, không thể group theo `error.type`, không thể correlate với trace. Unstructured log = dead end cho AIOps.
 
 **❌ Unstructured Log (Anti-Pattern)**:
+
 ```
 2024-01-15 14:23:45 ERROR Failed to process order 12345 for user john@example.com after 3 retries
 ```
@@ -555,6 +558,7 @@ k8s_node_name: ip-10-0-1-50
 | Adaptive | Tỷ lệ động theo error rate | Cân bằng chi phí/coverage |
 
 **Chiến lược production khuyến nghị**:
+
 - `INFO`: Lấy mẫu 10% (hoặc 1% cho lưu lượng rất cao)
 - `WARN`: Lấy mẫu 100%
 - `ERROR` + `CRITICAL` + `FATAL`: Lấy mẫu 100% + alert ngay
@@ -1021,12 +1025,14 @@ instrumentation_checklist:
 > **Vì sao Exemplars là "game changer"?** Trước exemplar, khi thấy latency spike, bạn phải đoán "cái request nào gây ra spike này?". Với exemplar, Prometheus đính kèm TraceID vào chính điểm dữ liệu spike đó — bạn click vào spike, Grafana tự động mở trace tương ứng.
 
 **Exemplar trong Prometheus exposition format**:
+
 ```
 # TraceID được đính kèm vào histogram bucket
 http_request_duration_seconds_bucket{le="0.5"} 998 # {traceID="4bf92f35",spanID="00f067aa"} 0.492
 ```
 
 **Kích hoạt exemplar trong code Go**:
+
 ```go
 // Ghi metric kèm TraceID để Grafana có thể navigate sang trace
 histogram.With(labels).ObserveWithExemplar(
@@ -1036,6 +1042,7 @@ histogram.With(labels).ObserveWithExemplar(
 ```
 
 **Cấu hình Prometheus**:
+
 ```yaml
 storage:
   exemplars:

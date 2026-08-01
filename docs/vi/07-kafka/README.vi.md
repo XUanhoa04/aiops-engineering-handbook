@@ -243,7 +243,7 @@ Chapter 07 bảo toàn canonical events, topology/change events, quality và rev
 
 ![Kafka Transport for AIOps](../../assets/diagrams/03-kafka-aiops-topics.png)
 
-*Poster: producers → topic AIOps → consumers (detect / correlate / remediate / audit replay).*
+*Raw topics → contract processors → versioned data-product topics → consumer groups cô lập; remediation chỉ nhận proposal đã định kiểu.*
 
 > [!NOTE]
 > **Ý TƯỞNG**
@@ -268,6 +268,7 @@ graph LR
 ```
 
 **Các vấn đề**:
+
 - Nếu Correlation Engine bị chậm, Anomaly Detector sẽ bị chặn (block)
 - Nếu LLM Agent bị crash, kết quả RCA sẽ bị mất
 - Không thể phát lại (replay) các sự kiện phục vụ debug hoặc đào tạo lại mô hình ML
@@ -295,6 +296,7 @@ graph LR
 ```
 
 **Lợi ích**:
+
 - **Khử ghép nối (Decoupling)**: Producers không cần biết về consumers
 - **Độ bền vững (Durability)**: Tin nhắn được ghi bền vững trên đĩa, sống sót qua các sự cố của consumer
 - **Phát lại (Replay)**: Xử lý lại các sự kiện trong quá khứ phục vụ đào tạo lại mô hình, debug
@@ -401,6 +403,7 @@ graph LR
 **Đảm bảo thứ tự (Ordering guarantee)**: Kafka **chỉ đảm bảo thứ tự trong phạm vi từng partition**. Các tin nhắn có cùng key sẽ luôn đi vào cùng một partition → đảm bảo thứ tự cho từng key.
 
 **Tại sao việc này quan trọng với AIOps**:
+
 - Sử dụng `service_name` làm message key cho các sự kiện bất thường → tất cả các bất thường của cùng một dịch vụ sẽ được sắp xếp đúng thứ tự
 - Sử dụng `alert_group_id` làm key cho các sự kiện alert correlation → các cảnh báo tương quan được giữ đúng thứ tự
 - KHÔNG sử dụng random keys hoặc null keys nếu thứ tự tin nhắn là yếu tố quan trọng
@@ -1206,6 +1209,7 @@ Redis Streams là giải pháp thay thế gọn nhẹ hơn cho các hệ thống
 | Ops / cost / ecosystem | Cao / cao / rất lớn | Thấp / thấp / nhỏ |
 
 **Khuyến nghị**:
+
 - Quy mô <10K events/giây VÀ đội ngũ <10 kỹ sư: **Redis Streams** (đơn giản hơn)
 - Quy mô >10K events/giây HOẶC yêu cầu khả năng phát lại/xử lý lại dữ liệu: **Kafka/MSK**
 - Hệ thống AIOps Production quy mô vừa và lớn: **Kafka/MSK** (đảm bảo hệ sinh thái, độ bền dữ liệu)

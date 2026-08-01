@@ -2,11 +2,11 @@
 
 > **This chapter establishes the philosophical and architectural foundation of AIOps: why it exists, which problems it solves, where it fails, and how to measure success.**
 
-### Architecture poster — end-to-end AIOps pipeline
+**Architecture poster — end-to-end AIOps pipeline**
 
 ![AIOps Platform Pipeline](../assets/diagrams/01-aiops-pipeline.png)
 
-*Architecture poster (PNG): Collection → Kafka → Storage → Intelligence → Action. Narrative flowcharts below still use Mermaid.*
+*Collection → data contracts → stateful intelligence → safe action → independent verification.*
 
 ---
 
@@ -317,6 +317,7 @@ Tools (Prometheus, Kafka, Isolation Forest, LLM) change every 2–3 years. **OOD
 | Only one region/shard | Global average hides local pain |
 
 **Mental model for handling**:
+
 - Alert on **user-journey SLIs** and **burn rate**, not only binary up/down.
 - Anomaly by **segment** (tenant, region, endpoint class).
 - RCA must understand “degraded dependency” vs “dead dependency.”
@@ -346,6 +347,7 @@ Client retries without jitter + short timeouts → dependency overload → more 
 | Error budget burns across many services at once | Cascade |
 
 **AIOps implications**:
+
 - Detection must look at **client + server** together.
 - Prefer **client-side** remediation (circuit break, bulkhead) before blind server scale.
 - Record this failure class in the knowledge base — it is a repeating pattern in most large systems.
@@ -1011,6 +1013,7 @@ Understanding failure scenarios is as important as understanding success cases.
 **Root cause**: Inconsistent metric labels, missing labels, cardinality explosions, log formats changed without coordination
 
 **Prevention**:
+
 - Enforce metric naming standards with CI tests
 - Use OpenTelemetry semantic conventions
 - Use a schema registry for log formats
@@ -1023,6 +1026,7 @@ Understanding failure scenarios is as important as understanding success cases.
 **Root cause**: Traffic patterns change (new feature deploys, seasonal peaks), but models are not retrained
 
 **Prevention**:
+
 - Monthly model retrain pipeline
 - Monitor model performance metrics (precision, recall, F1)
 - Detect distribution drift with KL-divergence or PSI
@@ -1035,6 +1039,7 @@ Understanding failure scenarios is as important as understanding success cases.
 **Root cause**: Wrong root cause, wrong remediation choice, or no verification step
 
 **Prevention**:
+
 - Remediation circuit breakers (stop if verification fails twice)
 - Blast radius limits (scale at most 20% of pods at once)
 - Canary remediation (try 1 pod first, verify, then apply fully)
@@ -1047,6 +1052,7 @@ Understanding failure scenarios is as important as understanding success cases.
 **Root cause**: Alerts flow through the correlation engine; correlation engine crashes; alerts are lost
 
 **Prevention**:
+
 - Always maintain a bypass path: Alertmanager direct → PagerDuty
 - The AIOps pipeline is only an **enhancement**, never the **only path**
 - The pipeline itself must be monitored by a simpler monitoring system
@@ -1058,6 +1064,7 @@ Understanding failure scenarios is as important as understanding success cases.
 **Root cause**: LLM invents plausible-sounding remediation steps that are actually wrong
 
 **Prevention**:
+
 - LLM may only choose from pre-approved runbook actions
 - LLM output is a **JSON structure** with parameters, not free-form commands
 - All LLM suggestions must pass a confidence score threshold

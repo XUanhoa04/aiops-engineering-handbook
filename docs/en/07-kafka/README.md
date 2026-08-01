@@ -30,7 +30,7 @@ After this chapter, continue to [08 — Anomaly Detection](../08-anomaly-detecti
 
 ![Kafka Transport for AIOps](../../assets/diagrams/03-kafka-aiops-topics.png)
 
-*Poster: producers → AIOps topics → consumers (detect / correlate / remediate / audit replay).*
+*Raw topics → contract processors → versioned data-product topics → isolated consumers; remediation receives typed proposals only.*
 
 > [!NOTE]
 > **KEY IDEA**
@@ -55,6 +55,7 @@ graph LR
 ```
 
 **Problems**:
+
 - If the Correlation Engine is slow, the Anomaly Detector blocks
 - If the LLM Agent crashes, RCA results are lost
 - You cannot replay events for debugging or ML retraining
@@ -82,6 +83,7 @@ graph LR
 ```
 
 **Benefits**:
+
 - **Decoupling**: Producers do not need to know about consumers
 - **Durability**: Messages are durable on disk and survive consumer failures
 - **Replay**: Reprocess historical events for model retraining and debugging
@@ -188,6 +190,7 @@ graph LR
 **Ordering guarantee**: Kafka **only guarantees order within a partition**. Messages with the same key always go to the same partition → per-key ordering.
 
 **Why this matters for AIOps**:
+
 - Use `service_name` as the message key for anomaly events → all anomalies for a service stay ordered
 - Use `alert_group_id` as the key for alert correlation events → correlated alerts keep order
 - Do NOT use random or null keys if message order matters
@@ -993,6 +996,7 @@ Redis Streams is a lighter alternative for small-scale AIOps systems.
 | Ops / cost / ecosystem | High / high / very large | Low / low / small |
 
 **Recommendation**:
+
 - Scale <10K events/s AND team <10 engineers: **Redis Streams** (simpler)
 - Scale >10K events/s OR need full replay: **Kafka/MSK**
 - Mid/large production AIOps: **Kafka/MSK** (ecosystem + durability)

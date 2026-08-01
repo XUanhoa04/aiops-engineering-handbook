@@ -290,11 +290,11 @@ Chapter 13 hoàn tất không phải khi deployment “green”, mà khi đội 
 
 ![AIOps on Kubernetes](../../assets/diagrams/06-k8s-production.png)
 
-*Poster: workload + observability + AIOps namespaces trên Kubernetes / MSK / S3.*
+*Continuity design: durable state, checkpoint/replay, degraded modes và đường page độc lập khi platform mù.*
 
 ![Control plane vs data plane](../../assets/diagrams/07-control-vs-data-plane.png)
 
-*Poster: tách data plane / control plane và break-glass out-of-band.*
+*Tách business, evidence, decision và safety plane để một failure domain không vô hiệu hóa cả quan sát lẫn phục hồi.*
 
 > [!NOTE]
 > **Ý TƯỞNG**

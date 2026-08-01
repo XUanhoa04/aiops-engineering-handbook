@@ -690,6 +690,7 @@ Hybrid approach:              → CloudWatch Exporter → Prometheus
 | **Deduplication** | Via Thanos | Built-in |
 
 **When to move to VictoriaMetrics**:
+
 - Cardinality > 5M active series
 - RAM is constrained
 - Write load > 2M samples/second
@@ -1042,6 +1043,7 @@ basic_auth_users:
 | **Total 1B samples/month** | **~$9.39/month** |
 
 **AMP vs Self-Hosted decision**:
+
 - Scale < 5M series, small team → AMP (less ops)
 - Scale > 5M series or need complex custom recording rules → Self-hosted + Thanos
 - Multi-region, multi-cluster → Thanos + S3

@@ -44,12 +44,14 @@ Loki:          index(labels_only) + store(compressed_chunks) → cheap, label-ba
 ```
 
 **When this trade-off is reasonable**:
+
 - You mainly query by `service`, `namespace`, `level`, `region` — all labels
 - You rarely need full-text search across millions of different fields
 - You want cost efficiency at large scale
 - You already use Prometheus — Loki’s label model is the same
 
 **When this trade-off is NOT reasonable**:
+
 - You need full-text search on unstructured logs
 - You need complex aggregations directly on log content
 - You need business analytics on logs (use a dedicated data warehouse instead)
@@ -75,6 +77,7 @@ Loki:          index(labels_only) + store(compressed_chunks) → cheap, label-ba
 | **AWS Managed** | None (use Grafana Cloud) | OpenSearch (AWS fork) |
 
 **General guidance**:
+
 - Teams already on Grafana + Prometheus → Loki (same label model, native integration)
 - Teams needing full-text search and complex analytics → Elasticsearch / OpenSearch
 - Teams optimizing cost at large scale → Loki (often 10–20× cheaper)
@@ -1063,6 +1066,7 @@ Total S3 cost: ~$23/month for 100MB/minute ingest
 | **Total compute** | | | **~$1,350/month** |
 
 **Cost optimization**:
+
 - Use Spot instances for queriers (~60% savings on that part)
 - Ingesters must run on On-Demand (stateful write buffer; WAL must not be lost)
 - Total after Spot for queriers: about **~$1,100/month**

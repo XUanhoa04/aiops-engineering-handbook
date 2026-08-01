@@ -126,3 +126,16 @@ def on_page_markdown(markdown: str, **kwargs) -> str:
     if "[!" not in markdown:
         return markdown
     return _ALERT_RE.sub(_convert_block, markdown)
+
+
+_TABLE_RE = re.compile(r"(<table(?:\s[^>]*)?>.*?</table>)", re.DOTALL | re.IGNORECASE)
+
+
+def on_page_content(html: str, **kwargs) -> str:
+    """Give every rendered Markdown table a responsive, accessible scroll region."""
+
+    return _TABLE_RE.sub(
+        r'<div class="table-scroll" role="region" tabindex="0" '
+        r'aria-label="Scrollable data table">\1</div>',
+        html,
+    )

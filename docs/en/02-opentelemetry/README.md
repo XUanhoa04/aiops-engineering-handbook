@@ -73,6 +73,7 @@ graph LR
 ```
 
 **Benefits**:
+
 - **Instrument once, export anywhere** — change backends without changing application code
 - **Vendor neutral** — CNCF graduated, no proprietary lock-in
 - **Unified data model** — metrics, logs, traces share the same resource/attribute model

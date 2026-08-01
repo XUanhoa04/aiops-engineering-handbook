@@ -1747,6 +1747,7 @@ Total: ~$0.065 per incident
 LLM API cost is usually tiny and negligible compared to enterprise compute and storage costs.
 
 **Self-hosted case (vLLM + Llama 3.1 70B)**:
+
 - g5.12xlarge infra: $16.32/hour → $11,750/month
 - Only economically justified above ~10,000 investigations/month or when strict internal data-privacy policy is mandatory.
 

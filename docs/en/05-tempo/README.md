@@ -59,6 +59,7 @@ Tempo’s architectural principle: “Just store it. We’ll find it later.”
 ```
 
 **Trade-offs**:
+
 - ✅ Unlimited scale at extremely low S3 cost ($0.023/GB/month)
 - ✅ No need to operate complex Cassandra/Elasticsearch clusters
 - ✅ Native Grafana integration
@@ -104,6 +105,7 @@ You rarely need to search by an arbitrary span attribute in production AIOps.
 | **License** | AGPLv3 | Apache 2.0 | AWS proprietary |
 
 **Recommendation**:
+
 - New project + Grafana stack: **Tempo** (native integration, optimal S3 cost)
 - Existing Jaeger with required tag search: **Jaeger**
 - Small all-AWS systems: **X-Ray** (but vendor lock-in)
@@ -297,6 +299,7 @@ Columns of data.parquet:
 ```
 
 **Why Parquet**:
+
 - Columnar storage: Fast filter on `StatusCode == ERROR` without reading other columns
 - Compression: Parquet with Snappy compresses trace data at roughly 5–10:1
 - S3 Select: Column filtering can happen server-side on S3, reducing transfer bandwidth

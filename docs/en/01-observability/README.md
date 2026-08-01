@@ -29,7 +29,7 @@ After this chapter, continue to [02 — OpenTelemetry](../02-opentelemetry/READM
 
 ![Observability Three Pillars + Correlation](../../assets/diagrams/02-observability-pillars.png)
 
-*Poster: Metrics / Logs / Traces join on `trace_id` and labels → Grafana Explore.*
+*Evidence graph: metrics, logs, traces, synthetics, and business SLIs converge through identity; profiles remain an optional signal with separate maturity.*
 
 > [!NOTE]
 > **KEY IDEA**
@@ -106,6 +106,7 @@ graph LR
 A metric is a **numeric measurement aggregated over time** and identified by a set of labels.
 
 **Example reading Prometheus metric format**:
+
 ```
 # HELP http_requests_total Total number of HTTP requests
 # TYPE http_requests_total counter
@@ -114,6 +115,7 @@ http_requests_total{method="POST",endpoint="/api/orders",status="500",service="o
 ```
 
 **Components of a metric**:
+
 - **Name**: `http_requests_total` — what is being measured
 - **Labels**: `{method, endpoint, status, service}` — dimensions for filtering/grouping
 - **Value**: `12345` — the measured value
@@ -300,6 +302,7 @@ k8s_node_name: ip-10-0-1-50
 > **Why Structured Logs are mandatory for AIOps?** Log anomaly systems (Drain, DeepLog) consume **structured fields**, not plain text. If logs are free-text, ML models cannot parse them, cannot group by `error.type`, cannot correlate with traces. Unstructured log = dead end for AIOps.
 
 **❌ Unstructured Log (Anti-Pattern)**:
+
 ```
 2024-01-15 14:23:45 ERROR Failed to process order 12345 for user john@example.com after 3 retries
 ```
@@ -362,6 +365,7 @@ k8s_node_name: ip-10-0-1-50
 | Adaptive | Dynamic rate by error rate | Balance cost/coverage |
 
 **Recommended production strategy**:
+
 - `INFO`: Sample 10% (or 1% for very high traffic)
 - `WARN`: Sample 100%
 - `ERROR` + `CRITICAL` + `FATAL`: Sample 100% + alert immediately
@@ -828,12 +832,14 @@ instrumentation_checklist:
 > **Why Exemplars are a "game changer"?** Before exemplars, when you saw a latency spike you had to guess "which request caused this spike?" With exemplars, Prometheus attaches the TraceID to the spike data point itself — you click the spike, Grafana automatically opens the corresponding trace.
 
 **Exemplar in Prometheus exposition format**:
+
 ```
 # TraceID attached to histogram bucket
 http_request_duration_seconds_bucket{le="0.5"} 998 # {traceID="4bf92f35",spanID="00f067aa"} 0.492
 ```
 
 **Enable exemplars in Go code**:
+
 ```go
 // Record metric with TraceID so Grafana can navigate to the trace
 histogram.With(labels).ObserveWithExemplar(
@@ -843,6 +849,7 @@ histogram.With(labels).ObserveWithExemplar(
 ```
 
 **Prometheus configuration**:
+
 ```yaml
 storage:
   exemplars:

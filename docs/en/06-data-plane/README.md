@@ -2,15 +2,17 @@
 
 > **Collection without a data plane is raw telemetry noise. The data plane is where heterogeneous signals become a trusted, queryable, feature-ready substrate for Kafka transport, anomaly detection, correlation, RCA, and audit. This chapter covers when to normalize, enrich, validate, store, and feature-ize — with retention, late data, PII, cost, and honest pipeline gaps.**
 
-### Architecture poster — end-to-end AIOps pipeline
+**End-to-end AIOps pipeline**
 
 ![AIOps Platform Pipeline](../../assets/diagrams/01-aiops-pipeline.png)
 
+*Where the data plane sits in the evidence → decision → action path.*
+
+**Data quality and feature plane**
+
 ![Telemetry Data Plane](../../assets/diagrams/09-data-plane.png)
 
-*Ch.06 poster: Collect → normalize → enrich → validate → hot/buffer/cold/feature → intelligence.*
-
-*Poster: Collection → **Data plane (this chapter)** → Transport (Kafka) → Intelligence → Action. Mermaid below details normalize / enrich / store / feature paths.*
+*Immutable ingress → normalize → temporal enrich → quality gate → versioned data products.*
 
 ---
 

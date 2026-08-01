@@ -95,7 +95,7 @@ Trong chapter này, mỗi ví dụ tách rõ bốn lớp thường bị trộn l
 
 ![AIOps Intelligence Layer](../../assets/diagrams/04-intelligence-layer.png)
 
-*Poster: ensemble detect → correlation → RCA → LLM agent → một incident card.*
+*Persistent detection giữ state qua incident dài, tách service độc lập và chỉ chuyển evidence đã hiệu chuẩn sang correlation/RCA.*
 
 > [!NOTE]
 > **Ý TƯỞNG**
@@ -622,6 +622,7 @@ Với cửa sổ chỉ 10–20 điểm, critical value và scale rất không �
 | Mở rộng STL với multi-outlier tốt hơn | Bất thường template/sequence log |
 
 **Ưu điểm so với STL thuần túy**:
+
 - Cung cấp mức ý nghĩa thống kê (p-value) cho các quyết định bất thường
 - Kiểm soát tỷ lệ phát hiện sai thông qua tham số `max_anomalies`
 - Bền vững hơn khi có nhiều bất thường xuất hiện đồng thời trong cửa sổ thời gian
@@ -769,6 +770,7 @@ Khi thêm điểm mới, cấu trúc core/border/noise có thể thay đổi cho
 
 
 **DBSCAN Trade-offs**:
+
 - ✅ Không yêu cầu định nghĩa trước số lượng cụm
 - ✅ Tìm kiếm được các cụm có hình dạng bất kỳ
 - ✅ Hoạt động tốt cho dữ liệu thưa và nhiều chiều nếu chọn metric khoảng cách tốt
@@ -1569,6 +1571,7 @@ Các con số dưới đây chỉ là **kịch bản minh họa**, không phải
 | **Tổng cộng** | | | **~$2,580/tháng** |
 
 **Tối ưu hóa chi phí**:
+
 - Chạy bộ phát hiện LSTM trên Spot instances (giúp tiết kiệm -60% chi phí phần này): $504 thay vì $1,260
 - Sử dụng suy luận bằng CPU cho mô hình LSTM nếu yêu cầu độ trễ cho phép (chấp nhận tăng từ 10ms → 100ms)
 - Tổng chi phí sau tối ưu: khoảng **~$1,824/tháng**

@@ -2,15 +2,17 @@
 
 > **Data Plane không phải nơi “đổ telemetry vào lake”. Nó là bộ máy biến record không đồng nhất thành evidence có identity, event time, topology/change snapshot, quality và feature version; đồng thời phải replay ra cùng kết quả sau restart. Chương này harden từng bước bằng incident payment, late data, schema drift và fault auth nổ chồng.**
 
-### Architecture poster — pipeline AIOps end-to-end
+**Toàn cảnh pipeline AIOps**
 
 ![AIOps Platform Pipeline](../../assets/diagrams/01-aiops-pipeline.png)
 
+*Vị trí của data plane trong luồng evidence → decision → action.*
+
+**Data quality và feature plane**
+
 ![Telemetry Data Plane](../../assets/diagrams/09-data-plane.png)
 
-*Poster Ch.06: Collect → normalize → enrich → validate → hot/buffer/cold/feature → intelligence.*
-
-*Poster kiến trúc (PNG): Collection → (Data Plane) → Transport/Kafka → Intelligence → Action. Chương này lấp khoảng trống giữa “đã scrape/export” và “có thể detect/train/audit”.*
+*Immutable ingress → normalize → temporal enrich → quality gate → versioned data products.*
 
 ---
 
@@ -26,7 +28,6 @@
 ## Related Documents
 
 - [17 — Topology & Change](../17-topology-change/README.vi.md) — service graph + change/deploy bus
-
 - [07 — Kafka / Kinesis](../07-kafka/README.vi.md) — buffer & fan-out sau data plane
 - [08 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — consumer feature / train-serve
 - [09 — Alert Correlation](../09-alert-correlation/README.vi.md) — cần topology & canonical incident events

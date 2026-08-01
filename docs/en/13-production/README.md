@@ -51,11 +51,11 @@ After this chapter, continue to [13 — Big Tech AIOps](../14-bigtech-aiops/READ
 
 ![AIOps on Kubernetes](../../assets/diagrams/06-k8s-production.png)
 
-*Poster: workload + observability + AIOps namespaces on Kubernetes / MSK / S3.*
+*Continuity design: durable state, checkpoint/replay, degraded modes, and an independent paging path when the platform is blind.*
 
 ![Control plane vs data plane](../../assets/diagrams/07-control-vs-data-plane.png)
 
-*Poster: separate data plane / control plane and out-of-band break-glass.*
+*Separate business, evidence, decision, and safety planes so one failure domain cannot disable both observation and recovery.*
 
 > [!NOTE]
 > **KEY IDEA**

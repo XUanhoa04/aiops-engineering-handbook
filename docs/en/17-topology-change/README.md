@@ -1,10 +1,10 @@
 # Chapter 17 — Topology & Change Data Plane
 
+> **This chapter is the capstone data product for AIOps: a versioned service topology graph plus a first-class change/deploy event stream. Telemetry without topology is anonymous noise. Anomalies without change context are false pages. Correlation, RCA, LLM investigation, and remediation safety all degrade to guesswork when the graph is stale or change events are missing. Treat topology and change as production data products with SLOs, schemas, and owners — not as a one-time Visio export.**
+
 ![Topology and Change Data Plane](../../assets/diagrams/10-topology-change.png)
 
 *Poster: topology sync + change bus → enrich / correlate / RCA / remediation freeze.*
-
-> **This chapter is the capstone data product for AIOps: a versioned service topology graph plus a first-class change/deploy event stream. Telemetry without topology is anonymous noise. Anomalies without change context are false pages. Correlation, RCA, LLM investigation, and remediation safety all degrade to guesswork when the graph is stale or change events are missing. Treat topology and change as production data products with SLOs, schemas, and owners — not as a one-time Visio export.**
 
 ---
 
