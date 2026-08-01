@@ -2,6 +2,10 @@
 
 > **Root Cause Analysis (RCA) is the intelligence layer responsible for answering the question "WHY did this incident happen?". It turns a group of correlated alerts into a precise diagnosis: which component failed, what type of failure it is, and the accompanying evidence. This chapter covers every RCA technique from topology-based methods, causal graphs, and GNNs, to LLM-assisted solutions.**
 
+![Root cause analysis engine](../../assets/diagrams/16-rca-engine.png)
+
+*Poster: first-red ordering, trace propagation, downstream weighting, counter-evidence, and an explainable ranked result.*
+
 ---
 
 ## Prerequisites

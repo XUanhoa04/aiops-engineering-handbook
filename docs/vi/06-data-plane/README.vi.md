@@ -1555,17 +1555,7 @@ Khoảng trống topology đã được đóng ở [Chapter 17 — Topology & Ch
 |-------|------------|-----|
 | [02 OTel](../02-opentelemetry/README.vi.md) [03 Prom](../03-prometheus/README.vi.md) [04 Loki](../04-loki/README.vi.md) [05 Tempo](../05-tempo/README.vi.md) | **06 Data Plane** | [07 Kafka](../07-kafka/README.vi.md) → [08 AD](../08-anomaly-detection/README.vi.md) → … → [13 Production](../13-production-engine/README.vi.md) |
 
-### 22.3 Poster
-
-![AIOps Platform Pipeline](../../assets/diagrams/01-aiops-pipeline.png)
-
-![Telemetry Data Plane](../../assets/diagrams/09-data-plane.png)
-
-*Poster Ch.06: Collect → normalize → enrich → validate → hot/buffer/cold/feature → intelligence.*
-
-*Đặt data plane vào đúng khúc giữa collection và intelligence — đó là chỗ handbook này vừa lấp.*
-
-### 22.4 Next step thực dụng (30 ngày)
+### 22.3 Next step thực dụng (30 ngày)
 
 1. Viết retention matrix 1 trang + canonical service list tier-0.  
 2. Đo `enrichment_miss` và `schema_fail` (dù manual export).  

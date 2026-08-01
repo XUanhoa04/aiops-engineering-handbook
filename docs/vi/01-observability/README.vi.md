@@ -591,28 +591,14 @@ labels:
 > Trace là **bản đồ hành trình của một request** qua toàn bộ hệ thống phân tán — như GPS tracking cho một đơn hàng từ kho → giao hàng. Mỗi "chặng" (service) được ghi lại thành một **span** với thời gian bắt đầu/kết thúc, tạo ra bức tranh toàn cảnh "request này mất 2 giây, trong đó 1.8 giây bị kẹt ở database".
 
 ```mermaid
-gantt
-    title Trace: Order Placement Request (TraceID: 4bf92f35)
-    dateFormat  SSS
-    axisFormat %Lms
-
-    section API Gateway
-    Receive + Auth        :0, 15
-
-    section Order Service
-    Parse + Validate      :15, 80
-
-    section Inventory Service
-    Check Stock           :22, 45
-
-    section Database
-    INSERT order          :52, 78
-
-    section Payment Service
-    Charge Card           :80, 180
-
-    section Notification
-    Send Email            :182, 220
+timeline
+    title Trace order placement — TraceID 4bf92f35
+    0–15 ms : API Gateway — receive and auth
+    15–80 ms : Order Service — parse and validate
+    22–45 ms : Inventory Service — check stock
+    52–78 ms : Database — insert order
+    80–180 ms : Payment Service — charge card
+    182–220 ms : Notification — send email
 ```
 
 ### 4.2 Span Data Structure

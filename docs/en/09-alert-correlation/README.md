@@ -2,6 +2,10 @@
 
 > **Alert correlation is the middle buffer between raw anomaly detection and human attention. Its job: take hundreds of concurrent anomaly events caused by a single root cause and compress them into one coherent incident with full context. This is where AIOps often shows the clearest ROI.**
 
+![Alert correlation engine](../../assets/diagrams/15-correlation-engine.png)
+
+*Poster: normalize, deduplicate, group by topology and time, then split independent overlapping faults.*
+
 ---
 
 ## Prerequisites

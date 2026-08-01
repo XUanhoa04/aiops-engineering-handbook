@@ -129,7 +129,7 @@ nav:
       - 08 Anomaly Detection: en/08-anomaly-detection/README.md
       - 09 Alert Correlation: en/09-alert-correlation/README.md
       - 10 Root Cause Analysis: en/10-root-cause-analysis/README.md
-      - 11 LLM Agent: en/11-llm-agent/README.md
+      - 11 Investigation Engine: en/11-llm-agent/README.md
       - 12 Remediation: en/12-remediation/README.md
       - 13 Production: en/13-production/README.md
       - 14 Big Tech AIOps: en/14-bigtech-aiops/README.md

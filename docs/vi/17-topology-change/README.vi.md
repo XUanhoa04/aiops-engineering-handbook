@@ -6,16 +6,6 @@
 
 > **Topology (đồ thị phụ thuộc dịch vụ / CMDB-like graph) và change/deploy event plane là hai data product first-class mà hầu hết nền tảng AIOps “giả định có sẵn” nhưng hiếm khi vận hành đúng. Chương này lấp khoảng trống: cách mô hình hóa, đồng bộ, giữ tươi, và contract với enrichment ([06](../06-data-plane/README.vi.md)), correlation ([09](../09-alert-correlation/README.vi.md)), RCA ([10](../10-root-cause-analysis/README.vi.md)), và remediation an toàn ([12](../12-remediation-safety-engine/README.vi.md)). Không có topology + change tin cậy, intelligence layer chỉ là máy đoán triệu chứng.**
 
-### Architecture poster — pipeline AIOps end-to-end
-
-![AIOps Platform Pipeline](../../assets/diagrams/01-aiops-pipeline.png)
-
-![Control vs Data Plane](../../assets/diagrams/07-control-vs-data-plane.png)
-
-![Intelligence Layer](../../assets/diagrams/04-intelligence-layer.png)
-
-*Poster: Collection → Data Plane → Transport → Intelligence → Action. Topology graph + change bus là **control context** song song với telemetry, không phải spreadsheet on-call copy-paste.*
-
 ---
 
 ## Prerequisites

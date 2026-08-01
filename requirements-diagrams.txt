@@ -1,0 +1,2 @@
+# Reproducible architecture poster generation. The Graphviz system binary is also required.
+graphviz>=0.20.3,<1

@@ -2,6 +2,10 @@
 
 > **Grafana Tempo is a large-scale distributed tracing storage system that stores traces on object storage (S3) to provide effectively unlimited retention at minimal cost. It integrates natively with Prometheus exemplars and Loki TraceIDs to create observability correlation across the three pillars.**
 
+![Trace evidence and error propagation](../../assets/diagrams/14-trace-evidence.png)
+
+*Poster: reconstruct the critical path, follow span-error propagation, and carry sampling coverage into confidence.*
+
 ---
 
 ## Prerequisites
@@ -152,7 +156,7 @@ graph TD
     COMP -->|merge small blocks| S3
     COMP -->|rebuild index| INDEX
 
-    GRAFANA[Grafana] -->|GET /api/traces/{id}\nTraceQL| QF
+    GRAFANA[Grafana] -->|Get trace by ID or TraceQL| QF
     QF -->|in-memory trace| ING1
     QF -->|S3 lookup| QUER
     QUER -->|block cache hit| CACHE

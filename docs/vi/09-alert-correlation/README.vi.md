@@ -2,6 +2,10 @@
 
 > **Liên kết cảnh báo (Alert correlation) là lớp đệm trung gian nằm giữa hệ thống phát hiện bất thường thô và sự tập trung của con người. Nhiệm vụ của nó: thu nhận hàng trăm sự kiện bất thường đồng thời gây ra bởi một nguyên nhân gốc rễ duy nhất, và tổng hợp thành một incident mạch lạc có ngữ cảnh đầy đủ. Đây là nơi mang lại ROI rõ ràng nhất cho hệ thống AIOps.**
 
+![Alert correlation engine](../../assets/diagrams/15-correlation-engine.png)
+
+*Poster: chuẩn hóa, dedup, ghép theo topology/thời gian rồi chủ động tách các fault nổ chồng.*
+
 ---
 
 ## Prerequisites

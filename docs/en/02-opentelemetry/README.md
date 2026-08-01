@@ -2,6 +2,10 @@
 
 > **OpenTelemetry is the vendor-neutral, CNCF-graduated standard for collecting, processing, and exporting telemetry data. It is the collection backbone of every production AIOps platform.**
 
+![OpenTelemetry collection architecture](../../assets/diagrams/11-otel-collection.png)
+
+*Poster: thin edge collectors, governed gateways, explicit quality signals, and portable exports.*
+
 ---
 
 ## Prerequisites

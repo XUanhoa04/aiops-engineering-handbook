@@ -2,6 +2,10 @@
 
 > **Prometheus is the de-facto standard for collecting, storing, and alerting on metrics in cloud-native environments. Deep understanding of TSDB internals, the scrape engine, and HA architecture is a prerequisite for building a reliable AIOps platform.**
 
+![Metric and SLO evidence engine](../../assets/diagrams/12-slo-metrics-engine.png)
+
+*Poster: metric contracts become SLIs, multi-window burn rates, versioned features, and stateful decisions.*
+
 ---
 
 ## Prerequisites

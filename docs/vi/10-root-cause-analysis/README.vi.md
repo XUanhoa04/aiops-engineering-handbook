@@ -2,6 +2,10 @@
 
 > **Phân tích nguyên nhân gốc rễ (Root Cause Analysis - RCA) là lớp thông minh chịu trách nhiệm trả lời câu hỏi "TẠI SAO sự cố này lại xảy ra?". Nó biến một nhóm các cảnh báo tương quan thành một chẩn đoán chính xác: thành phần nào bị lỗi, loại lỗi là gì và các bằng chứng đi kèm. Chương này giới thiệu mọi kỹ thuật RCA từ dựa trên topology, đồ thị nhân quả, GNN, đến các giải pháp hỗ trợ bởi LLM.**
 
+![Root cause analysis engine](../../assets/diagrams/16-rca-engine.png)
+
+*Poster: first-red, span error propagation, downstream weighting và counter-evidence cùng đi vào một bảng xếp hạng có giải thích.*
+
 ---
 
 ## Prerequisites

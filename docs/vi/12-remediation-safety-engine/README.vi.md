@@ -2,6 +2,10 @@
 
 > **Automated remediation không phải chạy script nhanh hơn con người. Nó là một safety engine độc lập, biến một đề xuất có bằng chứng thành quyết định có policy, blast radius, canary, verification và rollback. Engine tốt không được thưởng vì thực hiện nhiều action; nó được đánh giá bằng số sự cố giảm MTTR mà không tạo customer harm, không vượt quyền và không che giấu thất bại.**
 
+![Remediation safety engine](../../assets/diagrams/05-remediation-safety.png)
+
+*Poster: proposal có kiểu dữ liệu đi qua policy, canary, independent verification và rollback; không có đường tắt từ chat tới production.*
+
 ---
 
 ## Prerequisites

@@ -2,6 +2,10 @@
 
 > **Trace không tự tìm ra root cause. Nó chỉ trở thành causal evidence khi parent/link đúng, queue/retry được mô hình hóa, sampling coverage được công bố và thời gian được đọc cùng uncertainty. Chương này dựng lại failure path của payment incident bằng span cụ thể; Tempo là storage/query implementation ở phần reference.**
 
+![Trace evidence and error propagation](../../assets/diagrams/14-trace-evidence.png)
+
+*Poster: dựng critical path, theo error propagation và giữ sampling coverage như một phần của độ tin cậy.*
+
 ---
 
 ## Prerequisites
@@ -375,7 +379,7 @@ graph TD
     COMP -->|merge small blocks| S3
     COMP -->|rebuild index| INDEX
 
-    GRAFANA[Grafana] -->|GET /api/traces/{id}\nTraceQL| QF
+    GRAFANA[Grafana] -->|Get trace by ID or TraceQL| QF
     QF -->|in-memory trace| ING1
     QF -->|S3 lookup| QUER
     QUER -->|block cache hit| CACHE

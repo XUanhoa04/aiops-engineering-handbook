@@ -2,6 +2,10 @@
 
 > **Core AIOps engine không nên được viết lại cho từng ngành, nhưng policy, business invariant, seasonality, topology, evidence và remediation boundary phải thay đổi theo domain. Domain Pack là lớp cấu hình về semantics và acceptance: nó nói “healthy” nghĩa là gì, fault nào nguy hiểm, dữ liệu nào được phép dùng và action nào tuyệt đối không tự động.**
 
+![Payment critical path and invariants](../../assets/diagrams/08-payment-critical-path.png)
+
+*Poster: domain pack payment gắn critical path với business invariant, idempotency, fraud boundary và remediation policy.*
+
 ---
 
 ## 1. Domain Pack là gì?

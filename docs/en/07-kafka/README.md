@@ -112,7 +112,7 @@ graph TD
         B1[Broker 1\nLeader for partitions: 0,3,6]
         B2[Broker 2\nLeader for partitions: 1,4,7]
         B3[Broker 3\nLeader for partitions: 2,5,8]
-        ZK[ZooKeeper / KRaft\nmetadata + elections]
+        KRAFT[KRaft controller quorum\nmetadata log + elections]
     end
 
     subgraph Topics["Topics"]
@@ -172,9 +172,9 @@ graph LR
         P2[Partition 2\nBroker 3 Leader\nOffset: 0,1,2...1.1M]
     end
 
-    MSG1[Message\nkey=service-A] -->|hash(key) % 3 = 0| P0
-    MSG2[Message\nkey=service-B] -->|hash(key) % 3 = 1| P1
-    MSG3[Message\nkey=service-C] -->|hash(key) % 3 = 2| P2
+    MSG1[Message\nkey=service-A] -->|hash key modulo 3 = 0| P0
+    MSG2[Message\nkey=service-B] -->|hash key modulo 3 = 1| P1
+    MSG3[Message\nkey=service-C] -->|hash key modulo 3 = 2| P2
 
     CONS1[Consumer 1] -->|reads| P0
     CONS2[Consumer 2] -->|reads| P1
@@ -1255,8 +1255,8 @@ kafka-reassign-partitions.sh \
 ### Authentication: SASL/SCRAM
 
 ```bash
-# Add user credentials to ZooKeeper (or KRaft)
-kafka-configs.sh --zookeeper zk-1:2181 \
+# Kafka 4.x: manage SCRAM through a broker bootstrap; --zookeeper is removed
+kafka-configs.sh --bootstrap-server kafka-1:9092 \
   --alter --add-config \
   'SCRAM-SHA-512=[password=secretpassword]' \
   --entity-type users \

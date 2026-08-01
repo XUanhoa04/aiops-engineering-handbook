@@ -6,22 +6,6 @@
 
 > **This chapter is the capstone data product for AIOps: a versioned service topology graph plus a first-class change/deploy event stream. Telemetry without topology is anonymous noise. Anomalies without change context are false pages. Correlation, RCA, LLM investigation, and remediation safety all degrade to guesswork when the graph is stale or change events are missing. Treat topology and change as production data products with SLOs, schemas, and owners — not as a one-time Visio export.**
 
-### Architecture poster — where this plane sits
-
-![AIOps Platform Pipeline](../../assets/diagrams/01-aiops-pipeline.png)
-
-![Telemetry Data Plane](../../assets/diagrams/09-data-plane.png)
-
-*Ch.06 owns normalize / enrich / store for telemetry. This chapter owns the **topology graph** and **change event plane** that enrichment, correlation, RCA, and remediation **consume** as authoritative context — not as optional dashboard candy.*
-
-![Intelligence Layer](../../assets/diagrams/04-intelligence-layer.png)
-
-*Detect → correlate → RCA → LLM: each stage needs edges (who depends on whom) and recent change windows (what just moved).*
-
-![Remediation Safety](../../assets/diagrams/05-remediation-safety.png)
-
-*Blast-radius gates and freeze windows come from this plane — not from hard-coded service lists in the remediation worker.*
-
 ---
 
 ## Prerequisites

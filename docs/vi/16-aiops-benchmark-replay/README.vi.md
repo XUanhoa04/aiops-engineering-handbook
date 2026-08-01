@@ -2,6 +2,10 @@
 
 > **Một demo đẹp chỉ chứng minh hệ thống chạy được một lần. Benchmark Replay chứng minh mỗi revision của detector, correlation, RCA, investigation, remediation và production engine vẫn đúng khi incident kéo dài, fault nổ chồng, dữ liệu đến trễ, telemetry mất và action thất bại. Chapter này biến bài học incident thành dataset, ground truth, clock, scorer và hard gate có thể chạy lặp lại.**
 
+![AIOps benchmark replay](../../assets/diagrams/19-benchmark-replay.png)
+
+*Poster: incident timeline bất biến được phát lại qua virtual clock, fault injection, scorer và regression gate.*
+
 ---
 
 ## 1. Vì sao postmortem collection chưa đủ?

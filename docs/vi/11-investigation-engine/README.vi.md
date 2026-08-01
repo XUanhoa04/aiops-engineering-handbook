@@ -2,6 +2,10 @@
 
 > **Investigation Engine không phải chatbot biết đọc dashboard. Nó là hệ thống quản lý một cuộc điều tra: giữ nhiều giả thuyết cạnh tranh, chọn bằng chứng có giá trị nhất, phân biệt fact với suy luận, hạ độ tin cậy khi telemetry thiếu và dừng đúng lúc khi chưa đủ căn cứ. LLM có thể giúp đọc, tổng hợp và lập kế hoạch truy vấn; LLM không được trở thành nguồn sự thật, bộ thực thi hay người quyết định thay on-call.**
 
+![Investigation engine](../../assets/diagrams/17-investigation-engine.png)
+
+*Poster: lập kế hoạch truy vấn read-only, giữ provenance và đưa ra kết luận kèm uncertainty thay vì để LLM điều khiển production.*
+
 ---
 
 ## Prerequisites

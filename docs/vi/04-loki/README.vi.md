@@ -2,6 +2,10 @@
 
 > **Một triệu dòng log không phải một triệu bằng chứng. AIOps cần biến text không ổn định thành event có identity, template, failure family, onset, frequency và quality; sau đó phân biệt origin event với retry/downstream noise. Loki là một lựa chọn lưu và truy vấn, không phải mục tiêu của chương.**
 
+![Log evidence pipeline](../../assets/diagrams/13-log-evidence.png)
+
+*Poster: log thô chỉ trở thành evidence sau khi có identity, template, quality, onset và liên kết trace/change.*
+
 ---
 
 ## Prerequisites
@@ -744,13 +748,13 @@ loki.write "default" {
 
 | Tính năng | Grafana Alloy | Promtail |
 |---------|--------------|---------|
-| Trạng thái | Hiện tại, đang được phát triển tích cực | Đã cũ (Loki 2.9+: khuyến nghị dùng Alloy) |
+| Trạng thái | Hiện tại, đang được phát triển tích cực | Đã EOL từ ngày 02/03/2026; không dùng cho triển khai mới |
 | Cấu hình | Ngôn ngữ River | YAML |
 | Đa tín hiệu | Hỗ trợ Metrics + Logs + Traces | Chỉ hỗ trợ Logs |
 | Tương thích OTel | ✅ Có hỗ trợ tự nhiên | ❌ Không |
 | Mức tiêu thụ tài nguyên | Cao hơn một chút | Thấp hơn |
 
-**Khuyến nghị**: Sử dụng Grafana Alloy cho các triển khai mới. Sử dụng Promtail nếu bạn đã có sẵn các file cấu hình từ trước.
+**Khuyến nghị**: Sử dụng Grafana Alloy cho triển khai mới và chuyển cấu hình Promtail hiện có sang Alloy. Không giữ Promtail chỉ vì file YAML cũ: sau EOL, đó là một dependency không còn được hỗ trợ.
 
 ---
 

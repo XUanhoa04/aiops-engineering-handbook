@@ -1,6 +1,10 @@
-# Chapter 11 — LLM Investigation Agent
+# Chapter 11 — Investigation Engine with bounded LLM assistance
 
-> **The LLM Investigation Agent is the "brain" of the AIOps platform. It takes structured RCA results, analyzes evidence, queries additional context via tools (Prometheus, Loki, Tempo, kubectl), synthesizes human-readable diagnoses, and suggests or directly executes remediation actions. This chapter describes the complete agent architecture: RAG, tool use, agentic loops, prompt engineering, and safety gates.**
+> **An investigation engine is not the brain or production executor of AIOps. It manages competing hypotheses, runs bounded read-only queries, preserves provenance, exposes missing or conflicting evidence, and produces an operator brief. An LLM may plan and summarize; it is neither the source of truth nor an authorization path to remediation.**
+
+![Investigation engine](../../assets/diagrams/17-investigation-engine.png)
+
+*Poster: bounded read-only tests with provenance and explicit uncertainty.*
 
 ---
 

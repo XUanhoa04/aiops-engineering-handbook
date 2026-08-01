@@ -2,6 +2,10 @@
 
 > **Pattern library không phải bộ sưu tập logo Big Tech. Mỗi pattern trong chapter này là một quyết định kiến trúc tái sử dụng được: nêu vấn đề, lực tác động, điều kiện dùng, dữ liệu cần có, trade-off, failure mode và bài acceptance. Hãy chọn pattern theo quy mô, topology, độ trưởng thành và hậu quả khi sai; không copy một hệ thống được thiết kế cho tổ chức lớn hơn mình hàng trăm lần.**
 
+![AIOps pattern library lifecycle](../../assets/diagrams/18-pattern-library.png)
+
+*Poster: một pattern chỉ được giữ lại khi có context, negative control, degraded mode, acceptance và điều kiện retire.*
+
 ---
 
 ## 1. Pattern library giải quyết vấn đề gì?

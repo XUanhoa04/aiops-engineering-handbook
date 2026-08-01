@@ -413,7 +413,7 @@ Với page deadline 120 giây, một budget thực tế có thể là: ingest 20
 | OTel Collection | 100MB/s | 30MB/s | Băng thông mạng card NIC |
 | Kafka ingest | 500MB/s | 50MB/s | Tốc độ ghi Disk IO của Broker |
 | Loki ingest | 100MB/s | 20MB/s | Dung lượng RAM của Ingester |
-| Anomaly detection | 50K metrics/giây | 10K metrics/giây | Năng lực GPU cho mô hình LSTM |
+| Stateful detection | 50K điểm/giây | 10K điểm/giây | Window state, replay lag và inference queue của candidate model |
 | Correlation | 10K alerts/phút | 1K alerts/phút | Năng lực xử lý của Redis |
 | RCA | 100 incidents/phút | 10 incidents/phút | Tốc độ đáp ứng của Loki/Tempo API |
 | LLM agent | 50 lượt điều tra/phút | 5 lượt điều tra/phút | Giới hạn hạn mức API rate limits |

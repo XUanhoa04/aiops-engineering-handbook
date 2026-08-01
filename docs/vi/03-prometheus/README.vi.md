@@ -2,6 +2,10 @@
 
 > **Prometheus chỉ là nguồn dữ liệu. Giá trị AIOps nằm ở việc biến counter, gauge và histogram thành evidence có đúng mẫu số, đúng cửa sổ, đúng freshness và đúng phạm vi. Chương này dùng các dãy số cụ thể để chỉ ra khi nào một metric nói thật, nói thiếu hoặc khiến detector kết luận ngược.**
 
+![Metric and SLO evidence engine](../../assets/diagrams/12-slo-metrics-engine.png)
+
+*Poster: từ metric contract tới SLI, burn-rate đa cửa sổ, feature có lineage và quyết định có trạng thái.*
+
 ---
 
 ## Prerequisites

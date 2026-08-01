@@ -2,6 +2,10 @@
 
 > **This chapter is not a gallery of “horror outages.” It is a systems lab: how to read a postmortem as an engineer, how to separate proximate from systemic causes, and how to turn each failure class (tool safety, coupling, feedback loops, observability blind spots) into concrete design requirements for the AIOps pipeline — from Detection to Remediation. Reference spirit: Richard Cook, *How Complex Systems Fail* — complex systems always run in a partially failed state; incidents happen when latent conditions meet at the wrong time.**
 
+![Benchmark replay](../../assets/diagrams/19-benchmark-replay.png)
+
+*Poster: a postmortem becomes engineering evidence when its timeline can be replayed and scored against the current engine.*
+
 ---
 
 ### Architecture poster — control plane vs data plane

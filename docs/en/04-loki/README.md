@@ -2,6 +2,10 @@
 
 > **Loki is Grafana’s horizontally scalable log aggregation system, designed with the philosophy “logs like metrics”: index only labels, compress log content, and store it on object storage. At large production scale, Loki is far cheaper than ELK while integrating natively with Prometheus and Grafana.**
 
+![Log evidence pipeline](../../assets/diagrams/13-log-evidence.png)
+
+*Poster: raw log text becomes evidence only after identity, templating, quality, onset, and trace/change links.*
+
 ---
 
 ## Prerequisites
@@ -531,13 +535,13 @@ loki.write "default" {
 
 | Feature | Grafana Alloy | Promtail |
 |---------|--------------|---------|
-| Status | Current, actively developed | Legacy (Loki 2.9+: Alloy recommended) |
+| Status | Current, actively developed | EOL since March 2, 2026; do not use for new deployments |
 | Config | River language | YAML |
 | Multi-signal | Metrics + Logs + Traces | Logs only |
 | OTel compatibility | ✅ Native | ❌ No |
 | Resource usage | Slightly higher | Lower |
 
-**Recommendation**: Use Grafana Alloy for new deployments. Use Promtail if you already have existing configs.
+**Recommendation**: Use Grafana Alloy for new deployments and migrate existing Promtail configurations to Alloy. Keeping Promtail only to preserve old YAML leaves an unsupported dependency in the collection path.
 
 ---
 

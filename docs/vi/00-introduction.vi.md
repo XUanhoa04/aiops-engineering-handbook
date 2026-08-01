@@ -266,13 +266,18 @@ graph TD
     COLLECT --> AD[Anomaly Detection Engine]
     AD --> CORR[Alert Correlation Engine]
     CORR --> RCA[Root Cause Analysis]
-    RCA --> LLM[LLM Investigation Agent]
-    LLM --> DEC[Decision Engine]
+    RCA --> DEC[Decision Engine]
+    RCA -.->|khi còn bất định| INV[Investigation Engine\nread-only, LLM optional]
+    INV -.->|evidence brief| DEC
 
-    DEC --> AUTO[Automated Remediation\nrollback deployment]
+    DEC --> PROP[Typed Remediation Proposal]
     DEC --> TICKET[Single Incident Ticket\nwith full context]
+    PROP --> SAFE[Independent Safety Engine\npolicy + blast radius]
+    SAFE --> CANARY[Canary action]
+    CANARY --> VERIFY[Independent verification]
 
-    AUTO --> RESOLVED[Resolved in 3 minutes\nNo human woken]
+    VERIFY -->|outcome proven| RESOLVED[Incident resolved]
+    VERIFY -->|failed or uncertain| TICKET
     TICKET --> ENG[On-Call Engineer receives\n1 structured alert with root cause]
 
     style DEP fill:#fecdd3,color:#1e293b
@@ -945,7 +950,7 @@ flowchart TD
     subgraph Collection["2. Collection Layer"]
         OTC[OpenTelemetry Collector]
         PROM[Prometheus Scraper]
-        PROMTAIL[Promtail / Alloy]
+        ALLOY[Grafana Alloy / OTel Collector]
     end
 
     subgraph DataPlane["3. Data Plane (Ch.06)"]
@@ -965,8 +970,8 @@ flowchart TD
     end
 
     subgraph Detection["6. Detection Layer"]
-        STAT[Statistical Detector\nEWMA / Z-score / STL]
-        ML[ML Detector\nIsolation Forest / LSTM]
+        STAT[Persistent Detector\nMAD freeze / burn-rate]
+        ML[Multivariate Candidate\nonly after replay proves value]
         LOG[Log Anomaly\nDrain / DeepLog]
     end
 
@@ -977,12 +982,12 @@ flowchart TD
     end
 
     subgraph RCA["8. Root Cause Analysis"]
-        CG[Causal Graph]
-        GNN[Graph Neural Network]
-        RANK[Root Cause Ranker]
+        CG[Dependency Graph\n+ downstream weight]
+        GNN[Trace Error Propagation\n+ first-red ordering]
+        RANK[Multi-signal Ranker\n+ counter-evidence]
     end
 
-    subgraph LLM["9. LLM Investigation Agent"]
+    subgraph LLM["9. Investigation Engine — LLM optional"]
         RAG[RAG\nRunbook Retrieval]
         CTX[Context Assembly]
         INV[Investigation Chain]
@@ -1019,8 +1024,9 @@ flowchart TD
     Feature --> Detection
     Detection --> Correlation
     Correlation --> RCA
-    RCA --> LLM
-    LLM --> Decision
+    RCA --> Decision
+    RCA -.->|uncertain case| LLM
+    LLM -.->|evidence brief| Decision
     Decision --> Remediation
     Remediation --> Verification
     Verification --> KB

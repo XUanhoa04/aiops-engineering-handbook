@@ -2,6 +2,10 @@
 
 > **Big Tech does not “sell” you an AIOps blueprint to copy-paste. They publish principles, public postmortems, and architecture patterns that have absorbed blows at extreme scale. This chapter extracts those principles — Google SRE, Netflix chaos, AWS operational safeguards, Meta control-plane outages, Uber ML platform — and maps them onto this handbook’s AIOps pipeline: detection → correlation → RCA → remediation → production ops. The goal is not “be like Netflix,” but to understand *why* they chose those trade-offs, *which prerequisites* must exist, and *when that pattern is dangerous* if your org is two steps smaller in scale and one step lower in maturity.**
 
+![AIOps pattern lifecycle](../../assets/diagrams/18-pattern-library.png)
+
+*Poster: copy a decision contract only when its forces, negative controls, acceptance, and retirement rule travel with it.*
+
 ---
 
 ## Prerequisites

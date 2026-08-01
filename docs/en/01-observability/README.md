@@ -398,28 +398,14 @@ labels:
 > A trace is a **map of a request’s journey** through the entire distributed system — like GPS tracking for an order from warehouse → delivery. Each "leg" (service) is recorded as a **span** with start/end times, creating the full picture: "this request took 2 seconds, of which 1.8 seconds was stuck in the database."
 
 ```mermaid
-gantt
-    title Trace: Order Placement Request (TraceID: 4bf92f35)
-    dateFormat  SSS
-    axisFormat %Lms
-
-    section API Gateway
-    Receive + Auth        :0, 15
-
-    section Order Service
-    Parse + Validate      :15, 80
-
-    section Inventory Service
-    Check Stock           :22, 45
-
-    section Database
-    INSERT order          :52, 78
-
-    section Payment Service
-    Charge Card           :80, 180
-
-    section Notification
-    Send Email            :182, 220
+timeline
+    title Trace order placement — TraceID 4bf92f35
+    0–15 ms : API Gateway — receive and auth
+    15–80 ms : Order Service — parse and validate
+    22–45 ms : Inventory Service — check stock
+    52–78 ms : Database — insert order
+    80–180 ms : Payment Service — charge card
+    182–220 ms : Notification — send email
 ```
 
 ### 4.2 Span Data Structure

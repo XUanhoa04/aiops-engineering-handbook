@@ -2,6 +2,10 @@
 
 > **Mục tiêu không phải “cài được Collector”. Mục tiêu là mọi metric, log và span đến intelligence plane vẫn giữ đúng danh tính, thời gian, quan hệ nhân quả và chất lượng; khi mất dữ liệu, downstream biết chính xác mình đang mù ở đâu. OpenTelemetry là phương tiện hiện thực hóa hợp đồng đó.**
 
+![OpenTelemetry collection architecture](../../assets/diagrams/11-otel-collection.png)
+
+*Poster: edge collector mỏng, gateway có governance và đường xuất dữ liệu không khóa vào một backend.*
+
 ---
 
 ## Prerequisites
