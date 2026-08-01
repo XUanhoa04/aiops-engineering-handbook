@@ -45,7 +45,7 @@ Sau chương này, hãy chuyển sang [07 — Apache Kafka / AWS Kinesis](../07-
 
 ## Cách đọc chương này
 
-Đọc phần Production hardening trước để thấy một record thật được normalize, enrich, validate, version và replay ra sao. Các phần đánh số phía sau là reference về architecture, storage, feature store, late data, PII, cost và maturity; không cần đọc tuần tự nếu chỉ đang thiết kế contract.
+Hãy theo sáu record thật từ lúc đi vào pipeline cho tới khi trở thành evidence mà detector, correlation và RCA có thể dùng lại. Mỗi quyết định đều phải trả lời được: record thuộc service nào, xảy ra lúc nào, schema/unit có đáng tin không, enrichment nào có hiệu lực tại event time, feature được tính bằng version nào và replay sau ba tháng có ra cùng kết quả không. Những phần sau mở rộng chính engine đó qua storage, late data, PII, cost và degraded mode; không còn ranh giới giữa “phần thực hành” và “phần lý thuyết”.
 
 ---
 
@@ -268,34 +268,6 @@ Collection tối ưu cho **khả năng quan sát vận hành** (dashboard, page,
 
 ### 1.2 Khoảng trống kinh điển sau collection
 
-```mermaid
-flowchart LR
-    subgraph DONE["Đã xong (Ch.02–05)"]
-        A[Instrument]
-        B[Collect / Scrape]
-        C[Hot store<br/>Prom/Loki/Tempo]
-    end
-
-    subgraph GAP["Khoảng trống chương này"]
-        D[Normalize]
-        E[Enrich]
-        F[Validate]
-        G[Buffer / Tiered store]
-        H[Feature serve]
-    end
-
-    subgraph NEXT["Ch.07+"]
-        I[Kafka fan-out]
-        J[Detect / Correlate / RCA]
-    end
-
-    A --> B --> C
-    C -.->|thường nhảy cóc| J
-    C --> D --> E --> F --> G --> H --> I --> J
-
-    style GAP fill:#f3e8ff,color:#1e293b
-    style DONE fill:#dbeafe,color:#1e293b
-```
 
 > [!WARNING]
 > **Nhảy cóc nguy hiểm**: nhiều team sau khi có Grafana “đẹp” liền cắm anomaly detector trực tiếp vào PromQL thô. Ba tháng sau: service rename làm baseline gãy, unit `ms` vs `s` làm score vô nghĩa, deploy không gắn version khiến RCA luôn đoán sai. Data plane tồn tại để **chặn các failure mode im lặng** này trước intelligence layer.
@@ -304,9 +276,6 @@ flowchart LR
 
 Handbook dùng pipeline mở rộng sau chương này:
 
-```text
-Collect → Normalize → Enrich → Validate → Buffer/Store → Feature → Detect → Correlate → RCA → Decide → Remediate → Learn
-```
 
 | Stage | Câu hỏi THEN (khi nào) | Owner điển hình |
 |-------|------------------------|-----------------|
@@ -342,47 +311,6 @@ Ba plane phải fail độc lập. Data plane down ≠ product traffic down — 
 
 ### 2.1 Phân ranh giới trách nhiệm
 
-```mermaid
-flowchart TB
-    subgraph DP["TELEMETRY DATA PLANE"]
-        direction TB
-        N[Normalize]
-        E[Enrich]
-        V[Validate / Quarantine]
-        S[Hot / Warm / Cold Store]
-        FS[Feature Store online/offline]
-        AUD[Audit + Incident store]
-    end
-
-    subgraph IP["INTELLIGENCE PLANE"]
-        direction TB
-        AD[Anomaly Detection]
-        COR[Alert Correlation]
-        RCA[RCA Ranking]
-        LLM[LLM Investigation]
-        DEC[Decision / Policy]
-    end
-
-    subgraph AP["ACTION PLANE"]
-        REM[Remediation]
-        HUM[Human on-call]
-        LRN[Label / Feedback]
-    end
-
-    N --> E --> V --> S
-    S --> FS
-    FS --> AD --> COR --> RCA --> LLM --> DEC
-    DEC --> REM
-    DEC --> HUM
-    REM --> LRN
-    HUM --> LRN
-    LRN -.->|weak labels| FS
-    S --> AUD
-
-    style DP fill:#e0e7ff,color:#1e293b
-    style IP fill:#f3e8ff,color:#1e293b
-    style AP fill:#ffedd5,color:#1e293b
-```
 
 | Chiều | Data Plane | Intelligence Plane |
 |-------|------------|--------------------|
@@ -395,25 +323,8 @@ flowchart TB
 
 ### 2.2 Luồng dữ liệu đầy đủ (logical)
 
-```mermaid
-flowchart LR
-    SRC[Apps / K8s / Cloud] --> COL[OTel / Prom scrape / agents]
-    COL --> NOR[Normalize]
-    NOR --> ENR[Enrich]
-    ENR --> VAL{Validate}
-    VAL -->|OK| BUF[(Kafka / buffer)]
-    VAL -->|BAD| Q[Quarantine / DLQ]
-    BUF --> HOT[(Prom / Loki / Tempo)]
-    BUF --> COLD[(S3 / lake)]
-    BUF --> FEAT[Feature compute]
-    FEAT --> FSO[(Offline FS)]
-    FEAT --> FSI[(Online FS)]
-    FSI --> DET[Detectors]
-    HOT --> DET
-    DET --> INT[Correlation / RCA / LLM]
-    INT --> INC[(Incident store)]
-    INT --> ACT[Remediation / Page]
-```
+Một record đi qua sáu ranh giới có thể quan sát: nhận raw bất biến; giải identity/unit/time; enrich bằng snapshot có hiệu lực; quality gate quyết định accept/quarantine/partial; materialize canonical event/feature có version; fan-out tới consumer kèm provenance. Mỗi ranh giới phát count, lag, drop reason và version. Nếu chỉ đo “Kafka nhận bao nhiêu message”, đội không biết 8% telemetry đã biến mất ở parser hay join topology.
+
 
 ### 2.3 WHERE vs WHEN — hai trục thiết kế
 
@@ -444,24 +355,8 @@ Principal SRE chọn theo **hậu quả khi sai**, không theo “architecture �
 
 ### 3.1 Decision tree
 
-```mermaid
-flowchart TD
-    START[Bắt đầu: bạn cần AIOps gì?] --> Q1{Chỉ dashboard + static alert?}
-    Q1 -->|Có| RAW[Raw hot store đủ<br/>Prom+Loki+Tempo]
-    Q1 -->|Không| Q2{Cần anomaly / correlation?}
-    Q2 -->|Có| Q3{>1 team / >30 services / multi-tenant?}
-    Q3 -->|Không| LIGHT[Light plane:<br/>naming lint + basic enrich deploy]
-    Q3 -->|Có| Q4{Train ML / multi-detector / regulated?}
-    Q4 -->|Không| MID[Mid plane:<br/>normalize + enrich + validate + Kafka]
-    Q4 -->|Có| FULL[Full plane:<br/>+ feature store + quarantine + cold tier + audit]
-    RAW --> NOTE1[Vẫn cần retention & PII tối thiểu]
-    LIGHT --> NOTE2[Đặt lịch review 90 ngày]
-    MID --> NOTE3[Ch.07 Kafka bắt buộc]
-    FULL --> NOTE4[Ownership AIOps + data quality on-call]
+Bắt đầu bằng hậu quả khi record sai. Nếu chỉ phục vụ dashboard thủ công và raw có một producer, giữ pipeline nhỏ. Nếu cùng tín hiệu đi vào page hoặc detector, bắt buộc identity, unit và time contract. Nếu phải join nhiều signal/service, thêm enrichment snapshot và quality propagation. Nếu train offline, replay hoặc audit, thêm canonical version, feature parity và cold history. Chỉ thêm feature store khi có ít nhất hai consumer cần cùng feature hoặc train/serve skew đã xuất hiện.
 
-    style FULL fill:#f3e8ff,color:#1e293b
-    style RAW fill:#dbeafe,color:#1e293b
-```
 
 ### 3.2 Ma trận “đủ chưa?”
 
@@ -538,22 +433,13 @@ Normalize trong AIOps data plane gồm tối thiểu:
 
 #### A) Unit mismatch — **khi** có >1 instrumentation path
 
-```text
-# Hai team, cùng “latency”
-team_a: http_request_duration_seconds_bucket  # Prometheus native
-team_b: http_latency_ms                       # custom micrometer
-```
+Ví dụ cùng pool wait thực tế 2 giây nhưng SDK A gửi `2`, SDK B gửi `2000`. Nếu ghép thành dãy `1,8; 2,1; 1,9; 2000; 2,2`, detector chắc chắn báo anomaly dù production không đổi. Contract phải xác nhận unit từ metadata; record không chứng minh được unit bị quarantine, tuyệt đối không “đoán theo độ lớn”.
+
 
 **WHEN**: ngay khi PromQL/dashboard bắt đầu `* 1000` rải rác. **Làm gì**: canonical unit trong naming (`_seconds`, `_bytes`, `_ratio`) + Collector transform / recording rules rõ ràng. **Không** để detector nhân 1000 ad-hoc.
 
 #### B) Service name drift — **khi** ownership hoặc deploy system đổi tên
 
-```text
-git repo: payments-api
-k8s deployment: payments
-OTel resource: service.name=Payment.API
-Prometheus job: payments-api-prod
-```
 
 **WHEN**: >3 alias cho một logical service, hoặc service catalog đã tồn tại nhưng telemetry không map. **Làm gì**: single canonical `service` từ catalog; raw name giữ ở `service_raw` để debug.
 
@@ -574,38 +460,9 @@ Map về enum hạn chế: `TRACE|DEBUG|INFO|WARN|ERROR|FATAL` + `severity_impac
 
 ### 4.4 Pipeline normalize điển hình
 
-```mermaid
-flowchart TD
-    IN[Raw OTLP / scrape / log] --> R1[Resource attr standardize]
-    R1 --> R2[Metric name + unit canonical]
-    R2 --> R3[Label allowlist / drop high-card]
-    R3 --> R4[Log severity + body schema fields]
-    R4 --> R5[Trace attribute semantic conventions]
-    R5 --> R6[Inject pipeline_version + normalize_ts]
-    R6 --> OUT[Normalized envelope]
 
-    style OUT fill:#dcfce7,color:#1e293b
-```
+Một policy normalize phải diễn đạt được các quyết định sau, bất kể đội triển khai bằng công nghệ nào:
 
-Config snippet (minh họa **WHY**, không phải blueprint copy-paste):
-
-```yaml
-# OTel Collector — WHY: ép service.name + env sớm, trước export
-processors:
-  transform/normalize:
-    metric_statements:
-      - context: resource
-        statements:
-          # WHY: một identity cho mọi backend
-          - set(attributes["service"], attributes["service.name"])
-          - replace_pattern(attributes["service"], "[^a-zA-Z0-9-]", "-")
-          - set(attributes["env"], attributes["deployment.environment"])
-  attributes/drop_noise:
-    actions:
-      # WHY: cardinality bomb giết Prometheus trước khi ML kịp train
-      - key: user_id
-        action: delete
-```
 
 ### 4.5 WHEN **NOT** to normalize aggressively
 
@@ -655,10 +512,6 @@ processors:
 - JVM, state vừa, muốn “Kafka-native” → **Kafka Streams**
 - Join batch nhiều ngày / bảng train → **Spark** trên lake
 
-```text
-Câu hỏi sai:  "Flink có hơn Kafka không?"
-Câu hỏi đúng: "Sau log, transform nào cần state, event-time, và fan-out?"
-```
 
 #### Bảng so sánh (cùng stage: *xử lý trên bus*)
 
@@ -673,22 +526,8 @@ Câu hỏi đúng: "Sau log, transform nào cần state, event-time, và fan-out
 
 #### Cây quyết định
 
-```text
-Chỉ cần bảng train nhiều ngày / backfill?
-  → Spark (hoặc ELT warehouse) trên cold/lake — không chỉ vì thế mà dựng Flink
+Nếu phép biến đổi stateless, latency thấp và không cần replay độc lập, đặt ở collector hoặc consumer nhỏ. Nếu cần event-time window, join nhiều stream, state lớn và sửa logic rồi backfill, dùng stream processor có checkpoint. Nếu horizon nhiều ngày và output chủ yếu là training table, dùng batch/lake. Quyết định được nâng cấp khi state/replay pressure xuất hiện, không phải vì Kafka “thường đi cùng” một công cụ nào đó.
 
-Cần online feature, event-time window, join multi-stream (metrics ⊕ deploy ⊕ topology)?
-  → Flink (hoặc managed Flink)
-
-Enrich/route nhẹ, team JVM, không muốn cluster Flink?
-  → Kafka Streams
-
-Chấm model / AD custom ít join?
-  → Consumer service (idempotent, group.id riêng)
-
-Chỉ rename / unit / drop / sample?
-  → Ở lại OTel Collector — ĐỪNG dựng Flink
-```
 
 #### Lộ trình maturity gợi ý
 
@@ -730,17 +569,6 @@ Chỉ rename / unit / drop / sample?
 
 ### 5.2 WHEN cần enrich
 
-```mermaid
-flowchart TD
-    Q1{RCA cần biết 'vừa deploy gì'?} -->|Có| E1[Enrich deploy + change]
-    Q1 -->|Không| Q2
-    Q2{Multi-team page routing?} -->|Có| E2[Enrich owner/pager]
-    Q2 -->|Không| Q3
-    Q3{Correlation topology-aware?} -->|Có| E3[Enrich edges / tier]
-    Q3 -->|Không| Q4
-    Q4{Regulated / multi-tenant report?} -->|Có| E4[Enrich tenant + data_class]
-    Q4 -->|Không| MIN[Enrich tối thiểu: env + region]
-```
 
 **Bắt buộc enrich sớm** khi:
 
@@ -789,39 +617,11 @@ flowchart TD
 
 ### 5.5 Enrichment architecture
 
-```mermaid
-flowchart LR
-    T[Normalized telemetry] --> J[Enricher join]
-    CAT[(Catalog cache)] --> J
-    DEP[(Deploy events)] --> J
-    TOPO[(Topology cache)] --> J
-    SLO[(SLO store)] --> J
-    J --> OUT[Enriched events]
-    J -->|miss| MISS[enrichment_miss metrics]
-    MISS --> AL[Alert platform on-call]
-```
 
 **WHEN miss rate cao**: đừng “best effort im lặng”. `enrichment_miss{field="owner"}` phải là SLO của data plane. Miss owner = page sai team; miss deploy = RCA mù change.
 
 ### 5.6 Ví dụ semantic sau enrich (logical JSON)
 
-```json
-{
-  "event_type": "metric_point",
-  "service": "payment",
-  "env": "prod",
-  "region": "ap-southeast-1",
-  "metric": "http_server_request_duration_seconds",
-  "value": 0.42,
-  "deploy_version": "2026.07.18-a1b2c3",
-  "change_ticket": "CHG-10482",
-  "owner_team": "payments-sre",
-  "slo_id": "slo:payment:checkout-latency",
-  "tier": 0,
-  "topology_as_of": "2026-07-18T10:05:00Z",
-  "pipeline_version": "dp-normalize-enrich/3.2.1"
-}
-```
 
 **WHY** đủ field: detector chỉ cần series; correlator cần tier/topology; RCA cần deploy/change; router cần owner; audit cần pipeline_version.
 
@@ -854,21 +654,6 @@ flowchart LR
 
 ### 6.3 Lớp validate
 
-```mermaid
-flowchart TD
-    E[Enriched event] --> S1[Structural: JSON/Protobuf schema]
-    S1 --> S2[Semantic: ranges, enums, units]
-    S2 --> S3[Statistical: volume & distribution guards]
-    S3 --> S4[Policy: PII / tenant isolation]
-    S4 --> OK[Accept → buffer/store]
-    S1 -->|fail| Q[Quarantine]
-    S2 -->|fail| Q
-    S3 -->|fail soft| FLAG[Accept + quality flag]
-    S4 -->|fail| Q
-    Q --> DLQ[(DLQ topic / bucket)]
-    DLQ --> HUM[Data quality review]
-    HUM --> RE[Replay fixed / drop]
-```
 
 1. **Structural**: field tồn tại, type đúng, required set.
 2. **Semantic**: `latency_seconds >= 0`, `severity ∈ enum`, `env ∈ {prod,staging,...}`.
@@ -917,58 +702,8 @@ Không có contract test = validate chỉ là “lưới cuối”, luôn muộn
 
 ### 7.1 Các entity cốt lõi
 
-```mermaid
-classDiagram
-    class MetricPoint {
-      +string service
-      +string metric
-      +map labels
-      +float64 value
-      +timestamp event_time
-      +string unit
-      +Enrichment enrich
-    }
-    class LogEvent {
-      +string service
-      +enum severity
-      +string template_id
-      +string body_ref
-      +map fields
-      +string trace_id
-      +Enrichment enrich
-    }
-    class SpanEvent {
-      +string trace_id
-      +string span_id
-      +string parent_span_id
-      +string name
-      +int duration_ns
-      +enum status
-      +map attrs
-      +Enrichment enrich
-    }
-    class AnomalyEvent {
-      +string anomaly_id
-      +string detector_id
-      +string subject
-      +float score
-      +enum severity
-      +time window
-      +map evidence_refs
-    }
-    class IncidentEvent {
-      +string incident_id
-      +list anomaly_ids
-      +string root_hypothesis
-      +enum state
-      +string owner
-      +map context_pack_ref
-    }
-    MetricPoint --> AnomalyEvent
-    LogEvent --> AnomalyEvent
-    SpanEvent --> AnomalyEvent
-    AnomalyEvent --> IncidentEvent
-```
+Engine tối thiểu cần phân biệt metric point, log event, span evidence, topology/change snapshot, quality event, feature vector, anomaly, incident và action audit. Chúng dùng chung envelope identity/time/version nhưng không ép chung payload. Nhờ vậy consumer có thể nói rõ “metric hợp lệ nhưng topology stale” thay vì gộp mọi thứ thành một JSON mơ hồ.
+
 
 ### 7.2 Metric point (canonical)
 
@@ -1026,12 +761,6 @@ Sinh từ correlation/RCA; lưu **incident store**:
 
 Mọi event stream nên có:
 
-```text
-event_id, event_type, event_time, ingest_time,
-producer, pipeline_version, schema_version,
-tenant, env, region,
-quality { complete, partial, quarantined_reason? }
-```
 
 **WHEN schema_version bump**: dual-read consumers; never silent incompatible change on shared topic.
 
@@ -1045,44 +774,8 @@ quality { complete, partial, quarantined_reason? }
 
 ### 8.1 Bản đồ WHERE
 
-```mermaid
-flowchart TB
-    subgraph HOT["HOT — giây đến ngày"]
-        P[(Prometheus / Mimir / Cortex)]
-        L[(Loki)]
-        T[(Tempo)]
-        R[(Redis / online FS)]
-    end
+Hot stores trả lời “đang xảy ra gì” trong vài ngày gần nhất; Kafka/buffer giữ thứ tự và replay ngắn hạn; object storage giữ raw/canonical lịch sử; feature store phục vụ cùng định nghĩa online/offline; incident store giữ state có cập nhật; audit store giữ quyết định bất biến. Một record có thể có reference ở nhiều tầng nhưng chỉ một canonical identity và provenance chain.
 
-    subgraph BUF["BUFFER — giờ đến tuần"]
-        K[(Kafka / MSK)]
-    end
-
-    subgraph COLD["COLD — tuần đến năm"]
-        S3[(S3 / GCS object)]
-        LK[(Lakehouse Parquet/Iceberg)]
-    end
-
-    subgraph SPEC["SPECIALIZED"]
-        INC[(Incident DB)]
-        AUD[(Audit log store)]
-        EMB[(Vector / KB store)]
-        OFF[(Offline feature store)]
-    end
-
-    K --> P
-    K --> L
-    K --> T
-    K --> S3
-    P --> S3
-    L --> S3
-    T --> S3
-    S3 --> LK
-    LK --> OFF
-    OFF --> R
-    K --> INC
-    INC --> EMB
-```
 
 ### 8.2 Hot: Prometheus, Loki, Tempo
 
@@ -1149,19 +842,8 @@ Chi tiết §11.
 
 ### 8.8 Decision: đặt dữ liệu ở đâu?
 
-```mermaid
-flowchart TD
-    Q[Loại truy cập?] --> A{Page / live query <1s?}
-    A -->|Có| HOT[Hot TSDB / Loki / Tempo]
-    A -->|Không| B{Stream many consumers?}
-    B -->|Có| KAF[Kafka buffer]
-    B -->|Không| C{Train / scan large history?}
-    C -->|Có| LAKE[Object + lake + offline FS]
-    C -->|Không| D{Online feature ms?}
-    D -->|Có| RED[Online FS]
-    D -->|Không| E{Legal / audit?}
-    E -->|Có| AUD[WORM audit / cold]
-```
+Chọn theo access pattern và hậu quả mất dữ liệu. Page now cần hot latency; rebuild feature cần cold completeness; correlation state cần key lookup và TTL; action audit cần bất biến; LLM chỉ cần bounded context reference. Đừng copy toàn bộ log sang mọi store: giữ body ở Loki/object, còn incident chỉ giữ evidence ID, time range và hash đủ tái lập.
+
 
 ---
 
@@ -1224,26 +906,8 @@ flowchart TD
 
 ### 10.1 Các phase
 
-```mermaid
-stateDiagram-v2
-    [*] --> Ingested
-    Ingested --> ServingQuery: hot indexes
-    Ingested --> FeatureCompute: windows
-    FeatureCompute --> DetectServing: online FS
-    FeatureCompute --> Training: offline sets
-    ServingQuery --> Investigation
-    DetectServing --> Intelligence
-    Intelligence --> IncidentRecord
-    IncidentRecord --> FeedbackLabel
-    FeedbackLabel --> Training
-    Ingested --> AuditArchive
-    ServingQuery --> DeleteEligible
-    Training --> DeleteEligible
-    AuditArchive --> LegalHold: if required
-    LegalHold --> DeleteEligible: hold released
-    DeleteEligible --> Deleted
-    Deleted --> [*]
-```
+Lifecycle thực tế là ingest → hot serve → feature/materialize → incident/replay use → compact/tier → delete hoặc legal hold. Record bị correction không ghi đè bản cũ: revision mới chỉ rõ reason và superseded ID. Khi hết retention, deletion phải xóa cả derived feature/embedding liên quan hoặc lưu căn cứ legal hold khiến chúng được giữ.
+
 
 ### 10.2 Serve queries
 
@@ -1322,16 +986,6 @@ Ví dụ feature class AIOps:
 
 ### 11.4 WHEN cần Feature Store vs compute-on-read
 
-```mermaid
-flowchart TD
-    A{Số detector / team?} -->|1 detector đơn giản| COR[Compute-on-read PromQL/SQL]
-    A -->|Nhiều / ensemble| B
-    B{Train offline + serve online?} -->|Có| FS[Feature store / shared lib bắt buộc]
-    B -->|Chỉ online rules| C
-    C{Query cost / latency OK?} -->|Có| COR
-    C -->|Không| FS
-    D{Regulated explainability?} -->|Có| FS2[Versioned features + lineage]
-```
 
 | Approach | WHEN chọn | Chi phí |
 |----------|-----------|---------|
@@ -1352,13 +1006,6 @@ Tránh entity = `pod` cho model dài hạn (quá ephemeral) — dùng pod chỉ 
 
 ### 11.6 Feature versioning
 
-```text
-feature_set: golden_sli_v3
-includes: error_ratio_5m, p99_zscore_1h, deploy_age_minutes
-code_sha: abcdef
-created_at: ...
-compatible_models: [ad_ewma_v5, ad_iforest_v2]
-```
 
 **WHEN bump version**: đổi window, đổi filter, đổi fill policy — không reuse tên im lặng.
 
@@ -1424,16 +1071,6 @@ Xem thảo luận thực dụng ở [Kafka](../07-kafka/README.vi.md): AIOps th�
 
 ### 13.1 Nguyên tắc placement
 
-```mermaid
-flowchart LR
-    APP[App emit] -->|tốt nhất: không emit PII| COL[Collector]
-    COL -->|redact/hash labels & bodies| NOR[Normalize]
-    NOR --> ENR[Enrich]
-    ENR --> VAL[Validate PII policy]
-    VAL --> HOT[Hot stores]
-    VAL --> KAF[Kafka]
-    KAF --> LLM[LLM path — strict allowlist]
-```
 
 | Stage | Làm gì | WHY |
 |-------|--------|-----|
@@ -1487,14 +1124,6 @@ flowchart LR
 
 ### 14.2 Công thức tư duy
 
-```text
-Cost_month ≈
-  Hot_GB * C_hot
-+ Kafka_GB * RF * C_disk
-+ S3_GB * C_s3_tier
-+ Feature_CPU_hours * C_cpu
-+ (Incident_investigations * time_lost_if_missing_data)  // opportunity
-```
 
 Đừng tối ưu hết về 0 storage: **cost of missing data** trong SEV-1 có thể > 12 tháng storage.
 
@@ -1533,11 +1162,6 @@ Enrich `cost_center` / `team` → báo cáo GB ingest. **WHEN** org > 5 teams: c
 | **L4** | Feature-ready | Train/serve parity, versioned features, late policy | Chưa cost/lineage tinh |
 | **L5** | Governed plane | Lineage, legal hold, chargeback, multi-region DR, continuous contract tests | Complexity — cần platform team |
 
-```mermaid
-flowchart LR
-    L0 --> L1 --> L2 --> L3 --> L4 --> L5
-    L2 -.->|nhảy cóc nguy hiểm| L4
-```
 
 > [!WARNING]
 > Nhảy L1 → L4 (mua feature store + 5 models) là anti-pattern leadership. Buộc chứng minh L2–L3 metrics (`schema_fail`, `enrichment_miss`) trước budget L4.
@@ -1722,27 +1346,8 @@ Detector **không được** tự ý:
 
 ### 18.3 Sequence end-to-end
 
-```mermaid
-sequenceDiagram
-    participant App
-    participant Col as Collector
-    participant DP as Normalize/Enrich/Validate
-    participant K as Kafka
-    participant FS as Feature jobs
-    participant AD as Anomaly
-    participant Cor as Correlation
+Ở 10:10:30 metric M1 vào raw; 10:10:45 parser phát hiện thiếu unit và tạo quality event thay vì giá trị 0; 10:10:46 span T1 xác nhận pool wait; 10:11:05 coverage Q1 hạ confidence; 10:12:10 change C1 đến muộn nhưng event time 10:07 nên join vào revision mới. Detector nhận revision, correlation giữ cùng incident ID và RCA cập nhật evidence—không page lại, không sửa lịch sử âm thầm.
 
-    App->>Col: OTLP
-    Col->>DP: raw-ish
-    DP->>DP: normalize+enrich+validate
-    DP->>K: canonical events
-    K->>FS: stream
-    FS->>FS: windows / write online+offline
-    K->>AD: events / features
-    FS->>AD: online features
-    AD->>K: AnomalyEvent
-    K->>Cor: anomalies
-```
 
 ### 18.4 Backpressure & quality
 
@@ -1750,7 +1355,7 @@ Khi Kafka lag tăng: data plane **không** tắt validate; có thể degrade enr
 
 ### 18.5 Ai xử lý bus? (Kafka + Flink?)
 
-Sequence ở trên vẽ `DP` và `FS` trừu tượng. Implementation thường là:
+Trong production, hai khối `DP` và `FS` thường được tách thành các trách nhiệm sau:
 
 | Thành phần | Tool hay gặp |
 |------------|--------------|
@@ -1893,11 +1498,9 @@ Dùng trong design review hoặc phỏng vấn Principal. Không có đáp án m
 
 ### 21.2 Gaps **còn mở** — listed honestly
 
-#### A) Topology service (chưa có chương riêng)
+#### A) Topology và change intelligence
 
-- Discovery tự động chất lượng production (mesh + eBPF + catalog merge).
-- Cycle detection, external dependency modeling, blast radius scoring tinh vi.
-- **Tạm thời**: enrich edges thô + `topology_disagreement_rate`; correlation heuristic ở [09](../09-alert-correlation/README.vi.md).
+Khoảng trống topology đã được đóng ở [Chapter 17 — Topology & Change Data Plane](../17-topology-change/README.vi.md): merge catalog/mesh/trace, edge confidence, temporal snapshot, external dependency, blast radius và degraded mode khi graph stale. Chapter 06 chỉ chịu trách nhiệm lưu snapshot/reference đúng event time và truyền quality sang consumer; nó không tự suy diễn graph.
 
 #### B) Synthetic monitoring / probers
 
@@ -1935,10 +1538,6 @@ Dùng trong design review hoặc phỏng vấn Principal. Không có đáp án m
 
 ### 22.1 Một trang ghi nhớ
 
-```text
-Collect → Normalize → Enrich → Validate → Buffer/Store → Feature → Detect → Correlate → RCA → Decide → Remediate → Learn
-         \___________________ DATA PLANE ___________________/   \__________ INTELLIGENCE + ACTION __________/
-```
 
 | Nếu bạn chỉ nhớ 7 ý | |
 |---------------------|---|

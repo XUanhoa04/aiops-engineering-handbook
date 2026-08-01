@@ -284,7 +284,7 @@ Chapter 13 hoàn tất không phải khi deployment “green”, mà khi đội 
 
 ---
 
-## Phần II — Production operations reference
+## Phần II — Production operating engine
 
 ## 1. Platform Architecture Summary
 
@@ -305,68 +305,6 @@ Chapter 13 hoàn tất không phải khi deployment “green”, mà khi đội 
 
 Kiến trúc hoàn chỉnh của nền tảng AIOps, hiển thị toàn bộ các thành phần và luồng dữ liệu:
 
-```mermaid
-graph TD
-    subgraph Collection["📡 Collection Layer"]
-        OA[OTel Alloy\nDaemonSet]
-        OG[OTel Collector\nGateway]
-        PROM[Prometheus\nScraper]
-    end
-
-    subgraph Transport["🚌 Transport Layer"]
-        KAFKA[Apache Kafka / MSK\n12 topics]
-    end
-
-    subgraph Storage["💾 Storage Layer"]
-        LOKI[Loki\n+ S3]
-        TEMPO[Tempo\n+ S3]
-        THANOS[Thanos\n+ S3]
-    end
-
-    subgraph Intelligence["🧠 Intelligence Layer"]
-        AD[Anomaly Detector\nEWMA+STL+IF+LSTM]
-        CE[Correlation Engine\n5-stage pipeline]
-        RCA[RCA Engine\nTopology+Logs+Traces]
-        LLM[LLM Agent\nClaude / Llama]
-    end
-
-    subgraph Action["⚡ Action Layer"]
-        REM[Remediation Engine\nK8s + SSM]
-        NOTIF[Notification Hub\nSlack + PagerDuty]
-    end
-
-    subgraph Dashboards["📊 Dashboards"]
-        GRAFANA[Grafana\nDashboards + Alerts]
-    end
-
-    OA -->|logs/traces| OG
-    OG -->|OTLP| LOKI
-    OG -->|OTLP| TEMPO
-    OG -->|metrics| KAFKA
-    PROM -->|scrape| THANOS
-    THANOS -->|remote_write| KAFKA
-
-    KAFKA -->|aiops-raw-metrics| AD
-    KAFKA -->|aiops-raw-logs| AD
-    AD -->|aiops-anomalies| CE
-    CE -->|aiops-correlated-alerts| RCA
-    RCA -->|aiops-rca-results| LLM
-    LLM -->|aiops-remediation-triggers| REM
-    LLM --> NOTIF
-    REM -->|aiops-remediation-results| NOTIF
-
-    LOKI --> GRAFANA
-    TEMPO --> GRAFANA
-    THANOS --> GRAFANA
-    KAFKA --> GRAFANA
-
-    style Collection fill:#dbeafe,color:#1e293b
-    style Transport fill:#f3e8ff,color:#1e293b
-    style Storage fill:#dcfce7,color:#1e293b
-    style Intelligence fill:#f3e8ff,color:#1e293b
-    style Action fill:#ffedd5,color:#1e293b
-    style Dashboards fill:#dbeafe,color:#1e293b
-```
 
 ### Component Summary
 
@@ -404,56 +342,13 @@ graph TD
 
 ### Multi-AZ Architecture
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Multi-AZ chỉ có ý nghĩa khi fault domain thật sự độc lập. Ba replica nằm trên ba node nhưng cùng subnet, NAT, IAM policy, DNS resolver hoặc Kafka cluster vẫn là một failure domain. Với từng đường detect, page và action, hãy vẽ dependency chung rồi thử mất trọn một AZ: partition còn leader không, consumer còn quorum không, incident store có nhận write không, và kênh page ngoài băng có còn hoạt động không.
 
-```yaml
-# Toàn bộ thành phần có trạng thái (stateful) được phân bổ trên 3 AZs
-topologySpreadConstraints:
-  - maxSkew: 1
-    topologyKey: topology.kubernetes.io/zone
-    whenUnsatisfiable: DoNotSchedule
-    labelSelector:
-      matchLabels:
-        app: loki-ingester   # Áp dụng cho từng thành phần stateful
-```
-
-</details>
 
 ### AIOps Platform SLO
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+SLO nền tảng phải nối latency kỹ thuật với hậu quả vận hành. Ingest p99 dưới 30 giây nhưng correlation backlog 12 phút vẫn khiến page vô dụng. Theo dõi ít nhất bốn budget: freshness từ event time tới detector, continuity của incident đang mở, deadline phát hiện fault mới và safety budget của action. Khi một budget cạn, mode phải đổi và incident card phải nói rõ năng lực nào vừa mất.
 
-```yaml
-# Định nghĩa SLO cho chính bản thân nền tảng AIOps
-slo:
-  alert_to_incident_latency:
-    target: "P95 < 10 phút"
-    description: "Thời gian từ lúc cảnh báo thô xuất hiện đến lúc incident tương quan được tạo"
-    
-  investigation_latency:
-    target: "P95 < 3 phút"
-    description: "Thời gian từ lúc có incident đến lúc hoàn tất điều tra bằng LLM"
-    
-  rca_accuracy:
-    target: "> 70%"
-    description: "Tỷ lệ kết quả RCA được kỹ sư xác nhận là chính xác"
-    
-  false_positive_rate:
-    target: "< 10%"
-    description: "Tỷ lệ cảnh báo ảo (false positives)"
-    
-  auto_remediation_success:
-    target: "> 80%"
-    description: "Tỷ lệ các lệnh tự động khắc phục giải quyết thành công sự cố"
-    
-  platform_availability:
-    target: "99.9%"
-    description: "Độ sẵn sàng của các thành phần nền tảng AIOps"
-```
-
-</details>
 
 ---
 
@@ -463,100 +358,28 @@ slo:
 
 #### Kịch bản 1: Lỗi một Kafka Broker đơn lẻ
 
-```
-Tác động: Các partitions nằm trên broker lỗi tạm thời không thể truy cập
-Xác định lỗi: Chỉ số kafka_server_replicamanager_underreplicatedpartitions > 0
-Phản ứng của MSK: Tự động (MSK tự động thay thế broker lỗi trong vòng 10-15 phút)
-Tác động tới Consumer: Lag tăng nhẹ trong thời gian broker được thay thế
-Khôi phục: Tự động
+Kết quả đạt không phải “broker tự lên lại”, mà là partition critical vẫn đọc/ghi được, lag không vượt deadline phát hiện và không có duplicate decision sau rebalance. Nếu ISR tụt dưới ngưỡng an toàn, remediation đóng trước khi detector đóng vì quyết định muộn nguy hiểm hơn một brief thiếu enrichment.
 
-Chỉ tiêu SLA: RTO = 15 phút (do MSK tự xử lý), RPO = 0 (dữ liệu được nhân bản)
-```
 
 #### Kịch bản 2: Lỗi Loki Ingester
 
-```
-Tác động: Logs tạm thời không được ghi nhận trên partition bị ảnh hưởng
-Xác định lỗi: Tốc độ chỉ số loki_ingester_chunks_flushed_total giảm mạnh
-Khôi phục:
-  1. Kubernetes tự động restart pod bị lỗi
-  2. WAL được replay lại khi restart để đảm bảo tính toàn vẹn dữ liệu (data durability)
-  3. Các ingesters tự động phân bổ lại tải thông qua ring
-  
-Chỉ tiêu SLA: RTO = 2 phút (thời gian pod khởi động lại), RPO = 0 (nhờ WAL replay)
-```
+Detector dựa trên metric và trace vẫn tiếp tục; investigation gắn `logs_unavailable`, giảm confidence và không suy diễn “không có log lỗi” thành “không có lỗi”. Buffer phải có giới hạn để log backlog không tranh tài nguyên với metric critical. Sau recovery, log đến muộn chỉ bổ sung revision, không âm thầm thay đổi action đã thực thi.
+
 
 #### Kịch bản 3: Lỗi Prometheus hoàn toàn
 
-```
-Tác động: Không thể truy vấn metrics, không thể kích hoạt cảnh báo trong thời gian lỗi
-Xác định lỗi: up{job="prometheus"} == 0 (phát hiện bởi instance Prometheus dự phòng)
-Khôi phục:
-  1. Prometheus tự động restart (pod restart)
-  2. Thanos đảm nhận truy vấn dữ liệu lịch sử dài hạn từ S3
-  3. Alertmanager tiếp tục gửi các cảnh báo đang cache trong vòng 5 phút
-  
-Chỉ tiêu SLA: RTO = 5 phút, RPO = chu kỳ cào dữ liệu scrape interval (15s)
-```
+Dead-man signal ngoài Prometheus phải page platform team. Engine giữ incident đang mở, khóa resolve vì missing không phải healthy, dùng trace/log còn lại để phát hiện fault độc lập và chuyển remediation cần metric verification sang `HumanOnly`. Khi dữ liệu trở lại, baseline không học khoảng trống.
+
 
 #### Kịch bản 4: Toàn bộ lớp trí tuệ nhân tạo AIOps Intelligence Layer bị sập
 
-```
-Tác động: Mất tính năng phát hiện bất thường, không phân nhóm tương quan hay điều tra bằng LLM
-          (các cảnh báo thô vẫn được kích hoạt bình thường qua Prometheus/Alertmanager)
-Xác định lỗi: Cảnh báo "AIOps Platform Down" kích hoạt trên hệ thống giám sát vòng ngoài (monitoring-of-monitoring)
-Khôi phục:
-  1. Triage: Xác định thành phần nào bị sập (Kafka? AD? CE?)
-  2. Restart các pods lỗi thông qua kubectl
-  3. Replay lại các sự kiện từ Kafka (sử dụng earliest offset để cào lại dữ liệu)
-  4. Kỹ sư chuyển sang xử lý các incidents thủ công trong thời gian khắc phục hệ thống
-  
-Chỉ tiêu SLA: RTO = 30 phút (thời gian chẩn đoán + restart), RPO = khả năng replay dựa trên cấu hình retention của Kafka
-```
+Đường rule/burn-rate cổ điển phải đi thẳng tới paging mà không qua cùng Kafka, correlation hoặc LLM. State open-incident, dedupe ledger và version được phục hồi trước consumer. Replay theo event time; mỗi output có idempotency key để cùng anomaly không sinh page thứ hai hoặc chạy lại remediation.
+
 
 ### Backup Strategy
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Không phải state nào cũng backup giống nhau. Canonical events cần retention đủ replay; incident ledger và action audit cần RPO nghiêm ngặt; feature có thể dựng lại nếu giữ data, contract và version; vector index có thể tái tạo từ nguồn tri thức; cache có thể bỏ. Một bài restore chỉ pass khi output replay khớp, không chỉ khi file backup mở được.
 
-```yaml
-backups:
-  kafka_metadata:
-    type: MSK continuous backup tự động
-    frequency: liên tục
-    retention: 7 ngày
-    
-  loki_s3:
-    type: S3 versioning + nhân bản chéo regions (cross-region replication)
-    target_region: us-west-2
-    retention_lifecycle: 31 ngày tiêu chuẩn, 366 ngày lưu trữ glacier
-    
-  tempo_s3:
-    type: S3 versioning + nhân bản chéo regions (cross-region replication)
-    target_region: us-west-2
-    retention_lifecycle: 14 ngày tiêu chuẩn, 90 ngày lưu trữ glacier
-    
-  thanos_s3:
-    type: S3 versioning
-    retention_lifecycle: 90 ngày tiêu chuẩn, 1 năm lưu trữ glacier
-    
-  weaviate_vector_store:
-    type: snapshot hàng ngày lên S3
-    frequency: 02:00 UTC hàng ngày
-    retention: 30 ngày
-    
-  postgres_incidents:
-    type: RDS automated backup
-    frequency: liên tục (PITR)
-    retention: 35 ngày
-    
-  grafana_dashboards:
-    type: Quản lý dạng Git (grafana-as-code qua Terraform/Pulumi)
-    frequency: cập nhật khi có thay đổi
-    recovery: chạy lệnh terraform apply
-```
-
-</details>
 
 ---
 
@@ -566,96 +389,13 @@ Nền tảng AIOps bắt buộc phải có khả năng chống chịu lỗi tố
 
 ### Chaos Test Suite
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Suite tối thiểu gồm mất telemetry từng signal, stale topology, change đến muộn, Kafka lag tăng tuyến tính, state store read-only, model registry trả version sai, LLM timeout, verifier mất control cohort và kênh paging chính hỏng. Mỗi fault có expected mode, capability còn lại, điều bị khóa và deadline phục hồi; thiếu oracle thì chaos chỉ tạo náo loạn.
 
-```yaml
-# chaos-test-suite.yaml (sử dụng Chaos Monkey / LitmusChaos)
-experiments:
-  
-  # Thử nghiệm 1: Shutdown một Kafka broker
-  - name: kafka-broker-kill
-    type: pod_kill
-    target:
-      label: app=kafka-broker
-      namespace: kafka
-      count: 1
-    hypothesis: "Consumer lag tự động phục hồi trong vòng 15 phút"
-    success_criteria:
-      - metric: "kafka_consumer_group_lag_sum"
-        threshold: 1000
-        within_minutes: 15
-    
-  # Thử nghiệm 2: Shutdown pod phát hiện bất thường
-  - name: anomaly-detector-pod-kill
-    type: pod_kill
-    target:
-      label: app=anomaly-detector
-      count: 1
-    hypothesis: "Tiến trình phát hiện bất thường hoạt động trở lại trong vòng 2 phút"
-    success_criteria:
-      - metric: "up{job='anomaly-detector'}"
-        value: 1
-        within_minutes: 2
-    
-  # Thử nghiệm 3: Gây quá tải bộ nhớ Loki
-  - name: loki-ingester-memory-stress
-    type: memory_stress
-    target:
-      label: app=loki-ingester
-      count: 1
-    parameters:
-      memory_percentage: 90
-      duration: "5m"
-    hypothesis: "Loki tiếp tục nhận logs bình thường, tốc độ đẩy chunk (chunk flushing) tăng"
-    
-  # Thử nghiệm 4: Chặn luồng cào dữ liệu Prometheus
-  - name: block-prometheus-scrape
-    type: network_partition
-    target:
-      label: app=order-service
-    hypothesis: "Phát hiện mất mát metrics trong 5 phút, kích hoạt cảnh báo"
-    success_criteria:
-      - alert: "TargetDown"
-        fires_within_minutes: 5
-    
-  # Thử nghiệm 5: Mất kết nối mạng hoàn toàn tới RCA engine
-  - name: rca-engine-network-kill
-    type: network_partition
-    target:
-      label: app=rca-engine
-      interfaces: ["eth0"]
-    hypothesis: "Kafka consumer lag tăng, các incidents được xếp hàng chờ, hệ thống tự phục hồi khi kết nối lại"
-    
-  # Thử nghiệm 6: Giả lập sự cố sập API của LLM ngoài
-  - name: llm-api-outage
-    type: http_fault
-    target:
-      service: anthropic-api-proxy
-    fault: connection_refused
-    duration: "10m"
-    hypothesis: "LLM Agent tự động chuyển sang mô hình dự phòng GPT-4o-mini hoặc cung cấp báo cáo phân tích rút gọn"
-```
-
-</details>
 
 ### Running Chaos Tests
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Chạy shadow trước, staging có traffic replay sau, production theo blast radius nhỏ cuối cùng. Dừng test nếu customer SLO bị ảnh hưởng ngoài budget, kill switch không phản hồi hoặc platform không phát chính fault đã inject. Lưu timeline event-time/processing-time, decision revision và operator action vào benchmark corpus Chapter 16.
 
-```bash
-# Triển khai LitmusChaos
-kubectl apply -f https://litmuschaos.github.io/litmus/litmus-operator-v3.0.0.yaml
-
-# Khởi chạy một thử nghiệm chaos experiment
-kubectl apply -f kafka-broker-kill-experiment.yaml
-
-# Theo dõi kết quả
-kubectl get chaosresult kafka-broker-kill -n kafka -o jsonpath='{.status.experimentStatus}'
-```
-
-</details>
 
 ---
 
@@ -663,21 +403,8 @@ kubectl get chaosresult kafka-broker-kill -n kafka -o jsonpath='{.status.experim
 
 ### Latency Budget (End-to-End)
 
-```
-Cảnh báo kích hoạt (Prometheus đánh giá):        t = 0s
-Alertmanager gửi thông tin tới Kafka:          t = 15s
-Kafka chuyển tiếp dữ liệu tới consumers:        t = 16s
-Phát hiện bất thường (dạng thống kê):           t = 17-20s
-Phát hiện bất thường (dạng ML):                t = 20-60s
-Correlation engine (cửa sổ trượt 5 phút):        t = 5 phút 15s
-RCA thu thập bằng chứng song song:              t = 5 phút 50s
-RCA phân tích tính toán:                       t = 5 phút 55s
-LLM Agent điều tra (10 vòng lặp):              t = 7 phút 55s
-Thông báo Slack gửi tới kỹ sư:                 t = 8 phút
+Với page deadline 120 giây, một budget thực tế có thể là: ingest 20 giây, watermark 30 giây, detection 15 giây, correlation 10 giây, RCA/brief 25 giây, delivery 10 giây và 10 giây dự phòng. Khi trace đến sau 90 giây, page vẫn đi bằng metric evidence rồi được cập nhật revision thay vì chờ đủ dữ liệu.
 
-Tổng cộng: Mất khoảng 8 phút từ lúc có cảnh báo thô đến lúc sinh báo cáo điều tra chi tiết
-Mục tiêu đặt ra: < 10 phút ở mức P95
-```
 
 ### Throughput Benchmarks
 
@@ -693,74 +420,8 @@ Mục tiêu đặt ra: < 10 phút ở mức P95
 
 ### Benchmark Script
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Benchmark production phải replay burst, skew partition, late data và restart giữa incident; đo không chỉ event/giây mà cả deadline phát hiện, incident continuity, duplicate decision, memory/state growth và thời gian catch-up. Throughput ở steady state không chứng minh engine sống sót qua alert storm.
 
-```python
-import asyncio
-import time
-import httpx
-from statistics import quantiles
-
-async def benchmark_loki_ingest(
-    loki_url: str,
-    messages_per_second: int = 1000,
-    duration_seconds: int = 60,
-) -> dict:
-    """
-    Đo kiểm hiệu năng throughput ghi nhận logs của Loki.
-    """
-    async with httpx.AsyncClient() as client:
-        latencies = []
-        errors = 0
-        start = time.time()
-        message_count = 0
-        
-        while time.time() - start < duration_seconds:
-            batch_start = time.time()
-            
-            # Gửi batch dữ liệu test
-            payload = {
-                "streams": [
-                    {
-                        "stream": {"service": "benchmark", "level": "INFO"},
-                        "values": [
-                            [str(int(time.time_ns())), f"Benchmark message {i}"]
-                            for i in range(messages_per_second)
-                        ],
-                    }
-                ]
-            }
-            
-            req_start = time.time()
-            try:
-                response = await client.post(
-                    f"{loki_url}/loki/api/v1/push",
-                    json=payload,
-                    timeout=5.0,
-                )
-                latencies.append((time.time() - req_start) * 1000)
-                message_count += messages_per_second
-            except Exception:
-                errors += 1
-            
-            # Điều tiết tốc độ gửi tương ứng với mục tiêu đặt ra
-            elapsed = time.time() - batch_start
-            if elapsed < 1.0:
-                await asyncio.sleep(1.0 - elapsed)
-        
-        return {
-            "messages_per_second_target": messages_per_second,
-            "total_messages": message_count,
-            "errors": errors,
-            "duration_seconds": time.time() - start,
-            "p50_latency_ms": quantiles(latencies, n=2)[0] if latencies else 0,
-            "p99_latency_ms": quantiles(latencies, n=100)[98] if latencies else 0,
-            "error_rate": errors / max(1, len(latencies) + errors),
-        }
-```
-
-</details>
 
 ---
 
@@ -768,112 +429,23 @@ async def benchmark_loki_ingest(
 
 ### Cost Breakdown by Layer
 
-```
-Tổng cộng: Khoảng ~$9,364/tháng cho hệ thống production AIOps quy mô vừa
+Tách chi phí theo đơn vị gây ra quyết định: GB telemetry ingested, series active, span retained, event replayed, investigation và action verified. Tổng hóa đơn không chỉ ra service/cardinality nào đang đốt tiền, cũng không cho biết cắt khoản nào sẽ làm mất evidence critical.
 
-Collection Layer (Cào dữ liệu):   $360   (3.8%)
-Transport (Kafka/MSK):           $738   (7.9%)
-Storage (Loki+Tempo+Prom):       $3,170 (33.9%)
-Intelligence Layer (ML/LLM):     $3,969 (42.4%)
-Action Layer (Khắc phục):        $127   (1.4%)
-Phí vận hành nền tảng chung:      $1,000 (10.7%)
-
-Các thành phần tốn chi phí nhất:
-1. Intelligence Layer (phân tích ML): $3,969/tháng — phần lớn là chi phí GPU cho mô hình LSTM
-2. Storage (lưu trữ): $3,170/tháng — chủ yếu là lưu dữ liệu traces của Tempo
-3. Kafka/MSK: $738/tháng
-```
 
 ### Cost Optimization Strategies
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Ưu tiên loại dữ liệu vô giá trị trước khi giảm độ tin cậy: chặn label không giới hạn, sampling trace theo error/latency, tier log theo criticality, cache investigation trùng và chỉ gọi model lớn khi evidence đủ. Không cắt retention của audit/action hoặc burn-rate critical để đạt budget ngắn hạn.
 
-```python
-COST_OPTIMIZATION_STRATEGIES = {
-    "trace_sampling": {
-        "current": "Cấu hình 10% tail sampling",
-        "potential": "Giảm xuống 1% + giữ lại 100% trace lỗi",
-        "savings": "Giảm chi phí Tempo S3 tới 9 lần: từ $1,500 xuống còn $170/tháng",
-        "risk": "Lược bỏ bớt một lượng lớn trace khỏe mạnh làm mẫu đối sánh",
-    },
-    "log_retention": {
-        "current": "Lưu trữ 31 ngày tiêu chuẩn trên Loki",
-        "potential": "Giảm xuống 7 ngày tiêu chuẩn + đẩy dữ liệu cũ sang S3 Glacier",
-        "savings": "Tiết kiệm khoảng $200/tháng",
-        "risk": "Giới hạn thời gian phân tích logs lịch sử trực tiếp trên giao diện",
-    },
-    "lstm_inference": {
-        "current": "Chạy mô hình trên GPU instances (g4dn.xlarge)",
-        "potential": "Chuyển sang CPU-only inference (sử dụng ONNX runtime)",
-        "savings": "Tiết kiệm $750/tháng (giảm 60% chi phí chạy GPU)",
-        "risk": "Độ trễ xử lý (inference latency) tăng từ 10ms lên 100ms",
-        "implementation": "Export mô hình LSTM sang định dạng ONNX",
-    },
-    "kafka_compression": {
-        "current": "Sử dụng snappy",
-        "potential": "Chuyển sang zstd",
-        "savings": "Giảm 15-20% dung lượng lưu trữ → tiết kiệm khoảng ~$100/tháng",
-        "risk": "CPU tăng nhẹ trên các dịch vụ producers khi nén dữ liệu",
-    },
-    "spot_instances": {
-        "components": ["queriers", "ml_detectors", "llm_agent"],
-        "savings": "Tiết kiệm 60% chi phí compute: khoảng ~$1,200/tháng",
-        "risk": "Rủi ro bị thu hồi spot instances (được giảm thiểu nhờ cơ chế tự reschedule của k8s)",
-    },
-}
-```
-
-</details>
 
 ### Cost Cost Monitoring
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Theo dõi cost per service, cost per detected incident và marginal cost của mỗi domain pack. Giảm 30% log cost mà RCA Top-3 tụt 15 điểm là thất bại; giảm debug volume 40% mà benchmark không đổi mới là tối ưu thật.
 
-```promql
-# Ước lượng chi phí lưu trữ S3
-sum(aws_s3_bucket_size_bytes{bucket=~"loki.*|tempo.*|thanos.*"}) * 0.023 / 1e9
-
-# Chi phí chạy broker của AWS MSK
-sum(aws_msk_broker_running_hours_total) * 0.202  # Tính theo đơn giá instance m5.large
-
-# Chi phí gọi LLM API ngoài
-sum(aiops_llm_tokens_used_total{model="claude-3-5-sonnet"}) * 0.003 / 1000000
-
-# Chi phí chạy GPU instances
-sum(aiops_gpu_instance_hours_total) * 0.526  # Tính theo đơn giá instance g4dn.xlarge
-```
-
-</details>
 
 ### FinOps Alerts
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Alert tài chính cần rate-of-change và forecast, không chỉ ngưỡng hóa đơn tháng. Token cost tăng bốn lần trong 15 phút cùng alerts-per-incident tăng là dấu hiệu correlation hỏng; circuit breaker phải chuyển investigation sang template nhỏ trước khi ngân sách bị đốt hết.
 
-```yaml
-- alert: AIOpsStorageCostExcessive
-  expr: |
-    sum(aws_s3_bucket_size_bytes{bucket=~"loki.*|tempo.*|thanos.*"}) > 100e12  # Cảnh báo khi vượt quá 100TB
-  for: 24h
-  labels:
-    severity: warning
-    team: platform-engineering
-  annotations:
-    summary: "Dung lượng lưu trữ AIOps vượt quá 100TB — cần rà soát lại chính sách retention"
-
-- alert: LLMCostSpike
-  expr: |
-    increase(aiops_llm_cost_usd_total[1h]) > 100
-  for: 0m
-  labels:
-    severity: warning
-  annotations:
-    summary: "Chi phí gọi LLM API vượt quá $100 trong vòng 1 giờ qua — nghi ngờ có vòng lặp điều tra lỗi"
-```
-
-</details>
 
 ---
 
@@ -881,88 +453,13 @@ sum(aiops_gpu_instance_hours_total) * 0.526  # Tính theo đơn giá instance g4
 
 ### Security Checklist
 
-```markdown
-## Mạng lưới (Network)
-- [ ] Toàn bộ luồng dữ liệu truyền với Kafka bắt buộc mã hóa (TLS 1.3)
-- [ ] Toàn bộ các kết nối dịch vụ nội bộ chạy qua mTLS (sử dụng Istio/Linkerd)
-- [ ] Không public các dịch vụ ra ngoài internet ngoại trừ Grafana (truy cập qua xác thực OIDC)
-- [ ] Thiết lập VPC endpoints cho các kết nối S3, Kafka (tránh đi qua internet công cộng)
-- [ ] Cấu hình Kubernetes NetworkPolicy: Chặn toàn bộ mặc định, chỉ mở các port kết nối cần thiết
+Mỗi engine chỉ đọc đúng telemetry/tenant cần thiết; action plane dùng identity riêng và credential ngắn hạn; prompt/log là input không tin cậy; secret không đi vào context pack; mọi proposal, approval, execution và verification có audit bất biến. Break-glass độc lập với control plane đang hỏng nhưng vẫn có expiry, dual control và hậu kiểm.
 
-## Xác thực và Phân quyền (Authentication and Authorization)
-- [ ] Bật chế độ đa thuê (multi-tenancy) trên Loki (bắt buộc truyền header X-Scope-OrgID)
-- [ ] Xác thực Grafana SSO tích hợp qua OIDC (như Google/Okta)
-- [ ] Phân quyền chi tiết các data source trên Grafana cho từng team tương ứng
-- [ ] Bảo mật kết nối Kafka bằng SASL/SCRAM-SHA-512 + quản lý quyền ACLs
-- [ ] Áp dụng chặt chẽ nguyên tắc quyền hạn tối thiểu RBAC trên Kubernetes cho từng service account
-- [ ] Sử dụng AWS IRSA cho các pods cần kết nối tới AWS APIs (không sử dụng static AWS credentials)
-
-## Quản lý thông tin bảo mật (Secrets)
-- [ ] Toàn bộ keys/secrets phải được lưu trữ trong Kubernetes Secrets (tuyệt đối không để trong ConfigMaps)
-- [ ] Mã hóa thông tin Secrets khi lưu trữ tĩnh (etcd encryption)
-- [ ] Tích hợp Sealed Secrets hoặc sử dụng External Secrets Operator phục vụ GitOps
-- [ ] Sử dụng AWS Secrets Manager quản lý các secrets động (RDS passwords, API keys)
-- [ ] Cơ chế xoay vòng secret (secret rotation): Hàng quý đối với service accounts, hàng năm đối với CA
-
-## Bảo vệ dữ liệu (Data)
-- [ ] Kích hoạt cấu hình Block Public Access đối với tất cả S3 buckets
-- [ ] Mã hóa dữ liệu trên S3 sử dụng SSE-KMS
-- [ ] Cấu hình S3 Bucket policies chặn toàn bộ kết nối nằm ngoài VPC
-- [ ] Mã hóa RDS cả khi lưu trữ tĩnh và trên đường truyền tải
-- [ ] Mã hóa dữ liệu DynamoDB sử dụng CMK
-- [ ] Không để lộ thông tin nhạy cảm của người dùng (PII) trong các Kafka topics (chạy lọc logs trước khi ghi nhận)
-
-## Tuân thủ (Compliance)
-- [ ] Nhật ký audit log của remediation engine được lưu trữ trên DynamoDB cấu hình append-only bất biến
-- [ ] Bật Kubernetes audit log và đẩy trực tiếp về CloudWatch
-- [ ] Bật AWS CloudTrail theo dõi toàn bộ các lượt gọi AWS API
-- [ ] Lưu trữ tối thiểu 90 ngày đối với tất cả audit logs
-- [ ] Áp dụng nghiêm ngặt các chính sách hủy dữ liệu cũ (data retention policy) trên các topics/buckets
-
-## Bảo mật luồng LLM (LLM-Specific)
-- [ ] Loại bỏ hoàn toàn thông tin PII trong các prompts gửi đi (lọc làm sạch log trước khi chèn vào prompt)
-- [ ] Cơ chế xoay vòng LLM API key định kỳ hàng quý
-- [ ] Ghi log chi tiết các lượt gọi LLM API (số tokens tiêu thụ, model sử dụng, timestamp)
-- [ ] Ưu tiên các giải pháp tự host mô hình khi xử lý các dữ liệu nhạy cảm cao
-- [ ] Phòng chống prompt injection: Làm sạch và lọc kỹ các tham số đầu vào truyền cho tool
-```
 
 ### PII Scrubbing in Log Pipeline
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Redaction xảy ra trước storage và trước LLM, dùng policy version lưu cùng record. Token hóa ổn định cho phép correlation mà không lộ giá trị gốc; quarantine record vi phạm thay vì thay bằng chuỗi rỗng khiến parser coi là hợp lệ. Replay bằng policy mới tạo revision riêng, không âm thầm sửa lịch sử audit.
 
-```python
-import re
-
-class PIIScrubber:
-    """
-    Loại bỏ các thông tin nhạy cảm (PII) khỏi log trước khi index vào Loki hoặc gửi sang LLM.
-    """
-    PATTERNS = [
-        (re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'),
-         '[EMAIL]'),
-        (re.compile(r'\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b'),
-         '[CREDIT_CARD]'),
-        (re.compile(r'\b\d{3}-\d{2}-\d{4}\b'),
-         '[SSN]'),
-        (re.compile(r'"password"\s*:\s*"[^"]*"'),
-         '"password": "[REDACTED]"'),
-        (re.compile(r'"token"\s*:\s*"[^"]*"'),
-         '"token": "[REDACTED]"'),
-        (re.compile(r'"api_key"\s*:\s*"[^"]*"'),
-         '"api_key": "[REDACTED]"'),
-        (re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b'),
-         '[IP]'),
-    ]
-    
-    def scrub(self, log_line: str) -> str:
-        for pattern, replacement in self.PATTERNS:
-            log_line = pattern.sub(replacement, log_line)
-        return log_line
-```
-
-</details>
 
 ---
 
@@ -972,89 +469,13 @@ Bài toán giám sát vòng ngoài (meta-observability): Ai giám sát những n
 
 ### Dead Man's Switch Pattern
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Một producer ngoài failure domain chính gửi nhịp kỳ vọng tới receiver ngoài AIOps. Receiver page khi nhịp không đến đúng deadline. Heartbeat đi qua chính pipeline chỉ chứng minh pipeline có thể tự nói “tôi khỏe”; nó không phát hiện toàn bộ pipeline mất mạng, IAM hoặc DNS.
 
-```yaml
-# Mỗi thành phần trong pipeline định kỳ gửi đi một metric heartbeat
-# Nếu heartbeat dừng lại, điều đó đồng nghĩa với việc pipeline đã bị gián đoạn
-
-# Cấu hình ghi nhận trong từng component:
-- record: aiops_component_heartbeat
-  expr: 1   # Luôn trả về 1 nếu component đang chạy và rule được Prometheus đánh giá thành công
-
-# Cảnh báo Dead Man's Switch chéo giữa các thành phần
-- alert: AIOpsCollectionPipelineDead
-  expr: |
-    absent(rate(aiops_component_heartbeat{component="otel-collector"}[5m]))
-  for: 5m
-  labels:
-    severity: critical
-    route: pagerduty-platform-team
-  annotations:
-    summary: "Thiếu tín hiệu heartbeat từ OTel Collector — luồng telemetry pipeline bị gián đoạn"
-
-- alert: AIOpsAnomalyDetectionDead
-  expr: |
-    absent(rate(aiops_anomaly_detection_events_processed_total[10m]))
-  for: 10m
-  labels:
-    severity: critical
-
-- alert: AIOpsKafkaPipelineBroken
-  expr: |
-    kafka_consumer_group_lag_sum{group=~"anomaly-detector-.*|correlation-.*|rca-.*"} > 100000
-  for: 15m
-  labels:
-    severity: critical
-```
-
-</details>
 
 ### Platform Health Dashboard
 
-Các bảng biểu (panels) quan trọng trên dashboard theo dõi sức khỏe hệ thống AIOps:
+Dashboard phải đi từ hậu quả tới component: page deadline miss, incident continuity gap, unseen-service count, evidence freshness, action locked/failed, rồi mới đến CPU, pod và disk. Panel nào không dẫn tới quyết định mode, owner hoặc runbook chỉ tạo thêm dashboard để ngắm.
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```yaml
-dashboard_panels:
-  - title: "End-to-End Pipeline Latency"
-    description: "Thời gian P95 tính từ lúc có cảnh báo đến lúc hoàn tất điều tra lỗi"
-    query: "histogram_quantile(0.95, rate(aiops_e2e_latency_seconds_bucket[5m]))"
-    
-  - title: "Kafka Consumer Lag (all groups)"
-    description: "Tổng lượng lag tích tụ trên tất cả các consumers của AIOps"
-    query: "sum by (group) (kafka_consumer_group_lag_sum)"
-    alert_threshold: 10000
-    
-  - title: "Anomaly Detection False Positive Rate"
-    description: "Tỷ lệ các cảnh báo bất thường bị đánh giá là cảnh báo ảo"
-    query: |
-      rate(aiops_anomaly_feedback_total{outcome="false_positive"}[24h])
-      / rate(aiops_anomaly_feedback_total[24h])
-    alert_threshold: 0.20
-    
-  - title: "LLM Investigation Accuracy"
-    description: "Tỷ lệ các báo cáo điều tra của LLM được đánh giá là chính xác"
-    query: |
-      rate(aiops_llm_feedback_total{result="correct"}[7d])
-      / rate(aiops_llm_feedback_total[7d])
-    alert_threshold: 0.70   # Cảnh báo nếu độ chính xác giảm xuống dưới 70%
-    
-  - title: "MTTR Trend"
-    description: "Thời gian khắc phục sự cố trung bình trong vòng 30 ngày qua"
-    query: "avg_over_time(aiops_incident_resolution_time_seconds[30d])"
-    
-  - title: "Auto-Remediation Success Rate"
-    description: "Tỷ lệ các lệnh tự sửa tự động giải quyết thành công sự cố"
-    query: |
-      rate(aiops_remediation_executions_total{status="verified_success"}[7d])
-      / rate(aiops_remediation_executions_total[7d])
-```
-
-</details>
 
 ---
 
@@ -1062,136 +483,20 @@ dashboard_panels:
 
 ### AIOps Platform Down — Full Recovery Runbook
 
-```markdown
-## Runbook: Khôi phục toàn phần nền tảng AIOps
+Runbook không nên bắt đầu bằng “restart tất cả”. Trước hết phải xác định production đang hỏng, AIOps đang hỏng hay cả hai; nếu restart sai thứ tự, engine vừa mất state vừa replay trùng action.
 
-**Tín hiệu cảnh báo**: Nhiều thành phần AIOps báo lỗi không hoạt động, hoặc Kafka consumer lag vượt quá 100K
+| Bước | Evidence cần đọc | Quyết định | Điều cấm |
+|---|---|---|---|
+| 1. Tuyên bố mode | heartbeat ngoài băng, ingest freshness, consumer lag, incident continuity | Chuyển `DetectionOnly` hoặc `HumanOnly`; thông báo rõ phạm vi mù | Không giữ nhãn `Healthy` chỉ vì pod còn chạy |
+| 2. Giữ đường page tối thiểu | static SLO/burn-rate và kênh paging độc lập | Bypass enrichment, LLM và remediation nếu cần | Không để outage AIOps làm mất page nghiệp vụ |
+| 3. Chụp state | offsets, watermark, open incidents, action ledger, model/rule versions | Lưu checkpoint trước khi thay đổi consumer | Không reset offset theo cảm tính |
+| 4. Khôi phục theo dependency | transport → state store → detection → correlation → RCA → investigation | Mở từng tầng khi input và state đã hợp lệ | Không bật remediation trước verifier |
+| 5. Replay có giới hạn | backlog theo event time, dedupe key và revision | Replay một khoảng nhỏ, so kết quả live/canary | Không nhảy thẳng tới latest nếu chưa ghi nhận evidence bị bỏ |
+| 6. Xác nhận end-to-end | synthetic incident đi qua detect, group, brief, page và audit | Chuyển `Recovery`, rồi `Healthy` sau soak window | Không dùng health endpoint đơn lẻ làm bằng chứng |
 
-**Tác động**: Mất các tính năng phát hiện bất thường, gom nhóm tương quan, hoặc điều tra tự động bằng LLM.
-Kỹ sư trực bắt buộc phải chuyển sang theo dõi và xử lý các sự cố thủ công.
+Ví dụ: worker dừng lúc 10:41, khôi phục lúc 10:52, backlog 660.000 event. Incident payment đã mở nên replay phải gắn vào cùng incident qua fingerprint và revision; incident auth khởi phát lúc 10:47 phải tạo incident riêng. Nếu chọn bỏ backlog, operator phải ghi chính xác khoảng evidence 10:41–10:52 bị mất, khóa auto-remediation và hạ confidence của mọi RCA giao với khoảng đó.
 
-**Đầu mối hỗ trợ**: Đội ngũ Platform Engineering trực on-call (@platform-oncall trên Slack)
-
-### Bước 1: Khảo sát nhanh trạng thái hệ thống (5 phút)
-
-```bash
-# Kiểm tra các pods AIOps đang bị lỗi không ở trạng thái Running
-kubectl get pods -n aiops --field-selector=status.phase!=Running
-
-# Kiểm tra tình trạng consumer lag trên Kafka
-kafka-consumer-groups.sh --bootstrap-server kafka-1:9092 \
-  --describe --group anomaly-detector-group | head -20
-
-# Kiểm tra kết nối tới S3 (thành phần phụ thuộc quan trọng nhất)
-aws s3 ls s3://loki-chunks-prod/ --max-items 1
-aws s3 ls s3://tempo-traces-prod/ --max-items 1
-
-# Kiểm tra sức khỏe của AWS MSK cluster
-aws kafka describe-cluster --cluster-arn $MSK_CLUSTER_ARN \
-  | jq '.ClusterInfo.State'
-```
-
-### Bước 2: Khắc phục các lỗi liên quan tới Kafka trước (Kafka là xương sống hệ thống)
-
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```bash
-# Nếu MSK khỏe mạnh nhưng các consumers không thể kết nối tới
-# Kiểm tra lại cấu hình Security Group
-aws ec2 describe-security-groups --group-ids $KAFKA_SG_ID | jq '.SecurityGroups[].IpPermissions'
-
-# Khởi động lại tuần tự các consumers của AIOps
-kubectl rollout restart deployment/anomaly-detector -n aiops
-kubectl rollout restart deployment/correlation-engine -n aiops
-kubectl rollout restart deployment/rca-engine -n aiops
-kubectl rollout restart deployment/llm-agent -n aiops
-
-# Theo dõi quá trình rollout
-kubectl rollout status deployment/anomaly-detector -n aiops --timeout=5m
-```
-
-</details>
-
-### Bước 3: Xử lý tình trạng Consumer Lag quá lớn
-
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```bash
-# Nếu lượng lag tích lũy quá lớn (>1 triệu tin nhắn) và không cần thiết phải xử lý lại toàn bộ,
-# cân nhắc nhảy offset tới vị trí mới nhất (latest offset)
-# LƯU Ý: Thao tác này sẽ bỏ qua một lượng lớn cảnh báo lịch sử — chỉ dùng khi không quá quan trọng
-kafka-consumer-groups.sh --bootstrap-server kafka-1:9092 \
-  --group anomaly-detector-group \
-  --reset-offsets \
-  --to-latest \
-  --topic aiops-raw-metrics \
-  --execute
-
-# HOẶC: Reset offset về một mốc thời gian cụ thể (chỉ xử lý lại dữ liệu trong 2 giờ gần đây)
-kafka-consumer-groups.sh --bootstrap-server kafka-1:9092 \
-  --group anomaly-detector-group \
-  --reset-offsets \
-  --to-datetime 2024-01-15T12:00:00.000 \
-  --topic aiops-raw-metrics \
-  --execute
-```
-
-</details>
-
-### Bước 4: Khôi phục kết nối tới LLM Agent
-
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```bash
-# Xác nhận xem API key có hợp lệ không
-kubectl get secret llm-agent-secrets -n aiops -o jsonpath='{.data.ANTHROPIC_API_KEY}' \
-  | base64 -d | cut -c1-10  # Chỉ hiển thị 10 ký tự đầu để bảo mật
-
-# Chạy thử nghiệm kết nối API bên trong pod
-kubectl exec -n aiops deploy/llm-agent -- \
-  curl -s -o /dev/null -w "%{http_code}" \
-  https://api.anthropic.com/v1/messages \
-  -H "x-api-key: $ANTHROPIC_API_KEY" \
-  -H "content-type: application/json" \
-  -d '{"model":"claude-3-haiku-20240307","max_tokens":10,"messages":[{"role":"user","content":"hi"}]}'
-# Kỳ vọng trả về: Code 200
-```
-
-</details>
-
-### Bước 5: Xác thực lại toàn bộ hệ thống sau khôi phục
-
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```bash
-# Test đầu cuối (End-to-end test): Giả lập kích hoạt một incident test
-./tools/test-incident-injection.sh --service test-service --type error_rate_spike
-
-# Theo dõi xem các bước sau có chạy bình thường không:
-# 1. Có tin nhắn đẩy vào topic kafka: aiops-raw-metrics
-# 2. Phát hiện bất thường sinh tin nhắn trong topic: aiops-anomalies
-# 3. Gom nhóm tương quan sinh tin nhắn trong topic: aiops-correlated-alerts
-# 4. LLM Agent chạy điều tra sinh tin nhắn trong topic: aiops-rca-results
-# 5. Kênh Slack nhận được thông báo sự cố trong channel #aiops-incidents
-
-# Kiểm tra trực tiếp dữ liệu trên topic Kafka
-kafka-console-consumer.sh --bootstrap-server kafka-1:9092 \
-  --topic aiops-rca-results --max-messages 1 --from-beginning
-```
-
-</details>
-
-### Bước 6: Các bước xử lý sau khôi phục (Post-Recovery Actions)
-
-1. Rà soát lại các Prometheus alerts xem có sự cố nào bị bỏ sót trong thời gian hệ thống sập không.
-2. Xử lý các cảnh báo đang bị nghẽn trong hàng đợi một cách cẩn thận (điều chỉnh offset từ từ).
-3. Tổ chức họp viết báo cáo post-mortem đánh giá nguyên nhân sập của hệ thống AIOps.
-4. Cập nhật các phát hiện mới vào tài liệu runbook này.
-```
+Điều kiện thoát recovery gồm: lag giảm đơn điệu trong ba cửa sổ, không có duplicate page/action, open incident khớp ledger trước sự cố, synthetic path đạt deadline và dead-man signal ngoài băng tiếp tục xanh. Chỉ khôi phục replica chưa đủ để tuyên bố hết sự cố nền tảng.
 
 ---
 
@@ -1199,59 +504,8 @@ kafka-console-consumer.sh --bootstrap-server kafka-1:9092 \
 
 ### Growth Model
 
-```python
-def project_costs(
-    current_services: int,
-    monthly_growth_rate: float,
-    months: int = 12,
-) -> list:
-    """
-    Dự báo chi phí vận hành nền tảng AIOps khi quy mô số lượng dịch vụ microservices tăng lên.
-    """
-    projections = []
-    services = current_services
-    
-    # Các hệ số chi phí biến đổi (tính trên mỗi service)
-    COST_PER_SERVICE = {
-        "metrics_storage": 5,      # $5/service/tháng (Prometheus + Thanos)
-        "log_storage": 3,          # $3/service/tháng (Loki + S3)
-        "trace_storage": 4,        # $4/service/tháng (Tempo + S3, có áp dụng sampling)
-        "kafka_throughput": 2,     # $2/service/tháng (MSK)
-    }
-    
-    # Các chi phí cố định
-    FIXED_COSTS = {
-        "kafka_base": 738,         # Chi phí cố định của MSK cluster
-        "intelligence_layer": 4000,  # AD + CE + RCA + LLM (tăng rất chậm theo số lượng services)
-        "platform_overhead": 1000,
-    }
-    
-    for month in range(months + 1):
-        variable_cost = sum(v * services for v in COST_PER_SERVICE.values())
-        fixed_cost = sum(FIXED_COSTS.values())
-        total = variable_cost + fixed_cost
-        
-        projections.append({
-            "month": month,
-            "services": services,
-            "variable_cost": variable_cost,
-            "fixed_cost": fixed_cost,
-            "total_cost": total,
-            "cost_per_service": total / services,
-        })
-        
-        services = int(services * (1 + monthly_growth_rate))
-    
-    return projections
+Capacity planning dùng peak có burst và replay, không lấy trung bình ngày. Nếu live ingest là 30 MB/s, burst 3 lần và recovery cần catch-up 2 lần live, đường consumer phải chịu ít nhất 150 MB/s trong thời gian phục hồi hoặc backlog không bao giờ giảm. State sizing tính service × feature × window × revision retention, cộng headroom cho incident dài.
 
-# Ví dụ chạy thử dự báo
-projections = project_costs(
-    current_services=50,
-    monthly_growth_rate=0.05,  # Tốc độ tăng trưởng 5% mỗi tháng
-    months=12,
-)
-# Kết quả tháng 12: Quy mô đạt ~90 services, chi phí ước tính khoảng ~$12,000-15,000/tháng
-```
 
 ---
 
@@ -1261,71 +515,16 @@ projections = project_costs(
 
 Để đảm bảo tính ổn định tối đa của pipeline, hãy luôn nâng cấp các thành phần theo thứ tự sau:
 
-```
-1. Cơ sở hạ tầng (Kubernetes, MSK)      ← Lớp nền tảng
-2. Storage (Loki, Tempo, Prometheus)   ← Cần chạy ổn định trước khi nâng cấp consumers
-3. Collection (OTel Collector, Alloy)  ← Phụ thuộc trực tiếp vào lớp storage
-4. Transport (Kafka schema, topics)    ← Thực hiện sau khi các producers/consumers tương thích
-5. Intelligence Layer (AD, CE, RCA)    ← Thực hiện sau khi lớp transport hoạt động ổn định
-6. LLM Agent                          ← Thực hiện sau khi lớp intelligence chạy ổn định
-7. Remediation Engine                 ← Thực hiện cuối cùng (thành phần rủi ro nhất, tác động trực tiếp tới production)
-```
 
 ### Zero-Downtime Upgrade Pattern
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Rule/model/prompt/schema mới chạy shadow trên cùng event IDs, so decision diff và benchmark trước canary theo tenant/service. Consumer cũ và mới phải hiểu overlap schema; state migration có checkpoint và rollback. Rollback artifact không đồng nghĩa rollback decision: action đã chạy vẫn nằm trong ledger và verifier tiếp tục theo version ban đầu.
 
-```bash
-# Đối với từng thành phần stateless:
-# 1. Cập nhật thẻ image tag mới trong file values.yaml
-# 2. Triển khai rolling update (cấu hình maxSurge=1, maxUnavailable=0)
-kubectl set image deployment/anomaly-detector \
-  anomaly-detector=aiops/anomaly-detector:2.0.0 \
-  -n aiops
-
-# Theo dõi tiến trình rollout
-kubectl rollout status deployment/anomaly-detector -n aiops
-
-# Xác thực lại sau khi nâng cấp
-kubectl get pods -n aiops -l app=anomaly-detector
-# Đảm bảo consumer lag không bị tăng đột biến trong quá trình rolling update
-```
-
-</details>
 
 ### Maintenance Windows
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Không nâng cấp transport, state store và remediation trong cùng cửa sổ. Trong freeze nghiệp vụ, chỉ emergency change có owner và rollback được phép. Maintenance kết thúc khi lag về bình thường, synthetic path pass và không có incident/action trùng trong soak window.
 
-```yaml
-maintenance_windows:
-  # Các cửa sổ bảo trì định kỳ được lên lịch sẵn
-  weekly_maintenance:
-    day: Sunday
-    time: "02:00-04:00 UTC"
-    actions:
-      - xoay vòng chứng chỉ (certificate rotation)
-      - nâng cấp các phiên bản minor versions
-      - tối ưu index lưu trữ (chạy Loki compactor)
-      
-  monthly_maintenance:
-    day: "First Sunday"
-    time: "00:00-06:00 UTC"
-    actions:
-      - nâng cấp các phiên bản major versions
-      - chạy tiến trình huấn luyện lại các mô hình ML (retraining pipeline)
-      - đánh giá lại năng lực hệ thống (capacity reviews)
-      - đánh giá lại chi phí vận hành (cost optimization reviews)
-      
-  # Chế độ bảo trì: tạm dừng các lệnh tự khắc phục sự cố trong thời gian bảo trì
-  maintenance_mode:
-    implementation: "Thiết lập cấu hình maintenance_mode=true trên Redis"
-    effect: "Remediation engine dừng thực thi các lệnh tự động, chỉ gửi thông báo Slack"
-```
-
-</details>
 
 ---
 
@@ -1333,51 +532,13 @@ maintenance_windows:
 
 ### Platform Team Responsibilities
 
-```
-Đội ngũ Platform Engineering (chịu trách nhiệm quản trị vận hành nền tảng AIOps):
+Platform sở hữu contract, shared engines, meta-observability, degraded mode, benchmark harness và unit cost. Họ không tự đặt business criticality hay phê duyệt remediation rủi ro thay product owner.
 
-Hàng ngày (Tier 1): 
-  - Theo dõi sức khỏe hệ thống qua dashboard giám sát chung
-  - Rà soát tỷ lệ cảnh báo ảo (false positive rate) hàng ngày
-  - Trực tiếp xử lý khi có các cảnh báo "AIOps Platform Down" đổ về
-
-Hàng tuần (Tier 2):
-  - Rà soát báo cáo chi phí vận hành
-  - Cập nhật các mô hình ML (kích hoạt pipeline huấn luyện lại)
-  - Đánh giá phê duyệt các tài liệu runbooks mới bổ sung từ các teams khác
-  - Tổ chức họp post-mortem đánh giá nếu có sự cố xảy ra trên nền tảng
-
-Hàng tháng (Tier 3):
-  - Đánh giá năng lực và dung lượng hệ thống (capacity planning)
-  - Rà soát độ chính xác của các mô hình ML
-  - Tổ chức audit bảo mật hệ thống định kỳ
-  - Rà soát các phương án tối ưu hóa chi phí vận hành
-  - Cập nhật tài liệu handbook vận hành này
-
-Phân bổ trực On-Call:
-  - Trực chính (Primary): 1 kỹ sư luân phiên mỗi tuần
-  - Trực phụ dự phòng (Secondary): 1 kỹ sư luân phiên mỗi tuần
-  - SLA phản hồi: 15 phút đối với sự cố mức P1, 1 giờ đối với sự cố mức P2
-```
 
 ### Product Engineering Teams (consumers of AIOps)
 
-```
-Các đội phát triển dự án Product Teams (người sử dụng đầu ra của AIOps):
+Product team sở hữu SLO, service identity/topology, domain invariants, runbook và feedback root cause. Service không có owner hoặc acceptance scenario không được vào auto-remediation tier dù model score cao.
 
-Trách nhiệm:
-  - Viết tài liệu runbooks mô tả các kịch bản lỗi của chính dịch vụ họ phát triển
-  - Tích cực đánh giá chất lượng điều tra của LLM Agent (cung cấp dữ liệu feedback loop)
-  - Rà soát và phê duyệt các hành động tự khắc phục sự cố khi được yêu cầu duyệt
-  - Cập nhật đầy đủ sơ đồ phụ thuộc dịch vụ (qua hệ thống Backstage catalog)
-  - Định nghĩa các quy tắc phát hiện bất thường cho các metrics đặc thù của dịch vụ
-
-Những việc họ KHÔNG cần phải làm:
-  - Cấu hình cào dữ liệu Prometheus scraping
-  - Quản trị hạ tầng lưu trữ Loki/Tempo
-  - Tìm hiểu kiến trúc nội bộ của Kafka
-  - Tự viết các thuật toán phát hiện bất thường
-```
 
 ---
 
@@ -1396,60 +557,8 @@ Những việc họ KHÔNG cần phải làm:
 
 ### L6 Preview: Predictive AIOps
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
+Chỉ tiến tới predictive khi detection/correlation hiện tại đã được hiệu chỉnh và feedback đáng tin. Forecast phải có khoảng bất định, backtest qua campaign/failover và so với baseline đơn giản; output là capacity risk kèm horizon, không phải lệnh scale trực tiếp.
 
-```python
-import pandas as pd
-
-class CapacityPredictorService:
-    """
-    Dự báo thời điểm dịch vụ chạm ngưỡng giới hạn tài nguyên để chủ động scale trước.
-    Sử dụng thư viện Prophet để dự báo chuỗi thời gian.
-    """
-    def predict_resource_exhaustion(
-        self,
-        metric_history: pd.DataFrame,  # Lịch sử sử dụng CPU/RAM/connections
-        forecast_horizon_hours: int = 24,
-    ) -> dict:
-        from prophet import Prophet
-        
-        model = Prophet(
-            changepoint_prior_scale=0.05,
-            seasonality_mode="multiplicative",
-        )
-        model.add_seasonality(name="daily", period=1, fourier_order=5)
-        model.add_seasonality(name="weekly", period=7, fourier_order=3)
-        
-        model.fit(metric_history)
-        
-        future = model.make_future_dataframe(
-            periods=forecast_horizon_hours,
-            freq="H",
-        )
-        forecast = model.predict(future)
-        
-        # Kiểm tra xem giá trị dự báo có vượt ngưỡng cảnh báo sớm không
-        capacity_threshold = 0.85  # Đạt 85% hiệu suất sử dụng = kích hoạt scale trước
-        
-        threshold_exceeded = forecast[forecast["yhat"] > capacity_threshold]
-        
-        if not threshold_exceeded.empty:
-            first_breach = threshold_exceeded.iloc[0]
-            return {
-                "will_exceed_capacity": True,
-                "predicted_breach_time": first_breach["ds"].isoformat(),
-                "predicted_value": first_breach["yhat"],
-                "hours_until_breach": (
-                    first_breach["ds"] - pd.Timestamp.now()
-                ).total_seconds() / 3600,
-                "recommended_action": "pre-scale before breach",
-            }
-        
-        return {"will_exceed_capacity": False}
-```
-
-</details>
 
 ---
 
@@ -1457,37 +566,8 @@ class CapacityPredictorService:
 
 ### 12-Month TCO Summary
 
-```
-Tổng chi phí sở hữu Year 1 của nền tảng AIOps:
+TCO gồm hạ tầng, license/API, thời gian platform, thời gian product team sửa contract, game day, security review và chi phí false positive/false negative. Báo cáo theo ba kịch bản tải và giá trị giảm page/MTTR; một con số cố định như “9.364 USD/tháng” chỉ là giả định sizing, không phải giá phổ quát.
 
-Giai đoạn xây dựng Q1 (Build): 
-  Chi phí nhân sự: 2 kỹ sư × 3 tháng = $150,000
-  Chi phí hạ tầng (giai đoạn phát triển): $15,000/quý
-  
-Giai đoạn vận hành Q2-Q4 (Run):
-  Chi phí hạ tầng: $9,364/tháng × 9 tháng = $84,276
-  Chi phí nhân sự: 0.5 FTE cho hoạt động vận hành = $75,000
-  Chi phí gọi LLM API ngoài: ~$240/năm
-  
-Tổng cộng năm thứ nhất: $150,000 + $15,000 + $84,276 + $75,000 = $324,276
-
-Từ năm thứ 2 trở đi (Trạng thái ổn định):
-  Chi phí hạ tầng: $9,364/tháng × 12 tháng = $112,368
-  Chi phí nhân sự (tương đương 25% FTE): $37,500
-  Tổng cộng: ~$150,000/năm
-
-Tính toán ROI (ở mức ước lượng thận trọng):
-  Hiệu quả cải thiện MTTR: giảm từ 60 phút xuống 15 phút (giảm 75% thời gian xử lý)
-  Số lượng sự cố trung bình hàng tháng: 20 sự cố P1/P2
-  Thiệt hại downtime trung bình: $5,000/phút
-  Doanh thu tiết kiệm được mỗi tháng: 20 × 45 phút × $5,000 = $4,500,000
-  
-  Doanh thu tiết kiệm được hàng năm: ~$54,000,000 (mức tối đa lý thuyết)
-  Thực tế (áp dụng tự sửa cho 30% sự cố): Tiết kiệm khoảng ~$16,000,000/năm
-  
-  Tỷ lệ ROI năm thứ nhất: 16,000,000 / 324,276 = Đạt hiệu quả gấp 49 lần
-  Tỷ lệ ROI từ năm thứ 2 trở đi: 16,000,000 / 150,000 = Đạt hiệu quả gấp 107 lần
-```
 
 ---
 
@@ -1510,32 +590,6 @@ Tính toán ROI (ở mức ước lượng thận trọng):
 | Remediation failure rate | Verify pipeline | P1 |
 | Topology graph age | Static | P2 |
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```yaml
-# AIOps self-alerts — route to platform-oncall, NOT product teams
-groups:
-  - name: aiops-dogfood
-    rules:
-      - alert: AIOpsControlPlaneDeaf
-        expr: |
-          (
-            kafka_consumer_group_lag_sum{group=~"anomaly-detector-group|correlation-engine-group"} > 20000
-          )
-          and
-          (
-            rate(aiops_correlation_incidents_created_total[15m]) == 0
-          )
-        for: 10m
-        labels:
-          severity: critical
-          team: aiops-platform
-        annotations:
-          summary: "AIOps may be deaf: lag high AND no incidents formed"
-```
-
-</details>
 
 > [!TIP]
 > **Shadow page**: mỗi quý, inject synthetic failure (chaos) và bắt buộc path detect→correlate→RCA→Slack card phải hoàn tất < SLO. Ghi kết quả vào maturity scorecard §15.6.
@@ -1556,34 +610,10 @@ DR app thường ≠ DR AIOps. Control plane cần **RPO/RTO riêng**:
 
 **DR modes**:
 
-```
-Mode A — Regional degrade:
-  Mất 1 AZ → Kafka/Prom HA tiếp tục; correlation window partial loss OK
-
-Mode B — Control plane dark:
-  Mất toàn bộ namespace aiops → fallback Alertmanager raw pages (noisy but alive)
-  Feature flag: aiops_pipeline_enabled=false → classic alerting path
-
-Mode C — Full region loss:
-  Warm standby region: MSK mirror / S3 replica + K8s gitops apply
-  Priority restore order: Kafka → storage query path → AD statistical → Correlation → RCA → LLM → Remediation
-```
 
 > [!WARNING]
 > **Anti-pattern**: DR runbook chỉ có "restore payment-db" mà không có "restore aiops". Trong outage lớn, bạn cần observability **trước** app recovery để biết fix có ăn không.
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```bash
-# Smoke DR control plane (post-restore)
-kubectl -n aiops get deploy
-# lag consumers
-# synthetic metric spike → expect anomaly event in Kafka within 2m
-# expect correlated incident card in Slack within 5m
-```
-
-</details>
 
 Xem thêm kịch bản DR và dependency failure để drill: [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md).
 
@@ -1600,27 +630,6 @@ Hai lò đốt tiền âm thầm:
 | Retrain thrash | retrain mỗi FP spike | cooldown 7d; shadow first |
 | Vector reindex | full re-embed hourly | incremental; hash content |
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```yaml
-finops_guards:
-  monthly_budget_usd: 12000
-  alerts:
-    - name: llm_daily_spend
-      threshold_usd: 50
-      action: force_model_fallback
-    - name: s3_growth_wow
-      threshold_pct: 25
-      action: page_finops_platform
-  retention:
-    loki_hot_days: 14
-    tempo_raw_days: 7
-    metrics_raw_days: 15
-    metrics_downsampled_days: 365
-```
-
-</details>
 
 > [!NOTE]
 > **Ý TƯỞNG**
@@ -1661,31 +670,6 @@ Không có game day = DR/chaos chỉ là markdown.
 | Bi-annual | Full aiops namespace wipe (staging) | Restore order RTO | §15.2 Mode B |
 | Bi-annual | Benchmark incident replay | Organizational learning | [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md) |
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```yaml
-game_day_template:
-  name: "correlation-storm-2026-q3"
-  blameless: true
-  preflight:
-    - freeze_remediation_auto: true   # trừ khi test remediation
-    - notify_stakeholders: true
-  inject:
-    - type: synthetic_alerts
-      count: 200
-      root: "payment-db"
-  success_criteria:
-    - incidents_created: 1
-    - time_to_incident_card_s: "< 180"
-    - raw_pages_to_humans: 0
-  artifacts:
-    - timeline
-    - metrics_snapshot
-    - action_items_owners_due
-```
-
-</details>
 
 ### 15.6 Maturity scorecard (đo được, không khẩu hiệu)
 
@@ -1703,12 +687,6 @@ Chấm điểm 0–4 mỗi hàng; target ≥ 3 trước khi scale org-wide.
 | Security | Basic | mTLS | Injection defense | Audit+IR playbooks | Red-team agent |
 | Ownership | Hero culture | Partial RACI | Clear RACI | Scorecard OKRs | Multi-region ops |
 
-```
-Scorecard review: mỗi quý
-  Owner: AIOps platform lead
-  Inputs: FPR, merge quality, RCA accuracy, MTTR, $, game day pass rate
-  Output: 3 improvement bets / quarter (không quá 3)
-```
 
 Reusable patterns: [14 — Pattern Library](../14-aiops-pattern-library/README.vi.md). Industry constraints: [15 — Domain Packs](../15-aiops-domain-packs/README.vi.md).
 
@@ -1738,23 +716,6 @@ Reusable patterns: [14 — Pattern Library](../14-aiops-pattern-library/README.v
 | Quarterly | Security review agent tools + IRSA/RBAC | Diff allowlist + pen findings |
 | Yearly | Full DR regional exercise (staging→prod-like) | RTO/RPO measured |
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```yaml
-# Feature flags — kill switches bắt buộc
-aiops_flags:
-  pipeline_enabled: true
-  auto_remediation_enabled: true
-  llm_investigations_enabled: true
-  storm_mode: false
-  # Kill switches phải gọi được trong <2 phút bởi on-call
-  emergency:
-    disable_all_pages_except_platform: false
-    force_classic_alertmanager_path: false
-```
-
-</details>
 
 > [!WARNING]
 > Kill switch **không** được chôn trong PR 40 file. Một `kubectl`/`redis-cli`/flag UI là đủ. Game day phải tập **bật/tắt** flag, không chỉ inject fault.
@@ -1792,10 +753,6 @@ Trả lời **có** tối thiểu 8/10 trước khi tuyên bố platform product
 9. Game day trong 90 ngày gần nhất **pass** success criteria đo được?
 10. Có classic fallback path đã drill khi AIOps dark?
 
-```
-Nếu < 8/10: giữ scope pilot (vài service critical), không org-wide rollout.
-Nếu ≥ 8/10: mở rộng theo tier service; scorecard quarterly bắt buộc.
-```
 
 > [!NOTE]
 > **Ý TƯỞNG**
@@ -1808,6 +765,8 @@ Nếu ≥ 8/10: mở rộng theo tier service; scorecard quarterly bắt buộc.
 
 
 ### Assessment of the Complete Platform
+
+Review cuối dựa trên evidence replay và game day. Kiến trúc được chấp nhận khi giữ incident dài liên tục, tách fault chồng, hạ cấp khi thiếu signal, replay không trùng decision, chặn action khi verifier mù và đưa operator về đường manual trong deadline. Không tiêu chí nào được thay bằng số replica hoặc danh sách công cụ đã cài.
 
 > [!IMPORTANT]
 > Go-live org-wide chỉ khi: dogfood P1 path xanh 30 ngày, game day monthly pass, maturity trung bình ≥ 3, classic fallback đã drill, RACI đã ký. Cài đủ tool **không** bằng production-ready.
@@ -1830,7 +789,7 @@ Nếu ≥ 8/10: mở rộng theo tier service; scorecard quarterly bắt buộc.
 
 3. **Khoảng trống phân tích ở cấp độ database**: Bộ máy RCA hiện tại xử lý rất tốt các lỗi phát sinh ở cấp độ ứng dụng. Tuy nhiên, các lỗi nội bộ sâu trong database (như phân mảnh index, nghẽn khóa ghi lock contention, lỗi tối ưu hóa câu lệnh query plan regression) đòi hỏi phải có các agents chuyên biệt cho DB (như pg_stat_statements, MySQL slow query log) chưa được tích hợp chi tiết ở đây.
 
-4. **Mô hình dự báo sớm L6**: Thuật toán dự báo dung lượng sử dụng thư viện Prophet ở trên mới chỉ là bản thử nghiệm sơ bộ. Để đưa vào sử dụng thực tế ở cấp độ L6 đòi hỏi phải áp dụng các mô hình dự báo chuỗi thời gian phức tạp hơn (như NeuralProphet, TimeGPT) kết hợp tích hợp sâu với cơ sở hạ tầng dạng code (Infrastructure-as-Code) để tự động cấp phát tài nguyên chủ động.
+4. **Dự báo sớm chưa đồng nghĩa với tự động hành động**: một forecast dung lượng đẹp trên dữ liệu lịch sử chưa chứng minh được khả năng chịu regime change, campaign, failover hoặc quota bất ngờ. Trước khi dùng để cấp phát chủ động, engine phải replay các giai đoạn biến động, xuất prediction interval, đo chi phí over-provision/under-provision và vẫn đi qua safety gate như mọi remediation khác.
 
 5. **Control-plane DR + dogfood + RACI** thường bị bỏ sót so với feature intelligence. §15 là điều kiện cần để handbook này không chỉ “chạy demo” mà vận hành được 12–24 tháng.
 

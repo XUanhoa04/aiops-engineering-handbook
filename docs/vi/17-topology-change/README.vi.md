@@ -46,26 +46,7 @@ Sau chương này, chuyển sang [08 — Anomaly Detection](../08-anomaly-detect
 
 ## Cách đọc chapter này
 
-Đọc theo thứ tự freshness/identity → topology snapshot → change event → integration contract. Các mục storage, maturity và checklist là reference triển khai; MkDocs navigation bên phải cung cấp mục lục tự động và luôn khớp heading thực tế.
-
----
-
-
-## Cách đọc chapter này (concept-first)
-
-> [!IMPORTANT]
-> **Đọc concept trước — code để sau**
-> Từ chapter 08 trở đi, handbook ưu tiên: **vấn đề → ý tưởng → input data → thuật toán/model → output → ưu/nhược → khi nào dùng**. Phần implementation nằm trong khối **See the code below** (bấm mới mở). Mục tiêu: bạn hiểu *tại sao và hoạt động ra sao trên telemetry AIOps*, không chỉ copy-paste.
-
-| Bước đọc | Câu hỏi |
-|----------|---------|
-| 1. Vấn đề | Detector/engine này giải quyết pain gì (false positive, cascade, MTTR…)? |
-| 2. Ý tưởng | Trực giác 2–3 câu, không công thức |
-| 3. Data in | Metric/log/trace/event nào, window nào, feature nào? |
-| 4. Thuật toán | Các bước tính toán / model flow |
-| 5. Output | Schema sự kiện, score, rank, action proposal? |
-| 6. Trade-off | Ưu / nhược / chi phí / giải thích được không? |
-| 7. When | Dùng khi nào — và khi nào **đừng** dùng |
+Hãy theo một incident payment từ lúc graph nhận diện `checkout → payment → payment-db`, qua một deploy đến muộn, cho tới khi RCA phải quyết định dependency nào là nguyên nhân và remediation phải tính blast radius. Mỗi phần đều trả lời năm câu hỏi: evidence nào tạo edge, edge còn tươi không, snapshot nào có hiệu lực tại thời điểm lỗi, uncertainty ảnh hưởng kết luận ra sao và consumer phải hạ cấp thế nào khi graph không đáng tin. Đây là topology engine vận hành được, không phải sơ đồ kiến trúc tĩnh.
 
 ---
 
@@ -83,32 +64,6 @@ Sau chương này, chuyển sang [08 — Anomaly Detection](../08-anomaly-detect
 | **Structure** | Service A phụ thuộc B? Owner? Criticality? | **Topology graph** | Correlation sai, blast radius sai |
 | **History of intent** | Ai vừa deploy / flip flag / đổi config? | **Change event plane** | RCA “DB CPU” trong khi root là deploy |
 
-```mermaid
-flowchart TB
-    subgraph SYMP["Symptom plane"]
-        M[Metrics]
-        L[Logs]
-        T[Traces]
-    end
-
-    subgraph STRUCT["Structure plane — Ch.17"]
-        G[Service graph]
-        O[Ownership / on-call]
-        C[Criticality / env / region]
-    end
-
-    subgraph INTENT["Intent / change plane — Ch.17"]
-        D[Deploys]
-        F[Feature flags]
-        CFG[Config / IaC]
-        FR[Freeze windows]
-    end
-
-    SYMP --> JOIN[Join keys:<br/>service · env · region · time]
-    STRUCT --> JOIN
-    INTENT --> JOIN
-    JOIN --> INTEL[Correlation · RCA · LLM · Remediation]
-```
 
 ### 1.2 Tại sao “side spreadsheet” thất bại có hệ thống
 
@@ -129,26 +84,9 @@ flowchart TB
 
 **Trước topology + change plane:**
 
-```
-03:12  Alert storm 80 alerts
-03:15  On-call mở 6 dashboard, đoán service nào là root
-03:25  Hỏi Slack “ai deploy payment lúc nào?”
-03:40  Tìm được Argo history: deploy 03:05 payment-v2.14
-03:50  Rollback
-04:10  Stabilize
-MTTD+MTTU (understand): ~38 phút chỉ để hiểu
-```
 
 **Sau topology + change plane:**
 
-```
-03:12  Correlation group: payment-service + 12 downstream
-       Evidence: deploy payment-v2.14 @ 03:05 (change_id=chg_…)
-       Owner: payments-oncall · criticality=tier-0 · freeze=false
-03:14  On-call thấy context pack; approve rollback allow-listed
-03:18  Verify green
-MTTU: ~2 phút
-```
 
 Tiết kiệm không chỉ MTTR — còn **cognitive load** và **sai remediation** (restart toàn cluster vì không biết edge payment→ledger).
 
@@ -195,53 +133,6 @@ Không có data product này, flywheel train trên rác ngữ nghĩa.
 
 ### 2.1 Bản đồ pipeline
 
-```mermaid
-flowchart LR
-    subgraph COL["Collect Ch.02–05"]
-        OTEL[OTel / Prom / Loki / Tempo]
-    end
-
-    subgraph DP["Telemetry Data Plane Ch.06"]
-        NOR[Normalize]
-        ENR[Enrich]
-        VAL[Validate]
-        FS[Feature / Store]
-    end
-
-    subgraph TC["Topology & Change Ch.17"]
-        TOPO[Topology Service]
-        CHG[Change Bus]
-        SNAP[Graph snapshots]
-    end
-
-    subgraph BUS["Transport Ch.07"]
-        KAF[Kafka topics]
-    end
-
-    subgraph INTEL["Intelligence Ch.08–11"]
-        AD[Anomaly]
-        COR[Correlation]
-        RCA[RCA]
-        LLM[LLM Agent]
-    end
-
-    subgraph ACT["Action Ch.12"]
-        REM[Remediation gates]
-    end
-
-    OTEL --> NOR --> ENR --> VAL --> FS
-    TOPO --> ENR
-    CHG --> ENR
-    TOPO --> SNAP
-    CHG --> KAF
-    SNAP --> KAF
-    FS --> KAF --> AD --> COR --> RCA --> LLM --> REM
-    TOPO --> COR
-    TOPO --> RCA
-    TOPO --> REM
-    CHG --> RCA
-    CHG --> REM
-```
 
 ### 2.2 WHERE từng consumer đọc
 
@@ -301,25 +192,6 @@ Chi tiết Kafka: [07](../07-kafka/README.vi.md).
 
 ### 3.1 Cây quyết định chính
 
-```mermaid
-flowchart TD
-    A[Bắt đầu] --> B{Số services / deploy units?}
-    B -->|< 15| Y1[Static YAML / catalog file trong Git]
-    B -->|15–80| C
-    B -->|80+| S[Topology service bắt buộc dần]
-    C{Multi-team ownership?}
-    C -->|Không, 1 platform team| Y2[YAML + CI validate + light API]
-    C -->|Có| D
-    D{Cần topology-aware correlation / auto-remediate?}
-    D -->|Chưa| Y3[YAML + cloud tags + manual edges]
-    D -->|Có| E
-    E{Change-driven RCA là ưu tiên P1?}
-    E -->|Có| S2[Topology service + Change bus]
-    E -->|Chưa| MID[Read model từ K8s/mesh + cache Redis]
-    S --> F{Regulated / multi-tenant banking?}
-    F -->|Có| FULL[Full service: audit, SoT, dual-control edits]
-    F -->|Không| S2
-```
 
 ### 3.2 Ma trận lựa chọn
 
@@ -406,17 +278,6 @@ Topology service = **hợp nhất + conflict policy + snapshot API**, không rei
 | `part_of` | Service → domain / product | Business impact |
 | `replicates_to` | Multi-region | Partial region outage |
 
-```mermaid
-graph LR
-    GW[api-gateway] -->|calls| ORD[order-service]
-    ORD -->|calls| PAY[payment-service]
-    PAY -->|calls| LED[ledger-service]
-    PAY -->|calls| EXT[card-network]
-    PAY -->|writes_to| PG[(payments-db)]
-    ORD -->|publishes_to| Q[orders-topic]
-    PAY -->|owned_by| T[team-payments]
-    PAY -->|runs_on| C[eks-prod-a]
-```
 
 ### 4.3 Thuộc tính bắt buộc trên `service`
 
@@ -455,24 +316,6 @@ Tier phải **human-owned** — không suy ra chỉ từ QPS (batch fraud model 
 
 ### 4.6 Ownership model
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```yaml
-# WHY: ownership là routing + approval surface, không chỉ metadata đẹp
-service_id: payment-service
-owner_team: team-payments
-escalation:
-  primary: payments-oncall
-  secondary: platform-sre-oncall
-approvers_for_tier0_actions:
-  - role: payments-tl
-  - role: sre-secondary
-data_classification: confidential
-pci_scope: true
-```
-
-</details>
 
 ### 4.7 Identity mapping — nơi AIOps chết thầm
 
@@ -492,31 +335,6 @@ pci_scope: true
 
 ### 4.8 Schema gọn (minh họa — WHY từng nhóm field)
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```json
-{
-  "service_id": "payment-service",
-  "env": "prod",
-  "regions": ["ap-southeast-1", "ap-northeast-1"],
-  "tier": 0,
-  "owner_team": "team-payments",
-  "aliases": ["payment", "payments-api", "pay-svc"],
-  "deps": {
-    "calls": ["ledger-service", "fraud-service"],
-    "writes_to": ["payments-pg"],
-    "external": ["card-network"]
-  },
-  "provenance": {
-    "declared_from": "catalog@git:abc123",
-    "runtime_from": "istio-tsdb@2026-07-22T03:00:00Z",
-    "merged_revision": 184422
-  }
-}
-```
-
-</details>
 
 WHY `provenance`: khi edge conflict, biết ai thắng và có rollback semantic.
 
@@ -647,38 +465,11 @@ Conflict resolution chi tiết: §6.
 | **Push** | Nguồn event-driven; freshness quan trọng | CI deploy webhook, mesh tap, catalog Git push | Burst, auth, schema drift |
 | **Hybrid** | Production default | Informer + webhook invalidate | Complexity |
 
-```mermaid
-flowchart TB
-    subgraph PULL["Pull adapters"]
-        K8S[K8s informer]
-        AWS[Cloud inventory]
-        CMDB[CMDB poll 6h]
-    end
-
-    subgraph PUSH["Push adapters"]
-        GIT[Catalog CI webhook]
-        CD[CD pipeline events]
-        MESH[Mesh edge exporter]
-    end
-
-    PULL --> MER[Merger / Conflict engine]
-    PUSH --> MER
-    MER --> REV[Revision log]
-    REV --> API[Topology API]
-    REV --> SNAP[Snapshot publisher]
-    REV --> KAF[Kafka compact topics]
-    API --> H[Health: graph_age]
-```
 
 ### 6.2 Freshness SLO (graph age)
 
 Định nghĩa:
 
-```
-graph_age_seconds = now - min(
-  last_successful_sync_per_critical_source
-)
-```
 
 Hoặc chặt hơn: age theo **subgraph tier-0**.
 
@@ -759,11 +550,6 @@ Mỗi source adapter:
 
 ### 6.9 Idempotency & ordering merge
 
-```text
-merge_key = (entity_type, entity_id, env, region?)
-write = upsert where incoming.source_version >= stored.source_version
-         OR incoming.observed_at > stored.observed_at (per source stream)
-```
 
 | Vấn đề | Xử lý |
 |--------|-------|
@@ -803,23 +589,6 @@ Page khi tier-0 source lag vượt SLO — không đợi human notice correlatio
 
 ### 7.2 Health model
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```yaml
-topology_health:
-  status: green|yellow|red
-  graph_age_seconds: 95
-  sources:
-    catalog: ok
-    mesh: degraded   # lag
-    cmdb: ok
-  orphan_service_ratio: 0.04
-  conflict_rate_1h: 0.01
-  tier0_coverage: 0.99
-```
-
-</details>
 
 | Status | Ý nghĩa | Policy |
 |--------|---------|--------|
@@ -829,16 +598,6 @@ topology_health:
 
 ### 7.3 Fallbacks theo lớp
 
-```mermaid
-flowchart TD
-    Q{topology_health?}
-    Q -->|green| FULL[Full topo COR + RCA + blast]
-    Q -->|yellow| SOFT[Temporal primary + topo secondary]
-    Q -->|red| OFF[No topo edges for action]
-    OFF --> F1[Correlation: time + semantic only]
-    OFF --> F2[RCA: change + logs + metrics priors]
-    OFF --> F3[Remediation: service-local allowlist only]
-```
 
 ### 7.4 Write-time snapshot (nhắc Ch.06)
 
@@ -891,47 +650,6 @@ Burn error budget topology → **freeze** feature flags bật topo-auto-remediat
 
 ### 8.2 Schema tối thiểu (JSON minh họa)
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```json
-{
-  "change_id": "chg_01J5...",
-  "event_type": "deploy.completed",
-  "schema_version": 3,
-  "timestamp": "2026-07-22T03:05:12Z",
-  "observed_at": "2026-07-22T03:05:18Z",
-  "service_id": "payment-service",
-  "env": "prod",
-  "regions": ["ap-southeast-1"],
-  "change_kind": "deploy",
-  "actor": {
-    "type": "pipeline",
-    "id": "github-actions",
-    "user": "alice",
-    "automation": true
-  },
-  "artifact": {
-    "version": "2.14.0",
-    "git_sha": "abcdef",
-    "image": "ghcr.io/org/payment:2.14.0"
-  },
-  "pipeline": {
-    "system": "github_actions",
-    "run_url": "https://...",
-    "strategy": "canary"
-  },
-  "ticket": "CHG-10422",
-  "risk_score": 0.72,
-  "blast_radius_hint": ["ledger-service", "checkout-service"],
-  "freeze_bypass": false,
-  "status": "completed",
-  "provenance": "ci_webhook",
-  "idempotency_key": "gh-run-998877"
-}
-```
-
-</details>
 
 | Field group | WHY |
 |-------------|-----|
@@ -961,18 +679,6 @@ Burn error budget topology → **freeze** feature flags bật topo-auto-remediat
 
 ### 8.4 Lifecycle state machine
 
-```mermaid
-stateDiagram-v2
-    [*] --> planned
-    planned --> started
-    started --> progressing
-    progressing --> completed
-    progressing --> failed
-    completed --> rolled_back
-    failed --> [*]
-    rolled_back --> [*]
-    planned --> cancelled
-```
 
 RCA quan tâm **completed/failed/rolled_back** trong cửa sổ; enrichment có thể show `in_progress` để suppress noise tạm.
 
@@ -1047,45 +753,11 @@ Flag systems: LaunchDarkly, Unleash, Flagsmith, home-grown — adapter thống n
 
 ### 9.5 Manual changes — break-glass
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```json
-{
-  "change_kind": "manual",
-  "actor": {"type": "human", "user": "bob", "automation": false},
-  "evidence": {"ticket": "INC-22", "session": "teleport-uuid"},
-  "risk_score": 0.9
-}
-```
-
-</details>
 
 Nguồn: session recording (Teleport), `kubectl` audit, AWS Console — normalize best-effort; **missing manual change** là blind spot lớn (xem [16](../16-aiops-benchmark-replay/README.vi.md)).
 
 ### 9.6 Freeze windows
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```yaml
-freeze_id: freeze_black_friday_2026
-env: prod
-scope:
-  tiers: [0, 1]
-  services: ["*"]   # or allowlist exceptions
-  regions: ["*"]
-window:
-  start: 2026-11-25T00:00:00Z
-  end: 2026-12-02T00:00:00Z
-policy:
-  block_deploys: true
-  block_auto_remediation: true
-  allow_break_glass: true
-  dual_control_required: true
-```
-
-</details>
 
 Publish lên `change.freeze` + evaluate API cho CI **và** remediation.
 
@@ -1121,16 +793,6 @@ Bảng cấu hình bắt buộc; fail pipeline nếu unmapped **prod** deploy (s
 | **Canary-aligned** | Strategy canary 30m | Window = canary duration + soak |
 | **Flag ramp steps** | 1%→10%→50% | Correlate step times |
 
-```text
-score_change_prior = f(
-  temporal_proximity,
-  service_match_or_neighbor,
-  change_risk_score,
-  blast_hint_overlap,
-  metric_shape_consistency,
-  absence_of_stronger_priors
-)
-```
 
 ### 10.2 Deploy + traffic spike confounders
 
@@ -1177,12 +839,6 @@ Detector có thể **tăng nhạy** sau deploy (hoặc giảm page nếu expecte
 
 ### 10.7 Worked example — payment deploy vs flash sale
 
-```text
-T+0:00  flag marketing.flash_sale → 100% (change_id=flg_9)
-T+0:05  traffic +180% checkout
-T+0:12  deploy payment-service 2.14.0 (change_id=dep_3) canary 5%
-T+0:18  error_rate payment ↑; order/checkout alerts fan-out
-```
 
 | Hypothesis | Evidence for | Evidence against |
 |------------|--------------|------------------|
@@ -1243,32 +899,9 @@ Normalize 0–1; version formula (`risk_model_v2`) — audit.
 
 ### 11.3 API evaluate (contract)
 
-```http
-POST /v1/policy/evaluate-action
-{
-  "action": "rollback",
-  "service_id": "payment-service",
-  "env": "prod",
-  "change_id": "chg_01J5...",
-  "requested_by": "remediation-controller"
-}
-```
 
 Response:
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```json
-{
-  "allow": false,
-  "reasons": ["freeze_active:freeze_black_friday_2026", "tier0_requires_dual_control"],
-  "required_approvals": 2,
-  "risk_score": 0.91
-}
-```
-
-</details>
 
 ### 11.4 Change calendar vs CI
 
@@ -1460,25 +1093,6 @@ Safety poster: [diagram](../../assets/diagrams/05-remediation-safety.png).
 
 ### 14.3 Audit record schema (minh họa)
 
-<details>
-<summary><strong>See the code below — bấm để xem code (đọc concept trước)</strong></summary>
-
-```json
-{
-  "audit_id": "aud_...",
-  "ts": "2026-07-22T01:00:00Z",
-  "actor": "user:alice",
-  "action": "node.update.tier",
-  "service_id": "payment-service",
-  "before": {"tier": 0},
-  "after": {"tier": 1},
-  "ticket": "CHG-...",
-  "approvers": ["user:bob"],
-  "reason": "service deprecated from money path"
-}
-```
-
-</details>
 
 ### 14.4 Separation of duties
 
@@ -1658,11 +1272,6 @@ Node drain → mesh edges biến mất hàng loạt:
 
 ### 17.4 Không nhảy cóc
 
-```mermaid
-flowchart LR
-    L0 --> L1 --> L2 --> L3 --> L4 --> L5
-    L2 -.->|cấm nhảy| L4
-```
 
 Jump L2→L4 không có health/fallback = anti-pattern §16.5.
 
@@ -1903,12 +1512,6 @@ Jump L2→L4 không có health/fallback = anti-pattern §16.5.
 
 ### 21.3 Vị trí handbook
 
-```
-Ch.06 enrich  ←── joins ──  Ch.17 topology + change
-Ch.09 correlate ←── edges ── Ch.17
-Ch.10 RCA ←── walk + changes ── Ch.17
-Ch.12 remediate ←── blast + freeze ── Ch.17
-```
 
 ### 21.4 Gap curriculum đã đóng
 
