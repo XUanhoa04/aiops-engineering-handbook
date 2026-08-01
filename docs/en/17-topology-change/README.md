@@ -44,7 +44,7 @@
 
 ## Next Reading
 
-Use this plane as the **context backbone** when operating [09–12] intelligence and action layers. Revisit [06 — Data Plane](../06-data-plane/README.md) when wiring enrichment join keys, and [13 — Production](../13-production/README.md) when setting freshness SLOs and game-day scenarios for graph outage.
+Continue to [08 — Anomaly Detection](../08-anomaly-detection/README.md), then [09 — Alert Correlation](../09-alert-correlation/README.md) and [10 — Root Cause Analysis](../10-root-cause-analysis/README.md). Chapters 06–07 establish the canonical event bus; this chapter adds topology and change context before the intelligence plane starts making decisions.
 
 ---
 

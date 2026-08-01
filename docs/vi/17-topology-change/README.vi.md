@@ -40,35 +40,13 @@
 
 ## Next Reading
 
-Sau chương này, quay lại vận hành production ([13](../13-production/README.vi.md)) hoặc case study domain ([15](../15-ecommerce-banking/README.vi.md)). Nếu bạn đang build pipeline từ đầu: đảm bảo Ch.06 enrich đã **contract** với topology API trước khi bật correlation topology-aware ở Ch.09.
+Sau chương này, chuyển sang [08 — Anomaly Detection](../08-anomaly-detection/README.vi.md), rồi [09 — Alert Correlation](../09-alert-correlation/README.vi.md) và [10 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md). Ch.06–07 đã tạo canonical event bus; chương này bổ sung topology/change context trước khi intelligence plane bắt đầu ra quyết định.
 
 ---
 
-## Table of Contents
+## Cách đọc chapter này
 
-1. [Vì sao topology + change là data product first-class](#1-vì-sao-topology--change-là-data-product-first-class)
-2. [WHERE — vị trí trong pipeline AIOps](#2-where--vị-trí-trong-pipeline-aiops)
-3. [WHEN — topology service vs YAML vs cloud tags](#3-when--topology-service-vs-yaml-vs-cloud-tags)
-4. [Mô hình topology: service, deps, ownership, criticality](#4-mô-hình-topology-service-deps-ownership-criticality)
-5. [Nguồn topology: K8s, mesh, cloud, APM, CMDB, OTel](#5-nguồn-topology-k8s-mesh-cloud-apm-cmdb-otel)
-6. [Kiến trúc đồng bộ: scrape vs push, freshness, conflict](#6-kiến-trúc-đồng-bộ-scrape-vs-push-freshness-conflict)
-7. [Stale graph tệ hơn no graph — health & fallback](#7-stale-graph-tệ-hơn-no-graph--health--fallback)
-8. [Change / deploy event plane — schema sự kiện](#8-change--deploy-event-plane--schema-sự-kiện)
-9. [Nguồn change: CI/CD, flags, config, IaC, manual, freeze](#9-nguồn-change-cicd-flags-config-iac-manual-freeze)
-10. [Change correlation: confounders & time windows](#10-change-correlation-confounders--time-windows)
-11. [Change freezes & risk scoring cho remediation](#11-change-freezes--risk-scoring-cho-remediation)
-12. [Storage: graph DB vs relational vs cache; retention](#12-storage-graph-db-vs-relational-vs-cache-retention)
-13. [Integration contracts với Ch.06 / 09 / 10 / 12](#13-integration-contracts-với-ch06--09--10--12)
-14. [Multi-tenant / banking: audit topology edits](#14-multi-tenant--banking-audit-topology-edits)
-15. [Edge cases (12+)](#15-edge-cases-12)
-16. [Anti-patterns](#16-anti-patterns)
-17. [Maturity L0–L5](#17-maturity-l0l5)
-18. [Production checklist 40+](#18-production-checklist-40)
-19. [Câu hỏi Socratic](#19-câu-hỏi-socratic)
-20. [Kế hoạch 30/60/90 ngày](#20-kế-hoạch-306090-ngày)
-21. [Tóm tắt & mental model](#21-tóm-tắt--mental-model)
-22. [Chapter Score](#22-chapter-score)
-23. [References](#23-references)
+Đọc theo thứ tự freshness/identity → topology snapshot → change event → integration contract. Các mục storage, maturity và checklist là reference triển khai; MkDocs navigation bên phải cung cấp mục lục tự động và luôn khớp heading thực tế.
 
 ---
 
@@ -1979,7 +1957,7 @@ Tự chấm trước khi ship platform:
 - [14 — Big Tech AIOps](../14-bigtech-aiops/README.vi.md)
 - [15 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md)
 - [16 — Famous Incidents](../16-famous-incidents/README.vi.md)
-- [Architecture diagrams](../../assets/diagrams/)
+- [Architecture diagrams](../../assets/diagrams/README.md)
 
 ### Khái niệm công nghiệp (đọc thêm)
 

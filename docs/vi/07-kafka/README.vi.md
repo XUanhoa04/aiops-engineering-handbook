@@ -1,6 +1,6 @@
-# Chapter 07 — Apache Kafka / AWS Kinesis
+# Chapter 07 — Incident event bus và deterministic replay với Kafka
 
-> **Lớp vận chuyển dữ liệu (transport layer) là xương sống của pipeline AIOps. Mọi sự kiện phát hiện bất thường, cảnh báo và kích hoạt remediation đều truyền qua lớp này. Việc lựa chọn nền tảng truyền dữ liệu phù hợp — và cấu hình nó chính xác — quyết định độ trễ, độ bền vững dữ liệu, và khả năng mở rộng của toàn bộ hệ thống AIOps.**
+> **Kafka không làm AIOps thông minh hơn; nó bảo đảm các stage có thể fail, restart, replay và fan-out mà vẫn giữ cùng sự thật logic. Chương này harden transport bằng duplicate, out-of-order, poison schema, hot partition, consumer lag, fault chồng và Kafka outage — rồi chứng minh incident output không đổi.**
 
 ---
 
@@ -9,11 +9,13 @@
 - Hiểu biết cơ bản về hệ thống phân tán (CAP theorem, replication)
 - [02 — OpenTelemetry](../02-opentelemetry/README.vi.md) — Kafka làm exporter trong OTel Collector
 - [06 — Telemetry Data Plane](../06-data-plane/README.vi.md) — normalize / enrich / schema trước khi vào bus
+- [17 — Topology & Change](../17-topology-change/README.vi.md) — context plane được đọc ngay sau transport
 - [08 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — tiêu thụ dữ liệu từ Kafka
 
 ## Related Documents
 
 - [06 — Telemetry Data Plane](../06-data-plane/README.vi.md) — canonical events, retention, feature store
+- [17 — Topology & Change](../17-topology-change/README.vi.md) — topology snapshot và change-event topics
 - [08 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — tiêu thụ telemetry từ Kafka, publish anomaly events
 - [09 — Alert Correlation](../09-alert-correlation/README.vi.md) — tiêu thụ các sự kiện bất thường từ Kafka
 - [12 — Remediation](../12-remediation/README.vi.md) — gửi các kích hoạt remediation tới Kafka
@@ -21,41 +23,219 @@
 
 ## Next Reading
 
-Sau chương này, hãy chuyển sang [08 — Anomaly Detection](../08-anomaly-detection/README.vi.md).
+Sau chương này, hãy chuyển sang [17 — Topology & Change](../17-topology-change/README.vi.md), rồi mới sang [08 — Anomaly Detection](../08-anomaly-detection/README.vi.md). Topology/change là context contract của detection, correlation và RCA, không phải phụ lục đọc sau.
 
 ---
 
-## Table of Contents
+## Cách đọc chương này
 
-1. [Why Event Streaming for AIOps?](#1-why-event-streaming-for-aiops)
-2. [Kafka Architecture Deep Dive](#2-kafka-architecture-deep-dive)
-3. [Topics and Partitions](#3-topics-and-partitions)
-4. [Producers — Configuration and Guarantees](#4-producers--configuration-and-guarantees)
-5. [Consumers and Consumer Groups](#5-consumers-and-consumer-groups)
-6. [Offset Management](#6-offset-management)
-7. [Replication and Durability](#7-replication-and-durability)
-8. [Kafka Topic Design for AIOps](#8-kafka-topic-design-for-aiops)
-9. [Message Schema and Serialization](#9-message-schema-and-serialization)
-10. [Dead Letter Queue Pattern](#10-dead-letter-queue-pattern)
-11. [AWS MSK — Managed Kafka](#11-aws-msk--managed-kafka)
-12. [Kafka vs Kinesis](#12-kafka-vs-kinesis)
-13. [Kafka vs Redis Streams](#13-kafka-vs-redis-streams)
-14. [Production Configuration](#14-production-configuration)
-15. [Monitoring Kafka](#15-monitoring-kafka)
-16. [Scaling](#16-scaling)
-17. [Security](#17-security)
-18. [Cost Model — Retention × Throughput × Replication](#18-cost-model--retention--throughput--replication)
-19. [Mental Model: Backpressure & Lag as Signal vs Incident](#19-mental-model-backpressure--lag-as-signal-vs-incident)
-20. [Exactly-Once Myths in AIOps Pipeline](#20-exactly-once-myths-in-aiops-pipeline)
-21. [Poison Messages & Schema Evolution](#21-poison-messages--schema-evolution)
-22. [Hot Partitions from High-Cardinality Keys](#22-hot-partitions-from-high-cardinality-keys)
-23. [Multi-Consumer Fan-out: AD + Correlation + Audit](#23-multi-consumer-fan-out-ad--correlation--audit)
-24. [Failure Mode: Kafka Down → AIOps Blind & Bypass](#24-failure-mode-kafka-down--aiops-blind--bypass)
-25. [MSK vs Self-Managed for Regulated Industries](#25-msk-vs-self-managed-for-regulated-industries)
-26. [War Stories](#26-war-stories)
-27. [Socratic Questions](#27-socratic-questions)
-28. [Production Review](#28-production-review)
-29. [Summary](#29-summary)
+Đọc phần Production hardening trước để thấy duplicate, out-of-order, late event, poison schema, hot partition, rebalance và Kafka outage ảnh hưởng trực tiếp tới incident lifecycle thế nào. Các phần đánh số sau đó là implementation reference về Kafka/Kinesis, partitions, producers, consumers, Flink, HA, security và cost.
+
+---
+
+## Production hardening — replay một incident qua bus
+
+### Bus phải giữ sự thật logic dù delivery không đẹp
+
+Incident payment tạo canonical events; auth fault nổ chồng lúc 10:37. Bản ghi tới Kafka như sau:
+
+| Arrival | Topic/partition/offset | Key | Event time | Nội dung |
+|---:|---|---|---:|---|
+| 10:10:45 | canonical/2/901 | `payment-api|apac` | 10:10:30 | DB pool residual tăng |
+| 10:10:46 | canonical/2/902 | `payment-api|apac` | 10:10:42 | `db.pool.acquire_timeout` |
+| 10:10:47 | canonical/2/903 | `payment-api|apac` | 10:10:39 | Failed span DB acquire |
+| 10:10:49 | canonical/2/904 | `payment-api|apac` | 10:10:42 | Duplicate của offset 902 do resend |
+| 10:12:10 | changes/4/188 | `catalog|apac` | 10:07:00 | Deploy catalog tới muộn |
+| 10:22:00 | quality/1/771 | `otel-gw|apac` | 10:21:30 | Trace coverage tụt 88% → 49% |
+| 10:37:03 | canonical/5/411 | `auth-api|apac` | 10:37:02 | Auth cache miss storm |
+| 10:37:04 | canonical/0/1201 | `gateway|apac` | 10:37:03 | Shared gateway symptom |
+| 10:40:00 | canonical/2/905 | `payment-api|apac` | 10:15:00 | Backfill event đến rất muộn |
+
+Kafka chỉ bảo đảm order trong một partition theo append, không bảo đảm global event-time order. Offset 903 có event time trước 902. Change catalog ở topic/partition khác. Duplicate có offset mới. Consumer phải dùng event identity, event time/watermark và versioned state; không dùng offset làm causal clock.
+
+### Chọn key theo state cần giữ, không theo thói quen
+
+Key quyết định ordering, locality và hot partition.
+
+| Stage/topic | Key hợp lý | Lợi ích | Bẫy |
+|---|---|---|---|
+| Canonical telemetry | canonical service + region/scope | Per-service window/state local | Một mega-service có thể hot |
+| Trace spans | trace ID | Spans cùng trace cùng partition | Large trace/hot trace |
+| Change events | canonical service + environment | Thứ tự deploy/config per service | Global change cần relation riêng |
+| Anomaly events | detector scope + signal/failure family | Lifecycle per detector entity | Key quá rộng trộn fault chồng |
+| Incident commands/state | incident ID | Serialize lifecycle revisions | Membership candidate trước incident ID cần route khác |
+| Audit/remediation | action/incident ID | Ordered approvals/actions | Không partition chỉ theo user/team |
+
+Key `environment=prod` giữ “global order” bằng cách đẩy mọi event vào một partition và tạo bottleneck. Key random phân tải tốt nhưng stateful consumer phải cross-partition join phức tạp. Với mega-service, deterministic sub-key/shard giữ locality có kiểm soát; consumer aggregate bằng versioned window, không đổi key tùy hứng giữa replay.
+
+### Topic contract phải độc lập consumer implementation
+
+Topic không chỉ có tên và retention. Contract cần:
+
+- semantic purpose và owner;
+- key/partitioning version;
+- schema compatibility policy;
+- event ID, event time, produced time, source/version;
+- correction/retraction semantics;
+- expected rate/size/cardinality;
+- retention/replay horizon;
+- PII/tenant ACL và encryption class;
+- producer/consumer SLO;
+- deprecation/dual-publish plan.
+
+Không để Flink job là nơi duy nhất biết schema và key. Thay Flink bằng consumer service hoặc reprocess từ object store vẫn phải tạo cùng logical output.
+
+### At-least-once + idempotency thường thực tế hơn lời hứa exactly-once
+
+Producer timeout sau khi broker đã commit có thể gửi lại. Consumer xử lý xong side effect rồi crash trước commit offset có thể xử lý lại. Kafka transaction không bao phủ tự động database, PagerDuty, Slack hay Kubernetes API.
+
+Phân ba identity:
+
+- transport record: topic/partition/offset;
+- logical event: stable event ID qua resend/replay;
+- business/action: incident revision hoặc remediation action ID.
+
+Sink cần idempotency ở đúng lớp. Duplicate telemetry không tăng count; duplicate incident revision không page lại; duplicate remediation command không restart thêm pod. Dedup cache có TTL ngắn hơn replay horizon sẽ thất bại khi backfill; durable ledger hoặc deterministic upsert key cần cho side effect critical.
+
+Không commit offset trước side effect/state bền vững. Cũng không giữ transaction mở hàng phút trong lúc gọi API ngoài. Pattern phổ biến là consume → validate/compute → atomic state/outbox → commit → dispatcher idempotent cho external action.
+
+### Rebalance/restart không được reset incident
+
+Consumer group rebalance có thể dừng partition, chuyển ownership và replay một phần. Nếu detector/correlator chỉ giữ state RAM:
+
+- rolling median/MAD reset và học anomaly thành normal;
+- incident lifecycle quay về Candidate;
+- explained-symptom lease mất;
+- notification dedup mất và page lại.
+
+State cần checkpoint/changelog/snapshot có version, gắn input offsets/watermarks. Restore phải hoàn tất trước khi partition xử lý record mới. Nếu state incompatible sau deploy, dual-run/migration hoặc replay có kiểm soát; không khởi động empty state giữa incident dài.
+
+Acceptance: restart detector ở phút 28 của payment incident, hệ vẫn Firing cùng incident ID, baseline frozen đúng scope và silent gap bằng 0.
+
+### Out-of-order và late events cần revision policy
+
+Ba thời gian khác nhau:
+
+- event time từ source;
+- broker append/produced time;
+- processing time của consumer.
+
+Event late trong allowed lateness cập nhật window trước khi finalize. Event tới sau nhưng trong correction horizon tạo revision. Event quá horizon có thể lưu audit/backfill nhưng không sửa page tự động nếu policy không cho phép.
+
+Revision phải monotonic theo entity/window, ví dụ v3 thay v2; consumer bỏ revision cũ tới muộn. Không dùng Kafka offset toàn cục làm version vì records ở partition khác không so sánh được.
+
+Deploy catalog tới muộn không được merge payment chỉ vì nó được process giữa incident. Correlation dùng event time, topology/service scope và negative evidence.
+
+### Poison record: cách retry vô hạn tự tạo outage
+
+Một schema incompatible ở offset 500 làm consumer crash; platform restart; nó đọc lại offset 500 và crash mãi. Lag tăng, mọi service phía sau stale dù chỉ một record xấu.
+
+Policy:
+
+1. Phân biệt transient dependency error với deterministic parse/schema error.
+2. Retry transient có budget/backoff; không giữ partition vô hạn.
+3. Poison record vào quarantine/DLQ với raw bytes, source offset, schema ID, reason, parser version và ACL.
+4. Commit/skip theo policy sau khi quarantine bền vững.
+5. Phát quality event và theo dõi affected scope.
+6. Tool replay DLQ phải giữ event ID và đánh dấu correction, không nhân logical count.
+
+Fail-open không đồng nghĩa bỏ im lặng. Critical remediation/audit topic có thể fail closed; telemetry debug có thể quarantine và tiếp tục. Policy theo data class.
+
+### Lag là độ cũ của quyết định, không chỉ là số messages
+
+Consumer lag 1 triệu records có thể là 2 giây ở 500k/s hoặc 17 phút ở 1k/s. AIOps cần:
+
+- oldest unprocessed event age;
+- event-time watermark lag;
+- end-to-end feature/incident freshness;
+- lag theo partition/scope;
+- processing rate vs arrival rate;
+- checkpoint/state restore age.
+
+Nếu anomaly event 12 phút cũ mới tới correlation, incident onset vẫn theo event time nhưng page hiện tại phải ghi detection delay. Auto-remediation có freshness gate; không hành động trên incident snapshot stale dù score cao.
+
+Lag có hai vai trò: platform incident nếu pipeline không theo kịp, và quality modifier cho production incident. Không suppress toàn bộ alert vì Kafka lag; bypass SLO alerting phải tiếp tục cảnh báo customer impact.
+
+### Hot partition trong fault storm
+
+Payment là service lớn, fault làm volume log/anomaly tăng 20× đúng partition theo service key. Các service cùng partition bị chậm dù khỏe. Biện pháp:
+
+- capacity/headroom và compression/batching trước incident;
+- key version hỗ trợ deterministic sub-shard cho high-volume telemetry;
+- isolate critical topics/tenants;
+- backpressure/drop policy cho debug, không cho incident/audit;
+- monitor skew giữa partitions, không chỉ total throughput;
+- downstream re-aggregate sub-shards bằng window/revision idempotent.
+
+Không đổi partition count/key giữa incident mà không hiểu ordering. Repartition làm cùng entity đi hai mapping trong transition; cần key version và dual-read boundary.
+
+### Multi-consumer isolation
+
+Detector, correlation, RCA, training và audit dùng group riêng. Training backfill không được commit offset của realtime detector. Một consumer query/deserialize nặng không trực tiếp block group khác, nhưng vẫn cạnh tranh broker/network/disk; quota và workload isolation cần thiết.
+
+Remediation commands/audit không nên chung topic retention/ACL với raw telemetry. PII scope và blast radius khác. Một LLM consumer không được đọc toàn bộ raw topic chỉ vì tiện.
+
+### Kafka outage: AIOps degraded nhưng direct safety signals phải sống
+
+Nếu Kafka unavailable:
+
+- Producers buffer có giới hạn và công bố oldest buffered age.
+- Critical SLO alerts có đường trực tiếp/bypass tới on-call.
+- Intelligence plane đánh dấu degraded/unknown, không resolved.
+- Auto-remediation bị chặn nếu evidence/action audit không durable.
+- Sau recovery, backfill theo event time không được tạo page storm lịch sử.
+- Platform incident Kafka tách khỏi customer incident nhưng liên kết loss of visibility.
+
+Không thiết kế bypass để chạy một AIOps engine thứ hai không state. Bypass tối thiểu bảo vệ customer-impact alert và human control; replay khôi phục intelligence sau đó.
+
+### Long incident và fault chồng qua bus
+
+Payment kéo dài 54 phút. Retention/state/checkpoint phải dài hơn incident; compaction không xóa state đang cần. Tại 10:37 auth fault có key/service/failure family riêng, nên detector state và incident candidate không bị payment che.
+
+Gateway symptom có key gateway và có thể được correlation liên kết tới hai incidents theo scope/time. Không ép mọi record trong cùng partition/window thuộc một incident. Partitioning hỗ trợ processing order, không quyết định causal membership.
+
+### Golden replay cho Chapter 07
+
+Replay dataset inject:
+
+1. 10% producer duplicates.
+2. Event time đảo trong cùng partition.
+3. Deploy event ở topic khác tới muộn 5 phút.
+4. Poison schema giữa partition.
+5. Hot payment partition 20×.
+6. Consumer rebalance/restart phút 28.
+7. Kafka unavailable 6 phút rồi backfill.
+8. Auth fault nổ chồng phút 37.
+
+Điều kiện đạt:
+
+- Canonical/feature/anomaly logical counts không đổi vì duplicate.
+- Payment incident giữ cùng ID/lifecycle, silent gap = 0 sau restart.
+- Late deploy revision không page lại hoặc bị gán root vì processing time.
+- Poison record không chặn records tốt phía sau; loss có quality event.
+- Auth được phát hiện/tách riêng trong SLA dù payment partition nóng.
+- Backfill sau outage không tạo notification storm.
+- Replaying cùng topics/state versions tạo cùng incident membership/RCA input.
+- External remediation/audit side effects là idempotent.
+
+### SLO của event bus theo consumer outcome
+
+| SLO | Mục tiêu khởi đầu |
+|---|---:|
+| Produce durability critical topics | Theo replication policy; unreported loss = 0 |
+| Canonical event age P99 | < 60 giây |
+| Anomaly → incident freshness P99 | < 30 giây bình thường |
+| Duplicate logical side effects | 0 |
+| Poison isolation time | < 60 giây |
+| Restore/rebalance gap | Trong budget, không reset lifecycle |
+| Replay logical equality | 100% golden incidents |
+| Bypass customer-impact alert | Hoạt động độc lập Kafka |
+
+Broker uptime 99,99% chưa chứng minh những SLO này. Cluster xanh nhưng consumer watermark chậm 15 phút vẫn là AIOps outage.
+
+### Output contract sang Chapter 17 và 08–10
+
+Chapter 07 bảo toàn canonical events, topology/change events, quality và revisions qua durable topics. Chapter 17 định nghĩa context graph/change plane được version hóa. Sau đó Detector/Correlation/RCA tiêu thụ event-time, identity, quality và snapshot contract; không chỉ đọc một message payload rồi tin nó luôn mới/duy nhất.
 
 ---
 
@@ -358,7 +538,7 @@ except Exception as e:
 ```
 
 > [!WARNING]
-> **Myth sắp vỡ**: Kafka EOS **không** biến toàn bộ pipeline AIOps thành exactly-once end-to-end. EOS chỉ cover **Kafka read → process → Kafka write** trong transactional boundary. Side effects (gọi Prometheus API, ghi Redis, gọi LLM, PagerDuty) **vẫn at-least-once**. Xem [§20 Exactly-Once Myths](#20-exactly-once-myths-in-aiops-pipeline).
+> **Myth sắp vỡ**: Kafka EOS **không** biến toàn bộ pipeline AIOps thành exactly-once end-to-end. EOS chỉ cover **Kafka read → process → Kafka write** trong transactional boundary. Side effects (gọi Prometheus API, ghi Redis, gọi LLM, PagerDuty) **vẫn at-least-once**. Xem [§21 Exactly-Once Myths](#21-exactly-once-myths-in-aiops-pipeline).
 
 ### Producer Compression
 
@@ -373,7 +553,7 @@ except Exception as e:
 **Khuyến nghị**: Sử dụng `zstd` cho các telemetry topics của AIOps (tỷ lệ nén cao, CPU trung bình). Sử dụng `snappy` cho các alert events (độ trễ là yếu tố quan trọng hơn tỷ lệ nén).
 
 > [!TIP]
-> **Vì sao compression quan trọng với cost model?** Disk retention = raw_bytes × compression_ratio × RF. Chuyển snappy→zstd trên telemetry có thể giảm 30–50% storage → retention 7 ngày rẻ hơn rõ rệt (xem [§18 Cost Model](#18-cost-model--retention--throughput--replication)).
+> **Vì sao compression quan trọng với cost model?** Disk retention = raw_bytes × compression_ratio × RF. Chuyển snappy→zstd trên telemetry có thể giảm 30–50% storage → retention 7 ngày rẻ hơn rõ rệt (xem [§19 Cost Model](#19-cost-model-retention-throughput-replication)).
 
 ---
 
@@ -505,7 +685,7 @@ Lag cao (>10K tin nhắn) cảnh báo:
 ```
 
 > [!NOTE]
-> Lag **không luôn là incident**. Lag theo chu kỳ deploy, lag ban đêm khi retrain job chạy, lag ngắn sau rebalance — có thể là **signal bình thường**. Lag tăng tuyến tính không bound, lag trên critical path (anomalies → correlation) — **là incident**. Chi tiết: [§19 Mental Model](#19-mental-model-backpressure--lag-as-signal-vs-incident).
+> Lag **không luôn là incident**. Lag theo chu kỳ deploy, lag ban đêm khi retrain job chạy, lag ngắn sau rebalance — có thể là **signal bình thường**. Lag tăng tuyến tính không bound, lag trên critical path (anomalies → correlation) — **là incident**. Chi tiết: [§20 Mental Model](#20-mental-model-backpressure-lag-as-signal-vs-incident).
 
 ---
 
@@ -604,7 +784,7 @@ Nếu tất cả các in-sync replicas đều hỏng, Kafka phải lựa chọn:
 Đối với dữ liệu alert/incident của AIOps: luôn sử dụng `false`. Việc mất mát dữ liệu trong pipeline AIOps mang lại hậu quả tệ hơn so với việc gián đoạn dịch vụ tạm thời.
 
 > [!IMPORTANT]
-> **Trade-off availability**: Khi `unclean.leader.election=false` và ISR co về 0, topic **ngừng serve** partition đó. AIOps "mù" tạm thời trên partition đó — nhưng không **tự chữa bằng dữ liệu sai**. Kết hợp với [§24 Bypass design](#24-failure-mode-kafka-down--aiops-blind--bypass): Alertmanager → PagerDuty vẫn sống khi Kafka chết.
+> **Trade-off availability**: Khi `unclean.leader.election=false` và ISR co về 0, topic **ngừng serve** partition đó. AIOps "mù" tạm thời trên partition đó — nhưng không **tự chữa bằng dữ liệu sai**. Kết hợp với [§25 Bypass design](#25-failure-mode-kafka-down-aiops-blind-bypass): Alertmanager → PagerDuty vẫn sống khi Kafka chết.
 
 ---
 
@@ -755,7 +935,7 @@ spec:
 | **Parquet** | Không áp dụng (định dạng file, không dùng cho stream) | Nhỏ nhất | — | Xử lý theo lô (batch/offline) |
 
 > [!WARNING]
-> **Schema evolution phá training**: Thêm field bắt buộc không default; đổi type `anomaly_score` float→string; rename `service_name`→`service` — consumer cũ fail, DLQ đầy, hoặc **worse**: silent coerce sai giá trị → training set nhiễm dirty labels. Luôn `BACKWARD` compatibility + default values. Chi tiết [§21](#21-poison-messages--schema-evolution).
+> **Schema evolution phá training**: Thêm field bắt buộc không default; đổi type `anomaly_score` float→string; rename `service_name`→`service` — consumer cũ fail, DLQ đầy, hoặc **worse**: silent coerce sai giá trị → training set nhiễm dirty labels. Luôn `BACKWARD` compatibility + default values. Chi tiết [§22](#22-poison-messages-schema-evolution).
 
 ---
 
@@ -871,7 +1051,7 @@ Amazon MSK (Managed Streaming for Apache Kafka) giúp giảm tải gánh nặng 
 **Khuyến nghị**: team nhỏ/vừa → **MSK**; team lớn + Kafka experts → **self-hosted**; burst load → **MSK Serverless**.
 
 > [!TIP]
-> Ngành regulated (finance/healthcare/gov): xem thêm [§25 MSK vs Self-Managed for Regulated Industries](#25-msk-vs-self-managed-for-regulated-industries) — quyết định không chỉ TCO mà còn audit, data residency, change control.
+> Ngành regulated (finance/healthcare/gov): xem thêm [§26 MSK vs Self-Managed for Regulated Industries](#26-msk-vs-self-managed-for-regulated-industries) — quyết định không chỉ TCO mà còn audit, data residency, change control.
 
 ### MSK Terraform
 
@@ -1035,7 +1215,60 @@ Redis Streams là giải pháp thay thế gọn nhẹ hơn cho các hệ thống
 
 ---
 
-## 14. Production Configuration
+## 14. Xử lý trên Kafka — Flink, Kafka Streams và consumer service
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> Kafka **lưu và fan-out** event. **Xử lý** (map nặng, join topology, window feature, sessionization) nằm ở *consumer của log*. Trong industry, **Kafka + Apache Flink** là cặp *nặng* phổ biến nhất — connector Kafka, event-time, state có checkpoint khớp data plane AIOps nhiều stage. Điều đó **không** có nghĩa mọi AIOps ngày đầu phải chạy Flink.
+
+### 14.1 Vì sao “Kafka đi với Flink” thường đúng (ở scale)
+
+| Thực tế | Hệ quả |
+|---------|--------|
+| Flink coi Kafka là source of truth durable, replay được | Recompute feature / sửa enrich xấu từ offset + savepoint |
+| AIOps cần **event-time** (scrape delay, export trễ, lag region) | Watermark > window `now()` ngây thơ trong vòng Python |
+| Join enrich là **stateful** (service → owner, deploy version) | RocksDB state hơn map Redis ad-hoc không recovery |
+| Nhiều sink (canonical topic, online feature, lake) | Một job graph Flink fan-out với thời điểm xử lý nhất quán |
+
+Managed Flink (Amazon Managed Service for Apache Flink, Confluent, Ververica, …) giảm ops — **mental model giữ nguyên**: log trên Kafka, state + window trên Flink.
+
+### 14.2 Khi Kafka *chưa* cần Flink
+
+| Workload | Ưu tiên | Vì sao |
+|----------|---------|--------|
+| Rename, drop, sample, unit | **OTel Collector** | Rẻ, gần edge, không cluster |
+| Score model, AD threshold đơn | **Consumer service** (`group.id` theo model) | Đúng ngôn ngữ model; ops thấp |
+| Enrich/route JVM nhẹ | **Kafka Streams** | Không JM/TM Flink |
+| Bảng train nightly / backfill | **Spark / warehouse** | Throughput & SQL hơn latency sub-second |
+| Team &lt; ~5 eng, &lt;10K events/s | Giữ đơn giản | “Thuế platform” Flink > giá trị |
+
+So sánh sâu (ưu/nhược, maturity): [06 — Data plane §4.7](../06-data-plane/README.vi.md#47-stream-processing-flink-kafka-streams-spark-consumer).
+
+### 14.3 Topology tham chiếu
+
+```text
+Producers (Collector, Alertmanager, CD webhooks)
+    → Kafka topics (raw / canonical / change)
+        → Flink (hoặc Streams): enrich + feature windows
+            → Kafka topics (features, enriched events)
+                → Consumer groups: AD · correlation · RCA · audit
+        → Spark / ELT: cold path training (tuỳ chọn, từ Kafka hoặc S3)
+```
+
+### 14.4 Luật contract (engine nào cũng vậy)
+
+1. **Schema sống trên topic**, không chỉ trong code job Flink — Schema Registry + version.
+2. Mỗi lớp processor có **`group.id` / Flink UID ổn định** — không share với AD scorer.
+3. **Lag là tín hiệu sản phẩm**: checkpoint/commit Flink cao → feature stale → suppress hoặc degrade AD.
+4. Prefer **at-least-once + sink idempotent** trừ khi thật sự cần transaction end-to-end trên Kafka.
+5. **Fail open khi enrich**: thiếu topology → `unknown` + quality flag, không chặn bus.
+
+> [!TIP]
+> **Một dòng**: Dùng Kafka cho transport multi-consumer AIOps. Thêm Flink khi đã vượt “consumer stateless + Redis.” Đừng thêm Flink để *trông* enterprise.
+
+---
+
+## 15. Production Configuration
 
 > [!NOTE]
 > **Ý TƯỞNG**
@@ -1086,7 +1319,7 @@ transaction.max.timeout.ms=900000     # Thời gian giao dịch tối đa 15 ph�
 
 ---
 
-## 15. Monitoring Kafka
+## 16. Monitoring Kafka
 
 > [!NOTE]
 > **Ý TƯỞNG**
@@ -1187,7 +1420,7 @@ Các khung hiển thị chính cần bao gồm:
 
 ---
 
-## 16. Scaling
+## 17. Scaling
 
 ### Horizontal Scaling
 
@@ -1222,11 +1455,11 @@ kafka-reassign-partitions.sh \
 > **Vì sao reassignment cần throttle?** Move partition = disk + network copy. Chạy full-speed trong giờ peak có thể làm p99 produce tăng, consumer lag tăng → AIOps "chậm phản ứng" giữa lúc traffic cao. Dùng `kafka-reassign-partitions` throttle / Cruise Control; schedule off-peak.
 
 > [!WARNING]
-> Scale consumers **không** giúp nếu hot partition: 1 key chiếm 80% traffic → 1 partition → 1 consumer max. Scale group chỉ redistribute **cold** partitions. Xem [§22 Hot Partitions](#22-hot-partitions-from-high-cardinality-keys).
+> Scale consumers **không** giúp nếu hot partition: 1 key chiếm 80% traffic → 1 partition → 1 consumer max. Scale group chỉ redistribute **cold** partitions. Xem [§23 Hot Partitions](#23-hot-partitions-from-high-cardinality-keys).
 
 ---
 
-## 17. Security
+## 18. Security
 
 > [!NOTE]
 > **Ý TƯỞNG**
@@ -1281,7 +1514,7 @@ ssl.client.auth=required    # mTLS
 
 ---
 
-## 18. Cost Model — Retention × Throughput × Replication
+## 19. Cost Model — Retention × Throughput × Replication
 
 > [!NOTE]
 > **Ý TƯỞNG**
@@ -1329,7 +1562,7 @@ Mọi quyết định retention, RF, compression, partition đều **nhân** và
 
 ---
 
-## 19. Mental Model: Backpressure & Lag as Signal vs Incident
+## 20. Mental Model: Backpressure & Lag as Signal vs Incident
 
 > [!NOTE]
 > **Ý TƯỞNG**
@@ -1391,7 +1624,7 @@ flowchart TD
 
 ---
 
-## 20. Exactly-Once Myths in AIOps Pipeline
+## 21. Exactly-Once Myths in AIOps Pipeline
 
 > [!WARNING]
 > **Myth #1**: "Bật `enable.idempotence=true` + transactions = AIOps exactly-once."
@@ -1452,7 +1685,7 @@ def handle_anomaly(event: dict) -> None:
 
 ---
 
-## 21. Poison Messages & Schema Evolution
+## 22. Poison Messages & Schema Evolution
 
 > [!NOTE]
 > **Ý TƯỞNG**
@@ -1499,7 +1732,7 @@ Cấm / cực kỳ cẩn thận:
 
 ---
 
-## 22. Hot Partitions from High-Cardinality Keys
+## 23. Hot Partitions from High-Cardinality Keys
 
 > [!NOTE]
 > **Ý TƯỞNG**
@@ -1557,7 +1790,7 @@ kafka-log-dirs.sh --describe --bootstrap-server kafka-1:9092 \
 
 ---
 
-## 23. Multi-Consumer Fan-out: AD + Correlation + Audit
+## 24. Multi-Consumer Fan-out: AD + Correlation + Audit
 
 > [!NOTE]
 > **Ý TƯỞNG**
@@ -1602,11 +1835,11 @@ graph TD
 Mỗi thêm 1 consumer group = thêm fetch load trên broker (gần như nhân bản đọc). 5 groups trên topic high-ingress raw-metrics đắt hơn 5 groups trên anomalies (volume nhỏ). **Fan-out mạnh ở tầng processed events; fan-out thận trọng ở raw high-volume.**
 
 > [!TIP]
-> **Audit trail cho remediation**: group `remediation-audit` trên `aiops-remediation-triggers` + `results` tạo immutable story "ai/cái gì trigger action lúc nào" — quan trọng post-incident và regulated environments ([§25](#25-msk-vs-self-managed-for-regulated-industries), [15 — Famous Incidents](../16-famous-incidents/README.vi.md)).
+> **Audit trail cho remediation**: group `remediation-audit` trên `aiops-remediation-triggers` + `results` tạo immutable story "ai/cái gì trigger action lúc nào" — quan trọng post-incident và regulated environments ([§26](#26-msk-vs-self-managed-for-regulated-industries), [16 — Famous Incidents](../16-famous-incidents/README.vi.md)).
 
 ---
 
-## 24. Failure Mode: Kafka Down → AIOps Blind & Bypass
+## 25. Failure Mode: Kafka Down → AIOps Blind & Bypass
 
 > [!WARNING]
 > **Khi Kafka chết, AIOps thông minh chết theo** — anomaly, correlation, RCA, auto-remediation đều đói dữ liệu. Nếu **toàn bộ** alerting phụ thuộc Kafka, bạn mù đúng lúc cần mắt nhất. Đây là failure mode kiến trúc, không phải "ops sẽ fix broker nhanh".
@@ -1672,7 +1905,7 @@ flowchart TB
 
 ---
 
-## 25. MSK vs Self-Managed for Regulated Industries
+## 26. MSK vs Self-Managed for Regulated Industries
 
 > [!NOTE]
 > **Ý TƯỞNG**
@@ -1706,27 +1939,27 @@ Remediation audit bắt buộc:
 > **Trade-off**: Self-managed cho "kiểm soát tuyệt đối" thường **thua** audit readiness nếu team không có quy trình patch/backup/DR chín. Auditor hỏi evidence 12 tháng patch — CloudTrail MSK trả lời nhanh hơn wiki nội bộ. Chọn self-managed chỉ khi có platform team Kafka thật sự, không vì "cảm giác kiểm soát".
 
 > [!TIP]
-> Kết hợp [§18 Cost](#18-cost-model--retention--throughput--replication): regulated hay yêu cầu retention dài hơn (90d–1y) cho alert/remediation topics → storage cost tăng; budget trước khi sign architecture.
+> Kết hợp [§19 Cost](#19-cost-model-retention-throughput-replication): regulated hay yêu cầu retention dài hơn (90d–1y) cho alert/remediation topics → storage cost tăng; budget trước khi sign architecture.
 
 ---
 
-## 26. War Stories
+## 27. War Stories
 
 > [!NOTE]
 > Các câu chuyện dưới đây là **tổng hợp pattern** từ nhiều postmortem công khai và kinh nghiệm vận hành generic — không phải bí mật nội bộ công ty cụ thể. Mục tiêu: nhận ra failure mode trước khi gặp.
 
 | # | Tên | Diễn biến ngắn | Root cause | Bài học |
 |---|-----|----------------|------------|---------|
-| 1 | Lag xanh, customer đỏ | AD chậm, lag 800K < threshold 1M → detection delay 35 phút; customer report trước monitoring | Alert theo message count, không theo lag_time / path | [§19](#19-mental-model-backpressure--lag-as-signal-vs-incident) |
-| 2 | "Exactly-once" double restart | Rebalance giữa K8s restart và commit offset → service restart 2 lần | Side effect không idempotent | [§20](#20-exactly-once-myths-in-aiops-pipeline) |
-| 3 | Schema "chỉ thêm 1 field" | Field bắt buộc không default → correlator crash; training train trên data gap | Breaking schema + nuốt lỗi | [§21](#21-poison-messages--schema-evolution) |
-| 4 | Hot key Black Friday | checkout = 60% volume → 1 partition maxed; scale pods vô ích | Hot partition | [§22](#22-hot-partitions-from-high-cardinality-keys) |
-| 5 | Kafka down, all quiet | MSK network 18 phút; Prometheus rules đã tắt → không page | AIOps sole path, không bypass | [§24](#24-failure-mode-kafka-down--aiops-blind--bypass), [15](../16-famous-incidents/README.vi.md) |
-| 6 | Shared group "tiết kiệm" | Correlation + SIEM chung group → chỉ một bên nhận mỗi partition | Nhầm fan-out với compete | [§23](#23-multi-consumer-fan-out-ad--correlation--audit) |
+| 1 | Lag xanh, customer đỏ | AD chậm, lag 800K < threshold 1M → detection delay 35 phút; customer report trước monitoring | Alert theo message count, không theo lag_time / path | [§20](#20-mental-model-backpressure-lag-as-signal-vs-incident) |
+| 2 | "Exactly-once" double restart | Rebalance giữa K8s restart và commit offset → service restart 2 lần | Side effect không idempotent | [§21](#21-exactly-once-myths-in-aiops-pipeline) |
+| 3 | Schema "chỉ thêm 1 field" | Field bắt buộc không default → correlator crash; training train trên data gap | Breaking schema + nuốt lỗi | [§22](#22-poison-messages-schema-evolution) |
+| 4 | Hot key Black Friday | checkout = 60% volume → 1 partition maxed; scale pods vô ích | Hot partition | [§23](#23-hot-partitions-from-high-cardinality-keys) |
+| 5 | Kafka down, all quiet | MSK network 18 phút; Prometheus rules đã tắt → không page | AIOps sole path, không bypass | [§25](#25-failure-mode-kafka-down-aiops-blind-bypass), [16](../16-famous-incidents/README.vi.md) |
+| 6 | Shared group "tiết kiệm" | Correlation + SIEM chung group → chỉ một bên nhận mỗi partition | Nhầm fan-out với compete | [§24](#24-multi-consumer-fan-out-ad-correlation-audit) |
 
 ---
 
-## 27. Socratic Questions
+## 28. Socratic Questions
 
 Dùng các câu hỏi này để review thiết kế Kafka/AIOps của team — trước khi merge Terraform hay ship consumer mới.
 
@@ -1748,7 +1981,7 @@ Dùng các câu hỏi này để review thiết kế Kafka/AIOps của team — 
 
 ---
 
-## 28. Production Review
+## 29. Production Review
 
 ### Principal Engineer Assessment
 
@@ -1758,10 +1991,10 @@ Dùng các câu hỏi này để review thiết kế Kafka/AIOps của team — 
 2. **Trace message >1MB**: Nâng `message.max.bytes` (vd. 5MB) cho topic raw-traces.
 3. **Blue-green cùng group.id**: Hai version AD sẽ tranh partition — version group (`anomaly-detector-v2-group`).
 4. **Thiếu Kafka Connect → S3**: Offline training dài hạn không nên phụ thuộc chỉ retention Kafka.
-5. **Schema evolution không default**: Bắt buộc `BACKWARD` + field mới có `default` ([§21](#21-poison-messages--schema-evolution)).
-6. **Sole-path AIOps**: Bypass Prometheus→Alertmanager chưa chaos-test = P0 ([§24](#24-failure-mode-kafka-down--aiops-blind--bypass)).
-7. **Lag alert thiếu lag_time / path severity**: Dễ fatigue hoặc miss incident ([§19](#19-mental-model-backpressure--lag-as-signal-vs-incident)).
-8. **Remediation side effects không idempotent**: EOS producer không cứu double K8s/LLM call ([§20](#20-exactly-once-myths-in-aiops-pipeline)).
+5. **Schema evolution không default**: Bắt buộc `BACKWARD` + field mới có `default` ([§22](#22-poison-messages-schema-evolution)).
+6. **Sole-path AIOps**: Bypass Prometheus→Alertmanager chưa chaos-test = P0 ([§25](#25-failure-mode-kafka-down-aiops-blind-bypass)).
+7. **Lag alert thiếu lag_time / path severity**: Dễ fatigue hoặc miss incident ([§20](#20-mental-model-backpressure-lag-as-signal-vs-incident)).
+8. **Remediation side effects không idempotent**: EOS producer không cứu double K8s/LLM call ([§21](#21-exactly-once-myths-in-aiops-pipeline)).
 
 ### Chapter Scores
 
@@ -1775,7 +2008,7 @@ Dùng các câu hỏi này để review thiết kế Kafka/AIOps của team — 
 
 ---
 
-## 29. Summary
+## 30. Summary
 
 | Khái niệm | Ý chính cần nhớ |
 |-----------|-----------------|

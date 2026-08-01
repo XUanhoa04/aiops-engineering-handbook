@@ -101,6 +101,7 @@ nav:
       - 05 Tempo: vi/05-tempo/README.vi.md
       - 06 Data Plane: vi/06-data-plane/README.vi.md
       - 07 Kafka: vi/07-kafka/README.vi.md
+      - 17 Topology & Change: vi/17-topology-change/README.vi.md
       - 08 Anomaly Detection: vi/08-anomaly-detection/README.vi.md
       - 09 Alert Correlation: vi/09-alert-correlation/README.vi.md
       - 10 Root Cause Analysis: vi/10-root-cause-analysis/README.vi.md
@@ -110,7 +111,6 @@ nav:
       - 14 Big Tech AIOps: vi/14-bigtech-aiops/README.vi.md
       - 15 E-commerce & Banking: vi/15-ecommerce-banking/README.vi.md
       - 16 Famous Incidents: vi/16-famous-incidents/README.vi.md
-      - 17 Topology & Change: vi/17-topology-change/README.vi.md
   - English:
       - 00 Introduction: en/00-introduction.md
       - 01 Observability: en/01-observability/README.md
@@ -120,6 +120,7 @@ nav:
       - 05 Tempo: en/05-tempo/README.md
       - 06 Data Plane: en/06-data-plane/README.md
       - 07 Kafka: en/07-kafka/README.md
+      - 17 Topology & Change: en/17-topology-change/README.md
       - 08 Anomaly Detection: en/08-anomaly-detection/README.md
       - 09 Alert Correlation: en/09-alert-correlation/README.md
       - 10 Root Cause Analysis: en/10-root-cause-analysis/README.md
@@ -129,5 +130,4 @@ nav:
       - 14 Big Tech AIOps: en/14-bigtech-aiops/README.md
       - 15 E-commerce & Banking: en/15-ecommerce-banking/README.md
       - 16 Famous Incidents: en/16-famous-incidents/README.md
-      - 17 Topology & Change: en/17-topology-change/README.md
   - Diagrams: assets/diagrams/README.md

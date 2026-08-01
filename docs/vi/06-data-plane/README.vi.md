@@ -1,6 +1,6 @@
-# Chapter 06 — Telemetry Data Plane: Normalize, Enrich, Store & Feature Store
+# Chapter 06 — Data quality và feature plane cho AIOps
 
-> **Thu thập telemetry (OTel, Prometheus, Loki, Tempo) chỉ là nửa đầu của bài toán. Nửa còn lại — và thường là nơi AIOps production thất bại — là data plane: chuẩn hóa, làm giàu, kiểm định chất lượng, lưu trữ đúng tầng, và phục vụ feature cho detection. Chương này trả lời câu hỏi Principal SRE phải hỏi trước khi mua model: *dữ liệu của bạn đã sẵn sàng để máy học và RCA tin cậy chưa?* Nếu chưa, mọi detector chỉ là noise amplifier.**
+> **Data Plane không phải nơi “đổ telemetry vào lake”. Nó là bộ máy biến record không đồng nhất thành evidence có identity, event time, topology/change snapshot, quality và feature version; đồng thời phải replay ra cùng kết quả sau restart. Chương này harden từng bước bằng incident payment, late data, schema drift và fault auth nổ chồng.**
 
 ### Architecture poster — pipeline AIOps end-to-end
 
@@ -43,30 +43,207 @@ Sau chương này, hãy chuyển sang [07 — Apache Kafka / AWS Kinesis](../07-
 
 ---
 
-## Table of Contents
+## Cách đọc chương này
 
-1. [Vì sao chương này nằm sau collection](#1-vì-sao-chương-này-nằm-sau-collection)
-2. [Bản đồ Data Plane vs Intelligence Plane](#2-bản-đồ-data-plane-vs-intelligence-plane)
-3. [Khung quyết định: raw telemetry đủ khi nào?](#3-khung-quyết-định-raw-telemetry-đủ-khi-nào)
-4. [Normalize — chuẩn hóa tín hiệu](#4-normalize--chuẩn-hóa-tín-hiệu)
-5. [Enrich — làm giàu ngữ cảnh](#5-enrich--làm-giàu-ngữ-cảnh)
-6. [Validate / Data Quality / Quarantine / DLQ](#6-validate--data-quality--quarantine--dlq)
-7. [Canonical Event Model cho AIOps](#7-canonical-event-model-cho-aiops)
-8. [Kiến trúc lưu trữ — data sống ở đâu](#8-kiến-trúc-lưu-trữ--data-sống-ở-đâu)
-9. [Ma trận Retention — giữ bao lâu theo mục đích](#9-ma-trận-retention--giữ-bao-lâu-theo-mục-đích)
-10. [Lifecycle sau khi store](#10-lifecycle-sau-khi-store)
-11. [Feature Store cho AIOps](#11-feature-store-cho-aiops)
-12. [Late data, watermarks, reprocessing](#12-late-data-watermarks-reprocessing)
-13. [PII / Redaction — đặt stage ở đâu](#13-pii--redaction--đặt-stage-ở-đâu)
-14. [Mô hình chi phí giữ dữ liệu](#14-mô-hình-chi-phí-giữ-dữ-liệu)
-15. [Thang trưởng thành Data Plane L0–L5](#15-thang-trưởng-thành-data-plane-l0l5)
-16. [Anti-patterns](#16-anti-patterns)
-17. [Edge cases (12+)](#17-edge-cases-12)
-18. [Cắm vào Kafka (07) và Anomaly (08)](#18-cắm-vào-kafka-07-và-anomaly-08)
-19. [Production Checklist (40+)](#19-production-checklist-40)
-20. [Câu hỏi Socratic](#20-câu-hỏi-socratic)
-21. [Gap đã đóng / Gap còn mở](#21-gap-đã-đóng--gap-còn-mở)
-22. [Tóm tắt & mental model](#22-tóm-tắt--mental-model)
+Đọc phần Production hardening trước để thấy một record thật được normalize, enrich, validate, version và replay ra sao. Các phần đánh số phía sau là reference về architecture, storage, feature store, late data, PII, cost và maturity; không cần đọc tuần tự nếu chỉ đang thiết kế contract.
+
+---
+
+## Production hardening — sáu record đi qua Data Plane
+
+### Input thật không bao giờ sạch như schema mẫu
+
+Tại onset của incident payment, Data Plane nhận sáu record sau từ các nguồn và thời điểm khác nhau:
+
+| ID | Event time | Arrived | Raw input | Vấn đề |
+|---|---:|---:|---|---|
+| M1 | 10:10:30 | 10:10:45 | `payment_pool_wait=2000`, service=`payment`, không có unit | Có thể là ms hoặc s; service alias |
+| L1 | 10:10:42 | 10:10:44 | Log pool timeout, app=`payment-api`, order ID raw | PII/business ID policy, failure family chưa chuẩn |
+| T1 | 10:10:39 | 10:10:46 | Span `db.pool.acquire`, deployment digest đầy đủ | Identity tốt, nhưng topology edge chưa có trong cache |
+| C1 | 10:07:00 | 10:12:10 | Deploy `catalog-v42`, app=`catalog-svc` | Change event tới muộn, không cùng service payment |
+| G1 | 10:09:55 | 10:09:56 | Edge `payment-api → payment-db`, valid 10:00–10:20 | Graph snapshot có interval hiệu lực |
+| Q1 | 10:10:42 | 10:11:05 | Collector quality: trace coverage 88%, lag P99 7 s | Dùng để hiệu chỉnh confidence |
+
+Nếu join theo processing time, C1 xuất hiện sau error và có thể bị xem là “deploy sau lỗi”. Nếu join fuzzy theo chữ `payment`, M1/L1/T1 có thể thành ba service. Nếu tự đoán unit của M1, một giá trị 2.000 giây sẽ tạo anomaly giả khổng lồ. Data Plane phải làm các quyết định này minh bạch và có revision.
+
+### Row-by-row transformation
+
+| Record | Normalize | Enrich | Validate | Canonical output |
+|---|---|---|---|---|
+| M1 | Alias `payment` → `payment-api`; unit tra từ metric contract v3 | Thêm env/region/deployment từ scrape target | Contract không công bố unit → quarantine value, vẫn phát quality event | `value=null`, `quality.unit_unknown`, không fill 0 |
+| L1 | Parse template → `db.pool.acquire_timeout`; tokenize order ID | Join owner, criticality, trace/deploy | Parser v5 hợp lệ, PII scan pass | Failure event dùng được cho correlation/RCA |
+| T1 | Chuẩn operation/dependency/status | Join G1 theo event time | Edge fresh, trace sampled, duration hợp lệ | Causal evidence confidence theo coverage Q1 |
+| C1 | Alias catalog, normalize change type/version | Join topology snapshot tại 10:07 | Late nhưng trong correction horizon | Change context của catalog, không gán payment |
+| G1 | Chuẩn node/edge identity | Thêm source trust và criticality | Graph age 30 s, conflict none | Versioned topology snapshot |
+| Q1 | Chuẩn signal/reason/scope | Map consumer bị ảnh hưởng | Fresh trong window | Quality feature cho mọi evidence cùng scope |
+
+Điểm quan trọng: quarantine M1 không có nghĩa vứt cả batch hay cả service. Data Plane giữ record envelope, lý do, source và raw reference; downstream nhận `unknown` thay vì số đoán. Một bad field không được kéo sập log/span evidence còn tốt.
+
+### Canonical event phải tách fact khỏi interpretation
+
+Fact gồm raw event reference, source, event/observed time, identity đã resolve, semantic outcome, schema/parser version và quality. Interpretation như anomaly score, incident membership hay RCA rank thuộc intelligence plane và có version/lifecycle riêng.
+
+Nếu canonical event đã ghi `root_cause=payment-db`, replay sau này không thể kiểm thử model mới độc lập. Data Plane chỉ ghi `failure_family=db.pool.acquire_timeout`, edge/time/change evidence; Chapter 10 quyết định rank.
+
+Một canonical envelope tối thiểu phải trả lời:
+
+- Đây là event nào và duplicate của event nào?
+- Xảy ra khi nào, tới khi nào, uncertainty bao nhiêu?
+- Thuộc service/deployment/region/tenant scope nào?
+- Schema, transform, topology và change snapshot version nào đã dùng?
+- Trường nào observed, derived, unknown hoặc redacted?
+- Consumer nào được phép đọc raw reference?
+
+### Identity resolution không được fuzzy-match im lặng
+
+Alias `payment`, `payment-api`, `pay-svc` có thể map tới canonical `svc-0042`, nhưng mapping phải có nguồn, valid-from/valid-to và version. Khi alias mới xuất hiện:
+
+- nếu có mapping authoritative, resolve;
+- nếu chỉ có tên gần giống, đưa vào unresolved identity queue;
+- nếu service đã merge/split, dùng snapshot tại event time;
+- nếu mapping sửa sau incident, replay tạo revision có audit.
+
+Fuzzy match im lặng nguy hiểm hơn missing: nó có thể merge fault của `payment-tokenizer` vào `payment-api`, làm correlation/RCA tự tin sai.
+
+### Event time, watermark và correction horizon bằng số
+
+Window 10:10–10:15 đóng theo event time. Sources có độ trễ:
+
+| Source | P99 lag | Allowed lateness | Correction horizon |
+|---|---:|---:|---:|
+| Metrics | 20 s | 60 s | 15 phút |
+| Application logs | 45 s | 2 phút | 30 phút |
+| Traces | 90 s | 3 phút | 30 phút |
+| Deploy/change | 3 phút | 5 phút | 2 giờ |
+| Topology sync | freshness SLO 2 phút | snapshot lookup | 24 giờ/audit |
+
+C1 tới 10:12:10 cho event 10:07, tức late 5 phút 10 giây. Nó có thể vượt realtime lateness nhưng vẫn trong correction horizon. Engine không page lại; Data Plane phát revision tăng version của context window. Consumer contract phải idempotent và hiểu revision.
+
+Watermark toàn cục theo source chậm nhất có thể làm mọi feature trễ. Dùng watermark theo topic/source/scope và join policy. Một tenant telemetry hỏng không nên giữ toàn region vô hạn.
+
+### Enrichment snapshot: không join với “hiện tại”
+
+Incident lúc 10:10 phải dùng topology/deployment/ownership có hiệu lực lúc 10:10. Nếu payment rollback lúc 10:50 và graph hiện tại bỏ edge cũ, replay bằng current graph sẽ đổi RCA lịch sử.
+
+Mỗi enriched event cần snapshot/version reference hoặc materialized critical fields. Trade-off:
+
+- Write-time snapshot tăng storage nhưng replay ổn định.
+- Read-time join linh hoạt nhưng dễ historical drift.
+- Hybrid giữ identity/criticality/deployment/edge version tại write, truy vấn metadata display hiện tại ở read.
+
+Owner hiện tại có thể nhận ticket, nhưng RCA/audit phải biết owner và topology tại incident time.
+
+### Data-quality gates theo mức độ, không chỉ pass/fail
+
+| Vi phạm | Hành động | Downstream behavior |
+|---|---|---|
+| Thiếu optional owner/display name | Admit với `quality.partial` | Detection chạy; routing fallback |
+| Thiếu unit của critical metric | Quarantine value | Không tính feature; dùng log/trace fallback |
+| Unknown service identity | Quarantine join-dependent fields | Không topology-correlate; giữ raw event |
+| Schema incompatible | DLQ/quarantine theo reason | Không retry vô hạn cùng poison record |
+| Topology stale | Admit telemetry, gắn graph quality | Correlation/RCA giảm topology weight |
+| PII policy fail | Chặn sink không được phép, security audit | Không để raw payload tới LLM/vector store |
+| Duplicate exporter event | Dedup transport identity | Giữ delivery quality, không tăng business count |
+
+Một batch 10.000 records có một poison record không được rollback 9.999 records tốt rồi retry vô hạn. Quarantine phải bounded, searchable, replayable và có owner/SLO; DLQ không phải nghĩa địa.
+
+### Feature contract chống training-serving skew
+
+Feature `service_error_ratio_5m` cần version và semantic đầy đủ:
+
+| Thuộc tính | Ví dụ |
+|---|---|
+| Version | v4 |
+| Numerator | system failures; loại business declines |
+| Denominator | eligible customer requests |
+| Window | event-time tumbling 5m, lateness 60s |
+| Scope | service, region, route class |
+| Missing | unknown; không fill zero |
+| Quality | coverage, freshness, excluded count |
+| Sources | metric contract v3 + outcome taxonomy v2 |
+
+Nếu offline training tính theo processing time nhưng online serving tính event time, cùng incident sinh feature khác. Golden dataset phải chạy cùng transform logic hoặc so sánh online/offline parity trên cùng input.
+
+Khi v4 thay v3, dual-write đủ lâu để đo distribution shift và detector replay. Không overwrite tên feature cũ rồi kỳ vọng model tự thích nghi.
+
+### Replay determinism và revision determinism
+
+Cùng raw log và cùng version snapshots phải tạo cùng canonical/feature output sau:
+
+- processor restart;
+- partition rebalance;
+- at-least-once redelivery;
+- backfill từ object store;
+- chạy lại một tháng sau.
+
+Determinism không yêu cầu processing order giống hệt; yêu cầu output logical giống trong allowed correction policy. Stable event ID, idempotent sink, versioned lookup và event-time window là nền tảng.
+
+Nếu topology source được sửa hồi tố, replay phải chọn rõ `as-recorded` hoặc `with-correction`, tạo dataset/version khác. Không âm thầm thay lịch sử.
+
+### Per-service isolation khi fault chồng
+
+Payment incident đang mở thì auth fault xuất hiện 10:37. Feature state phải key ít nhất theo canonical service/scope/failure family phù hợp. Một global window state “incident_active=true” không được:
+
+- freeze baseline của mọi service;
+- suppress anomaly auth;
+- trộn auth logs vào payment aggregate;
+- dùng payment topology snapshot cho auth.
+
+Shared gateway symptom có thể xuất hiện trong hai context packs, nhưng origin features/state vẫn tách. Cross-service aggregate là derived view, không thay state per-service.
+
+### Degraded mode khi Data Plane tự lỗi
+
+| Failure | Data Plane làm gì | Intelligence được phép làm gì |
+|---|---|---|
+| Topology API timeout | Dùng snapshot còn hạn hoặc unknown | Detect tiếp; giảm merge/RCA graph weight |
+| Feature store unavailable | Buffer canonical events, serve last-known kèm age | Không auto-remediate trên stale feature |
+| Stream processor lag 12 phút | Công bố oldest event age và affected scopes | Page trực tiếp từ bypass SLO alerts; AIOps degraded |
+| Schema registry unavailable | Dùng cached compatible schema trong TTL | Sau TTL quarantine, không deserialize đoán |
+| Quarantine store full | Shed noncritical debug trước | Critical event loss mở platform incident |
+| PII service unavailable | Fail closed cho restricted sinks | Không gửi raw sang LLM để “cứu điều tra” |
+
+### Data Plane SLO có thể kiểm chứng
+
+| SLO | Mục tiêu khởi đầu |
+|---|---:|
+| Canonical event freshness P99 | < 60 s critical metrics; < 180 s logs/traces |
+| Valid critical records | > 99,9% |
+| Identity resolution | > 99,5% critical services |
+| Online/offline feature parity | > 99,99% trong tolerance |
+| Replay logical equality | 100% golden events |
+| Quarantine age P95 | < 24 giờ; critical < 1 giờ |
+| Topology snapshot within freshness | > 99% incident windows |
+| Unreported data loss | 0 |
+
+Uptime của Flink/consumer không thay thế các SLO này. Job xanh nhưng output stale/sai schema vẫn là Data Plane outage.
+
+### Failure injection acceptance cho Chapter 06
+
+Golden replay inject tám lỗi:
+
+1. Metric thiếu unit.
+2. Service alias mới chưa map.
+3. Deploy event late 5 phút.
+4. Topology stale 20 phút.
+5. Collector resend 10% records.
+6. Processor restart giữa window.
+7. Schema v2/v3 chạy song song.
+8. Auth fault nổ chồng payment fault.
+
+Điều kiện đạt:
+
+- Không record nào bị đoán unit/identity im lặng.
+- Late change tạo revision, không page duplicate.
+- Duplicate/restart không nhân count/incident.
+- Stale topology hạ confidence nhưng không làm detector câm.
+- v2/v3 outputs có version và dual-run comparison.
+- Auth có state/features riêng, không bị payment freeze/suppress.
+- Replay online/offline tạo cùng feature trong tolerance.
+- Mọi injected loss/partial đều xuất hiện trong quality output.
+
+### Output contract sang Chapter 07 và Intelligence Plane
+
+Chapter 06 xuất canonical events/features versioned, idempotent, event-time aware, có topology/change snapshot và quality. Chapter 07 phải vận chuyển/replay chúng mà không phá ordering per key hoặc nhân logical event. Chapter 08–10 phải đọc quality/revision thay vì giả định value luôn đầy đủ.
 
 ---
 
@@ -452,6 +629,81 @@ processors:
 | Severity unknown rate | % log severity = UNKNOWN | > 1% sustained |
 | Clock skew rate | % spans negative duration | > 0.1% |
 | Pipeline version lag | hosts cũ còn normalize_vN-2 | > 5% fleet |
+
+### 4.7 Stream processing — Flink, Kafka Streams, Spark, consumer
+
+> [!NOTE]
+> **Ý TƯỞNG**
+> Kafka là **log / bus**. Bản thân Kafka **không** normalize nặng, join topology, window feature, hay giữ state lâu dài. Cần một lớp **đọc bus → biến đổi → ghi** topic canonical / feature store. Lớp đó thường là stream processor. **Kafka + Flink là cặp production rất phổ biến** — nhưng đó là lựa chọn theo *workload và maturity*, không phải định luật bắt buộc.
+
+#### Kafka “đi với” Flink — có đúng không?
+
+**Thường đúng ở quy mô mid/large** — vì lý do kỹ thuật, không phải trend:
+
+| Vì sao team ghép Kafka + Flink | AIOps được gì |
+|--------------------------------|---------------|
+| Source/sink Kafka first-class (offset, EOS pattern, consumer group) | Ingest tin cậy telemetry / anomaly / change |
+| Event-time + watermark + late data | Window đúng khi scrape/export trễ ([§12](#12-late-data-watermarks-reprocessing)) |
+| State lớn theo key (RocksDB) + checkpoint/savepoint | Join topology, sliding feature, sessionization |
+| Scale operator ngang | Series cardinality cao không nhét một pod Python khổng lồ |
+| Savepoint → reprocess từ offset Kafka | Sửa bug enrich / recompute feature |
+
+**Thường *chưa* cần Flink** khi job vẫn là:
+
+- Đổi tên / drop / unit nhẹ → **OTel Collector** đủ
+- Map stateless + group đơn giản → **consumer service** (Python/Go) đủ
+- JVM, state vừa, muốn “Kafka-native” → **Kafka Streams**
+- Join batch nhiều ngày / bảng train → **Spark** trên lake
+
+```text
+Câu hỏi sai:  "Flink có hơn Kafka không?"
+Câu hỏi đúng: "Sau log, transform nào cần state, event-time, và fan-out?"
+```
+
+#### Bảng so sánh (cùng stage: *xử lý trên bus*)
+
+| Chiều | Consumer service | Kafka Streams | Apache Flink | Spark (batch / SS) |
+|-------|------------------|---------------|--------------|--------------------|
+| **Ops** | Thấp | Trung bình | Cao (JM/TM, checkpoint) | Cao |
+| **State & window** | Tự xây / Redis | State store local | Rất mạnh (event-time) | Offline mạnh; streaming dễ lệch nếu lạm dụng |
+| **Latency** | ms–giây | ms–vài giây | giây (typ. AIOps job) | phút (batch) |
+| **Khớp Kafka** | Consumer native | **Sâu nhất** trong ecosystem Kafka | Connector + EOS tốt | Thường thiên lake |
+| **Chỗ AIOps hợp** | AD scorer, enrich nhẹ, tool LLM | Identity map, join nhẹ, route | Feature window, topology join, multi-stream | Training table, backfill |
+| **Khi nào đau** | State “giấu” Redis; không watermark | CEP / window nhiều giờ phức tạp | Overkill cho rename 3 field | Giả real-time AD bằng micro-batch |
+
+#### Cây quyết định
+
+```text
+Chỉ cần bảng train nhiều ngày / backfill?
+  → Spark (hoặc ELT warehouse) trên cold/lake — không chỉ vì thế mà dựng Flink
+
+Cần online feature, event-time window, join multi-stream (metrics ⊕ deploy ⊕ topology)?
+  → Flink (hoặc managed Flink)
+
+Enrich/route nhẹ, team JVM, không muốn cluster Flink?
+  → Kafka Streams
+
+Chấm model / AD custom ít join?
+  → Consumer service (idempotent, group.id riêng)
+
+Chỉ rename / unit / drop / sample?
+  → Ở lại OTel Collector — ĐỪNG dựng Flink
+```
+
+#### Lộ trình maturity gợi ý
+
+| Mức | Lớp process |
+|-----|-------------|
+| **L0–L1** | Collector + vài consumer service |
+| **L2** | Collector + Kafka Streams *hoặc* 1 job Flink cho identity/enrich |
+| **L3+** | **Kafka + Flink** cho feature + enrich phức tạp; consumer cho model serve |
+| **Luôn** | Kafka là contract log; processor **thay được** nhờ schema topic |
+
+> [!WARNING]
+> **Anti-pattern**: “Có Kafka nên phải có Flink.” Flink không owner, không SLO checkpoint lag, không schema contract = control plane thứ hai không đáng tin. Prefer **một domain Flink được owned rõ** hơn năm job nửa vời.
+
+> [!TIP]
+> **Hybrid production ổn**: OTel (normalize edge) → Kafka → **Flink** (enrich + feature) → Kafka feature/canonical → **Python consumers** (AD / correlation). Spark chỉ trên S3/Parquet để retrain. Chi tiết transport: [07 — Kafka](../07-kafka/README.vi.md).
 
 ---
 
@@ -1495,6 +1747,19 @@ sequenceDiagram
 ### 18.4 Backpressure & quality
 
 Khi Kafka lag tăng: data plane **không** tắt validate; có thể degrade enrich non-critical fields trước. AD đọc `lag` và `quality.partial` để tránh page trên data thủng — chi tiết mental model lag ở [Ch.07](../07-kafka/README.vi.md).
+
+### 18.5 Ai xử lý bus? (Kafka + Flink?)
+
+Sequence ở trên vẽ `DP` và `FS` trừu tượng. Implementation thường là:
+
+| Thành phần | Tool hay gặp |
+|------------|--------------|
+| Collect / light process | OTel, Fluent Bit, Vector, Alloy |
+| Bus | **Kafka / MSK** |
+| Heavy process / feature | **Flink** (phổ biến với Kafka), Kafka Streams, hoặc consumer |
+| Offline train | Spark / warehouse từ lake |
+
+**Kafka không bắt buộc Flink**, nhưng khi cần state + event-time + reprocess, cặp **Kafka + Flink** là default industry — xem [§4.7](#47-stream-processing-flink-kafka-streams-spark-consumer) và [Ch.07](../07-kafka/README.vi.md).
 
 ---
 
