@@ -310,16 +310,19 @@ Evidence pack là immutable snapshot. Dashboard live có thể thay đổi và k
 | 05 Tempo | Trace path và error propagation | Partial sampling, async boundary | Span path/cohort comparison |
 | 06 Data Plane | Event contract bền | Late, duplicate, schema evolution | Loss/lag/replay report |
 | 07 Kafka | Transport không làm mất semantics | Lag, rebalance, DLQ, restart | Offset/watermark/convergence |
-| 17 Topology & Change | Graph/change fresh và có ownership | Missing edge, stale graph, innocent deploy | Graph revision/coverage |
-| 08 Anomaly Detection | Detect dài hạn không nhiễu | Freeze baseline, regime shift | Recall/silent gap/precision |
-| 09 Alert Correlation | Nén storm, giữ fault mới | Duplicate + concurrent fault | False merge/split/member trail |
-| 10 RCA | Rank cause, loại correlation | Temporal confounder, missing trace | Top-k/calibration/evidence |
-| 11 Investigation | Fact/hypothesis có kỷ luật | Contradiction, injection, abstain | Ledger/provenance/query trace |
-| 12 Remediation | Action giới hạn và verified | Stale, duplicate, false recovery, rollback fail | Action/audit/verification chain |
-| 13 Production | AIOps tự degrade/recover | Dependency loss + state restart | Mode transition/convergence |
-| 14 Pattern Library | Pattern có context và do-not-use | Pattern composition/failure | Pattern card acceptance |
-| 15 Domain Packs | Domain invariant được giữ | Peak, ledger, partial PSP | Domain conformance report |
-| 16 Benchmark Replay | Regression chạy lặp lại | Full mandatory suite | Reproducible benchmark pack |
+| 08 Topology & Change | Graph/change fresh và có ownership | Missing edge, stale graph, innocent deploy | Graph revision/coverage |
+| 09 Persistent Detection | Detect dài hạn không nhiễu | Freeze baseline, regime shift | Recall/silent gap/precision |
+| 10 Alert Correlation | Nén storm, giữ fault mới | Duplicate + concurrent fault | False merge/split/member trail |
+| 11 RCA | Rank cause, loại correlation | Temporal confounder, missing trace | Top-k/calibration/evidence |
+| 12 Investigation | Fact/hypothesis có kỷ luật | Contradiction, injection, abstain | Ledger/provenance/query trace |
+| 13 Remediation | Action giới hạn và verified | Stale, duplicate, false recovery, rollback fail | Action/audit/verification chain |
+| 14 Production | AIOps tự degrade/recover | Dependency loss + state restart | Mode transition/convergence |
+| 15 Pattern Library | Pattern có context và do-not-use | Pattern composition/failure | Pattern card acceptance |
+| 16 Domain Packs | Domain invariant được giữ | Peak, ledger, partial PSP | Domain conformance report |
+| 17 Benchmark Replay | Regression chạy lặp lại | Full mandatory suite | Reproducible benchmark pack |
+| 18 Predictive Operations | Báo capacity risk trước impact | Peak hợp lệ + hidden bottleneck | Lead time/calibration/risk timeline |
+| 19 Incident Operations | Điều phối không mất state | Incident dài + fault chồng + handoff | Incident/action/decision ledger |
+| 20 Governance | Quyền và acceptance còn hiệu lực | Drift, injection, stale policy, revoke | Decision envelope/policy audit |
 
 Matrix là minimum. Chapter hoặc domain có thể thêm scenario nhưng không được bỏ hard gates chung.
 
@@ -403,7 +406,10 @@ Khi một capability pass template, người review biết chính xác phạm vi
 
 ## Liên kết nhanh
 
-- [14 — Pattern Library](14-aiops-pattern-library/README.vi.md)
-- [15 — Domain Packs](15-aiops-domain-packs/README.vi.md)
-- [16 — Benchmark Replay](16-aiops-benchmark-replay/README.vi.md)
-- [13 — Production Engine](13-production-engine/README.vi.md)
+- [15 — Pattern Library](15-aiops-pattern-library/README.vi.md)
+- [16 — Domain Packs](16-aiops-domain-packs/README.vi.md)
+- [17 — Benchmark Replay](17-aiops-benchmark-replay/README.vi.md)
+- [18 — Predictive Operations](18-predictive-operations/README.vi.md)
+- [19 — Incident Operations](19-incident-operations/README.vi.md)
+- [20 — Governance & Model Risk](20-aiops-governance/README.vi.md)
+- [14 — Production Engine](14-production-engine/README.vi.md)

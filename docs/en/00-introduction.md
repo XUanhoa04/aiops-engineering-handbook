@@ -19,11 +19,11 @@
 ## Related Documents
 
 - [01 — Observability](01-observability/README.md)
-- [07 — Anomaly Detection](08-anomaly-detection/README.md)
-- [12 — Production](13-production/README.md)
-- [13 — Big Tech AIOps Case Studies](14-bigtech-aiops/README.md) *(summary case studies; details in dedicated chapters)*
-- [14 — E-commerce & Banking Patterns](15-ecommerce-banking/README.md)
-- [15 — Famous Incidents](16-famous-incidents/README.md)
+- [09 — Anomaly Detection](09-anomaly-detection/README.md)
+- [14 — Production](14-production-engine/README.md)
+- [15 — Big Tech AIOps Case Studies](15-bigtech-aiops/README.md) *(summary case studies; details in dedicated chapters)*
+- [16 — E-commerce & Banking Patterns](16-ecommerce-banking/README.md)
+- [17 — Famous Incidents](17-famous-incidents/README.md)
 
 ## Next Reading
 
@@ -186,7 +186,7 @@ Based on real production deployments:
 AIOps is not “smarter than a senior SRE.” It **scales those three axes** when (and only when) data + topology + feedback loops are good enough.
 
 > [!TIP]
-> Big tech case studies (summary): many hyperscale organizations publish 80–95% noise reduction via correlation + topology before talking about auto-remediation. Industry details and patterns: [13 — Big Tech AIOps](14-bigtech-aiops/README.md) and [14 — E-commerce & Banking](15-ecommerce-banking/README.md).
+> Big tech case studies (summary): many hyperscale organizations publish 80–95% noise reduction via correlation + topology before talking about auto-remediation. Industry details and patterns: [15 — Big Tech AIOps](15-bigtech-aiops/README.md) and [16 — E-commerce & Banking](16-ecommerce-banking/README.md).
 
 ---
 
@@ -290,7 +290,7 @@ Tools (Prometheus, Kafka, Isolation Forest, LLM) change every 2–3 years. **OOD
 
 - Vendor demos of “agent fixes prod in 30s” usually assume perfect topology/runbooks — rare in real environments.
 - Evaluate agentic AI SRE by: *tool allowlist*, *blast radius*, *human approval gates*, *cost per investigation*, *false action rate* — not only demo latency.
-- Historical incidents (retry storm, partial brownout): agents with weak topology can **amplify** rather than heal. See [15 — Famous Incidents](16-famous-incidents/README.md).
+- Historical incidents (retry storm, partial brownout): agents with weak topology can **amplify** rather than heal. See [17 — Famous Incidents](17-famous-incidents/README.md).
 
 > [!TIP]
 > **2026 selection rule**
@@ -588,7 +588,7 @@ Industry benchmarks (Gartner, IDC):
 | Healthcare | $5,000 – $9,000 |
 | SaaS B2B | $1,500 – $5,000 |
 
-Verticals (different ROI patterns) are analyzed in more depth in [14 — E-commerce & Banking](15-ecommerce-banking/README.md).
+Verticals (different ROI patterns) are analyzed in more depth in [16 — E-commerce & Banking](16-ecommerce-banking/README.md).
 
 ### AIOps Investment vs Return
 
@@ -991,7 +991,7 @@ flowchart LR
 
 ### Summary Case Study (Big Tech Pattern)
 
-Many large organizations report: after **mandatory incident tagging** + offline evaluation, detector precision improves quarter over quarter — not from more complex models, but from **feedback data**. Pattern details: [13 — Big Tech AIOps](14-bigtech-aiops/README.md).
+Many large organizations report: after **mandatory incident tagging** + offline evaluation, detector precision improves quarter over quarter — not from more complex models, but from **feedback data**. Pattern details: [15 — Big Tech AIOps](15-bigtech-aiops/README.md).
 
 > [!TIP]
 > Flywheel KPIs: `% incidents labeled`, `time-to-label`, `precision@k trend`, `% auto-actions verified`. If you only measure “models deployed” — you are chasing vanity metrics.
@@ -1089,7 +1089,7 @@ Understanding failure scenarios is as important as understanding success cases.
 >
 > Hint: month 3 usually has no auto-remediation yet — **GIGO + trust collapse** are more dangerous than remediation hallucination. By month 12, blast radius and metastable amplification are more frightening.
 
-Classic public postmortems (cascade, config, retry) are summarized in [15 — Famous Incidents](16-famous-incidents/README.md).
+Classic public postmortems (cascade, config, retry) are summarized in [17 — Famous Incidents](17-famous-incidents/README.md).
 
 ---
 
@@ -1515,7 +1515,7 @@ flowchart TB
 
 - [Practical AIOps — O'Reilly](https://www.oreilly.com/library/view/practical-aiops/9781492085652/)
 - [Building Microservices — Sam Newman (Observability chapters)](https://samnewman.io/books/building_microservices_2nd_edition/)
-- Handbook chapters: [13 Big Tech](14-bigtech-aiops/README.md) · [14 E-commerce & Banking](15-ecommerce-banking/README.md) · [15 Famous Incidents](16-famous-incidents/README.md)
+- Handbook chapters: [15 Big Tech](15-bigtech-aiops/README.md) · [16 E-commerce & Banking](16-ecommerce-banking/README.md) · [17 Famous Incidents](17-famous-incidents/README.md)
 
 ### Further Reading (short)
 

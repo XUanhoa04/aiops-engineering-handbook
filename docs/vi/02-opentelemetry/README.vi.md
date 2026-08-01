@@ -18,7 +18,7 @@
 - [03 — Prometheus](../03-prometheus/README.vi.md) — nhận metrics từ OTel Collector
 - [04 — Loki](../04-loki/README.vi.md) — nhận logs từ OTel Collector
 - [05 — Tempo](../05-tempo/README.vi.md) — nhận traces từ OTel Collector
-- [06 — Kafka](../07-kafka/README.vi.md) — OTel Collector có thể export sang Kafka
+- [07 — Kafka](../07-kafka/README.vi.md) — OTel Collector có thể export sang Kafka
 
 ## Next Reading
 
@@ -1506,7 +1506,7 @@ Luôn hỏi:
 
 > [!TIP]
 > **Vì sao**
-> Vendor-neutral không miễn nhiễm operational failure. Map sang [Ch14 Pattern Library](../14-aiops-pattern-library/README.vi.md) và [Ch16 Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md).
+> Vendor-neutral không miễn nhiễm operational failure. Map sang [Ch14 Pattern Library](../15-aiops-pattern-library/README.vi.md) và [Ch16 Benchmark Replay](../17-aiops-benchmark-replay/README.vi.md).
 
 ### 21.1 Agent/sidecar blast radius
 

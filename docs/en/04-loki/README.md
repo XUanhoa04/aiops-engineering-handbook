@@ -17,8 +17,8 @@
 ## Related Documents
 
 - [02 — OpenTelemetry](../02-opentelemetry/README.md) — Loki exporter in OTel Collector
-- [07 — Anomaly Detection](../08-anomaly-detection/README.md) — anomaly detection on logs
-- [09 — Root Cause Analysis](../10-root-cause-analysis/README.md) — log data as input to RCA
+- [09 — Anomaly Detection](../09-anomaly-detection/README.md) — anomaly detection on logs
+- [11 — Root Cause Analysis](../11-root-cause-analysis/README.md) — log data as input to RCA
 
 ## Next Reading
 

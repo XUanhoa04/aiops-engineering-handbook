@@ -20,7 +20,7 @@ We will correct the documentation promptly.
 
 ## Preferred secure patterns (handbook stance)
 
-- Never freeform shell from LLMs for remediation (see Ch.12)
+- Never freeform shell from LLMs for remediation (see Ch.13)
 - Dual-control / human gates for high blast-radius actions
-- Redact PII before logs enter shared pipelines (see Ch.06, Ch.15)
-- Break-glass out-of-band access independent of the impaired control plane (see Ch.16)
+- Redact PII before logs enter shared pipelines (see Ch.06, Ch.16)
+- Break-glass out-of-band access independent of the impaired control plane (see Ch.14 and Ch.19)

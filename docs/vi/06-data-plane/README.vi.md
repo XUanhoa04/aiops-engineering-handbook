@@ -27,16 +27,16 @@
 
 ## Related Documents
 
-- [17 — Topology & Change](../17-topology-change/README.vi.md) — service graph + change/deploy bus
+- [08 — Topology & Change](../08-topology-change/README.vi.md) — service graph + change/deploy bus
 - [07 — Kafka / Kinesis](../07-kafka/README.vi.md) — buffer & fan-out sau data plane
-- [08 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — consumer feature / train-serve
-- [09 — Alert Correlation](../09-alert-correlation/README.vi.md) — cần topology & canonical incident events
-- [10 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — phụ thuộc enrichment + change context
-- [11 — LLM Agent](../11-investigation-engine/README.vi.md) — context pack từ store / KB / embedding
-- [12 — Remediation](../12-remediation-safety-engine/README.vi.md) — audit store, verify metrics
-- [13 — Production](../13-production-engine/README.vi.md) — SLO của chính pipeline
-- [15 — Domain Packs](../15-aiops-domain-packs/README.vi.md) — retention, PII và money-path semantics
-- [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md) — control/data-plane failure scenarios
+- [09 — Anomaly Detection](../09-anomaly-detection/README.vi.md) — consumer feature / train-serve
+- [10 — Alert Correlation](../10-alert-correlation/README.vi.md) — cần topology & canonical incident events
+- [11 — Root Cause Analysis](../11-root-cause-analysis/README.vi.md) — phụ thuộc enrichment + change context
+- [12 — LLM Agent](../12-investigation-engine/README.vi.md) — context pack từ store / KB / embedding
+- [13 — Remediation](../13-remediation-safety-engine/README.vi.md) — audit store, verify metrics
+- [14 — Production](../14-production-engine/README.vi.md) — SLO của chính pipeline
+- [16 — Domain Packs](../16-aiops-domain-packs/README.vi.md) — retention, PII và money-path semantics
+- [17 — Benchmark Replay](../17-aiops-benchmark-replay/README.vi.md) — control/data-plane failure scenarios
 
 ## Next Reading
 
@@ -84,7 +84,7 @@ Nếu join theo processing time, C1 xuất hiện sau error và có thể bị x
 
 Fact gồm raw event reference, source, event/observed time, identity đã resolve, semantic outcome, schema/parser version và quality. Interpretation như anomaly score, incident membership hay RCA rank thuộc intelligence plane và có version/lifecycle riêng.
 
-Nếu canonical event đã ghi `root_cause=payment-db`, replay sau này không thể kiểm thử model mới độc lập. Data Plane chỉ ghi `failure_family=db.pool.acquire_timeout`, edge/time/change evidence; Chapter 10 quyết định rank.
+Nếu canonical event đã ghi `root_cause=payment-db`, replay sau này không thể kiểm thử model mới độc lập. Data Plane chỉ ghi `failure_family=db.pool.acquire_timeout`, edge/time/change evidence; Chapter 11 quyết định rank.
 
 Một canonical envelope tối thiểu phải trả lời:
 
@@ -244,7 +244,7 @@ Golden replay inject tám lỗi:
 
 ### Output contract sang Chapter 07 và Intelligence Plane
 
-Chapter 06 xuất canonical events/features versioned, idempotent, event-time aware, có topology/change snapshot và quality. Chapter 07 phải vận chuyển/replay chúng mà không phá ordering per key hoặc nhân logical event. Chapter 08–10 phải đọc quality/revision thay vì giả định value luôn đầy đủ.
+Chapter 06 xuất canonical events/features versioned, idempotent, event-time aware, có topology/change snapshot và quality. Chapter 07 phải vận chuyển/replay chúng mà không phá ordering per key hoặc nhân logical event. Chapter 09–10 phải đọc quality/revision thay vì giả định value luôn đầy đủ.
 
 ---
 
@@ -294,13 +294,13 @@ Handbook dùng pipeline mở rộng sau chương này:
 
 ### 1.4 Quan hệ với control plane
 
-Đừng nhầm **telemetry data plane** (chương này) với **Kubernetes control plane** hay **product data plane** trong [Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md). Ở đây:
+Đừng nhầm **telemetry data plane** (chương này) với **Kubernetes control plane** hay **product data plane** trong [Benchmark Replay](../17-aiops-benchmark-replay/README.vi.md). Ở đây:
 
 - **Telemetry Data Plane**: đường đi và biến đổi của metrics/logs/traces/events phục vụ AIOps.
 - **Intelligence Plane**: detect → correlate → RCA → LLM → decide.
 - **Action / Control Plane (AIOps)**: remediation policy, break-glass, audit.
 
-Ba plane phải fail độc lập. Data plane down ≠ product traffic down — nhưng intelligence sẽ mù. Xem thêm [Production](../13-production-engine/README.vi.md) về fail-open alerting.
+Ba plane phải fail độc lập. Data plane down ≠ product traffic down — nhưng intelligence sẽ mù. Xem thêm [Production](../14-production-engine/README.vi.md) về fail-open alerting.
 
 ---
 
@@ -551,7 +551,7 @@ Nếu phép biến đổi stateless, latency thấp và không cần replay đ�
 
 > [!NOTE]
 > **Ý TƯỞNG**
-> Telemetry thô mô tả *triệu chứng*. Enrichment gắn *ngữ cảnh vận hành*: ai sở hữu, version nào vừa deploy, SLO nào đang burn, ticket change nào mở, region nào, tenant nào. Không enrich, [RCA](../10-root-cause-analysis/README.vi.md) chỉ xếp hạng metric spike — không xếp hạng nguyên nhân.
+> Telemetry thô mô tả *triệu chứng*. Enrichment gắn *ngữ cảnh vận hành*: ai sở hữu, version nào vừa deploy, SLO nào đang burn, ticket change nào mở, region nào, tenant nào. Không enrich, [RCA](../11-root-cause-analysis/README.vi.md) chỉ xếp hạng metric spike — không xếp hạng nguyên nhân.
 
 ### 5.1 Enrich những gì?
 
@@ -739,7 +739,7 @@ Không thay Tempo storage. Canonical span event dùng khi **stream** span metric
 
 ### 7.5 Anomaly event
 
-Sinh ra từ [Anomaly Detection](../08-anomaly-detection/README.vi.md):
+Sinh ra từ [Anomaly Detection](../09-anomaly-detection/README.vi.md):
 
 | Field | WHY |
 |-------|-----|
@@ -827,7 +827,7 @@ Chi tiết §11.
 
 **WHEN cần**:
 
-- Join telemetry với business KPIs (GMV, auth success) cho [e-commerce/banking](../15-aiops-domain-packs/README.vi.md).
+- Join telemetry với business KPIs (GMV, auth success) cho [e-commerce/banking](../16-aiops-domain-packs/README.vi.md).
 - Ad-hoc data science ngoài PromQL.
 - Long-horizon seasonality yearly.
 
@@ -839,7 +839,7 @@ Chi tiết §11.
 |-------|----------|----------|
 | **Incident store** | IncidentEvent, links, timeline | OLTP updates state; không nhét Kafka log |
 | **Audit store** | Who approved remediate, policy decisions | Immutable, WORM khi regulated |
-| **Embedding / KB** | Runbooks, postmortems, chunk vectors | Serving LLM retrieval [11](../11-investigation-engine/README.vi.md) |
+| **Embedding / KB** | Runbooks, postmortems, chunk vectors | Serving LLM retrieval [12](../12-investigation-engine/README.vi.md) |
 
 ### 8.8 Decision: đặt dữ liệu ở đâu?
 
@@ -929,7 +929,7 @@ Lifecycle thực tế là ingest → hot serve → feature/materialize → incid
 ### 10.5 Audit
 
 - Immutable decisions: pages fired, suppressions, remediations.
-- **WHEN**: always for actions; long for regulated industries ([15](../15-aiops-domain-packs/README.vi.md)).
+- **WHEN**: always for actions; long for regulated industries ([16](../16-aiops-domain-packs/README.vi.md)).
 
 ### 10.6 Delete & legal hold
 
@@ -995,7 +995,7 @@ Ví dụ feature class AIOps:
 | **Full FS (Feast/Tecton/custom)** | Nhiều model, entity keys, online low-latency | Cao — chỉ khi ROI |
 
 > [!TIP]
-> Org 30–100 eng thường thắng với **feature definitions trong Git + test parity online/offline**, chưa cần platform hyperscale. Xem cách chọn theo forces trong [Pattern Library](../14-aiops-pattern-library/README.vi.md).
+> Org 30–100 eng thường thắng với **feature definitions trong Git + test parity online/offline**, chưa cần platform hyperscale. Xem cách chọn theo forces trong [Pattern Library](../15-aiops-pattern-library/README.vi.md).
 
 ### 11.5 Entity keys AIOps
 
@@ -1084,9 +1084,9 @@ Xem thảo luận thực dụng ở [Kafka](../07-kafka/README.vi.md): AIOps th�
 
 ### 13.2 WHEN redaction bắt buộc early
 
-- Banking / healthcare / identity platforms ([15](../15-aiops-domain-packs/README.vi.md)).
+- Banking / healthcare / identity platforms ([16](../16-aiops-domain-packs/README.vi.md)).
 - Multi-tenant với risk cross-tenant leakage.
-- Bất kỳ path nào feed LLM agent ([11](../11-investigation-engine/README.vi.md)).
+- Bất kỳ path nào feed LLM agent ([12](../12-investigation-engine/README.vi.md)).
 
 ### 13.3 WHEN có thể trì hoãn (cẩn trọng)
 
@@ -1212,7 +1212,7 @@ Enrich `cost_center` / `team` → báo cáo GB ingest. **WHEN** org > 5 teams: c
 | **Train on prod raw unrestricted** | Leak + skew | Materialized governed sets |
 | **Enrich from CMDB weekly only** | Owner sai sau reorg | Webhook + miss metrics |
 | **Detector owns features privately** | 5 z-score khác nhau | Shared feature_set version |
-| **Fail-closed intelligence** | Kafka down → no pages at all | Fail-open baseline alerts [13](../13-production-engine/README.vi.md) |
+| **Fail-closed intelligence** | Kafka down → no pages at all | Fail-open baseline alerts [14](../14-production-engine/README.vi.md) |
 | **Cardinality as feature** | user_id label “để AD” | Aggregate / hash carefully |
 | **Reprocess = re-page** | Replay spam on-call | Idempotent + shadow mode |
 
@@ -1311,7 +1311,7 @@ Người gán nhãn FP hàng loạt sai → retrain tệ hơn.
 
 > [!NOTE]
 > **Ý TƯỞNG**
-> Chương này **chuẩn bị hợp đồng**; [Kafka](../07-kafka/README.vi.md) **vận chuyển và fan-out**; [Anomaly](../08-anomaly-detection/README.vi.md) **tiêu thụ feature/events**. Ba chương một đường thẳng — thiếu mắt xích giữa là chỗ SEV hay sinh.
+> Chương này **chuẩn bị hợp đồng**; [Kafka](../07-kafka/README.vi.md) **vận chuyển và fan-out**; [Anomaly](../09-anomaly-detection/README.vi.md) **tiêu thụ feature/events**. Ba chương một đường thẳng — thiếu mắt xích giữa là chỗ SEV hay sinh.
 
 ### 18.1 Hợp đồng với Kafka
 
@@ -1324,7 +1324,7 @@ Data plane produce (logical topics — chi tiết partition/RF ở Ch.07):
 | `telemetry.traces.events` | sampled SpanEvent | AD, graph |
 | `telemetry.dlq` | bad envelopes | DQ team |
 | `aiops.features.online` (optional) | feature updates | detectors |
-| `aiops.anomalies` | AnomalyEvent (từ Ch.08) | correlation |
+| `aiops.anomalies` | AnomalyEvent (từ Ch.09) | correlation |
 | `aiops.enrichment.deploy` | deploy events | enricher |
 
 **WHEN design topic**: theo **event_type + retention class**, không theo team name.
@@ -1501,7 +1501,7 @@ Dùng trong design review hoặc phỏng vấn Principal. Không có đáp án m
 
 #### A) Topology và change intelligence
 
-Khoảng trống topology đã được đóng ở [Chapter 17 — Topology & Change Data Plane](../17-topology-change/README.vi.md): merge catalog/mesh/trace, edge confidence, temporal snapshot, external dependency, blast radius và degraded mode khi graph stale. Chapter 06 chỉ chịu trách nhiệm lưu snapshot/reference đúng event time và truyền quality sang consumer; nó không tự suy diễn graph.
+Khoảng trống topology đã được đóng ở [Chapter 08 — Topology & Change Data Plane](../08-topology-change/README.vi.md): merge catalog/mesh/trace, edge confidence, temporal snapshot, external dependency, blast radius và degraded mode khi graph stale. Chapter 06 chỉ chịu trách nhiệm lưu snapshot/reference đúng event time và truyền quality sang consumer; nó không tự suy diễn graph.
 
 #### B) Synthetic monitoring / probers
 
@@ -1511,7 +1511,7 @@ Khoảng trống topology đã được đóng ở [Chapter 17 — Topology & Ch
 #### C) Labeling feedback ops
 
 - Quy trình operational: ai label, SLA label, UI, incentive, chất lượng label, active learning.
-- **Tạm thời**: incident store fields + weak labels từ remediation; chi tiết flywheel [00](../00-introduction.vi.md), detector feedback [08](../08-anomaly-detection/README.vi.md).
+- **Tạm thời**: incident store fields + weak labels từ remediation; chi tiết flywheel [00](../00-introduction.vi.md), detector feedback [09](../09-anomaly-detection/README.vi.md).
 
 #### D) Full lineage platform
 
@@ -1528,7 +1528,7 @@ Khoảng trống topology đã được đóng ở [Chapter 17 — Topology & Ch
 
 #### G) Cost anomaly on the data plane itself
 
-- Detect “ingest cost spike” như một class anomaly — gợi ý ở [08](../08-anomaly-detection/README.vi.md) / [13](../13-production-engine/README.vi.md), chưa playbook riêng.
+- Detect “ingest cost spike” như một class anomaly — gợi ý ở [09](../09-anomaly-detection/README.vi.md) / [14](../14-production-engine/README.vi.md), chưa playbook riêng.
 
 > [!TIP]
 > Khi leadership hỏi “còn thiếu gì?”, đưa §21.2 thay vì hứa feature store cure-all. Sự trung thực này giữ trust — tài sản quý hơn một model mới.
@@ -1554,7 +1554,7 @@ Khoảng trống topology đã được đóng ở [Chapter 17 — Topology & Ch
 
 | Trước | Chương này | Sau |
 |-------|------------|-----|
-| [02 OTel](../02-opentelemetry/README.vi.md) [03 Prom](../03-prometheus/README.vi.md) [04 Loki](../04-loki/README.vi.md) [05 Tempo](../05-tempo/README.vi.md) | **06 Data Plane** | [07 Kafka](../07-kafka/README.vi.md) → [08 AD](../08-anomaly-detection/README.vi.md) → … → [13 Production](../13-production-engine/README.vi.md) |
+| [02 OTel](../02-opentelemetry/README.vi.md) [03 Prom](../03-prometheus/README.vi.md) [04 Loki](../04-loki/README.vi.md) [05 Tempo](../05-tempo/README.vi.md) | **06 Data Plane** | [07 Kafka](../07-kafka/README.vi.md) → [09 AD](../09-anomaly-detection/README.vi.md) → … → [14 Production](../14-production-engine/README.vi.md) |
 
 ### 22.3 Next step thực dụng (30 ngày)
 

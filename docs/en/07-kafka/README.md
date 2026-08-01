@@ -9,19 +9,19 @@
 - Basic knowledge of distributed systems (CAP theorem, replication)
 - [02 — OpenTelemetry](../02-opentelemetry/README.md) — Kafka as an exporter in the OTel Collector
 - [06 — Telemetry Data Plane](../06-data-plane/README.md) — normalize / enrich / schema before the bus
-- [08 — Anomaly Detection](../08-anomaly-detection/README.md) — consumes data from Kafka
+- [09 — Anomaly Detection](../09-anomaly-detection/README.md) — consumes data from Kafka
 
 ## Related Documents
 
 - [06 — Telemetry Data Plane](../06-data-plane/README.md) — canonical events, retention, feature store
-- [08 — Anomaly Detection](../08-anomaly-detection/README.md) — consumes telemetry from Kafka, publishes anomaly events
-- [09 — Alert Correlation](../09-alert-correlation/README.md) — consumes anomaly events from Kafka
-- [12 — Remediation](../12-remediation/README.md) — sends remediation triggers to Kafka
-- [16 — Famous Incidents](../16-famous-incidents/README.md) — operational incidents related to transport / cascade failure
+- [09 — Anomaly Detection](../09-anomaly-detection/README.md) — consumes telemetry from Kafka, publishes anomaly events
+- [10 — Alert Correlation](../10-alert-correlation/README.md) — consumes anomaly events from Kafka
+- [13 — Remediation](../13-remediation-safety/README.md) — sends remediation triggers to Kafka
+- [17 — Famous Incidents](../17-famous-incidents/README.md) — operational incidents related to transport / cascade failure
 
 ## Next Reading
 
-After this chapter, continue to [08 — Anomaly Detection](../08-anomaly-detection/README.md).
+After this chapter, continue to [09 — Anomaly Detection](../09-anomaly-detection/README.md).
 
 ---
 
@@ -196,7 +196,7 @@ graph LR
 - Do NOT use random or null keys if message order matters
 
 > [!WARNING]
-> **Edge case — key meaning mismatch**: If the correlation engine needs order by `service_name` but the producer keys by `trace_id`, anomalies for the same service land on many partitions → the correlator sees **out-of-order events** → false correlation or missed cascades. Key design is correctness for [08 — Alert Correlation](../09-alert-correlation/README.md), not only throughput.
+> **Edge case — key meaning mismatch**: If the correlation engine needs order by `service_name` but the producer keys by `trace_id`, anomalies for the same service land on many partitions → the correlator sees **out-of-order events** → false correlation or missed cascades. Key design is correctness for [10 — Alert Correlation](../10-alert-correlation/README.md), not only throughput.
 
 ### Partition Count Design
 
@@ -253,7 +253,7 @@ kafka-configs.sh --alter \
 **AIOps recommendation**: 7-day retention for telemetry topics (replay window for model retraining). 30 days for alert/incident topics (post-incident analysis).
 
 > [!TIP]
-> **Why 7 days raw, 30 days anomalies?** Raw telemetry volume is large (metrics/logs/traces) — 7 days is enough for common feature windows (1–7 days) in [07 — Anomaly Detection](../08-anomaly-detection/README.md). Anomaly/alert volume is ~100–1000× smaller → 30 days is cheap and supports post-incident and audit. Incident topics: compact + long retention.
+> **Why 7 days raw, 30 days anomalies?** Raw telemetry volume is large (metrics/logs/traces) — 7 days is enough for common feature windows (1–7 days) in [09 — Anomaly Detection](../09-anomaly-detection/README.md). Anomaly/alert volume is ~100–1000× smaller → 30 days is cheap and supports post-incident and audit. Incident topics: compact + long retention.
 
 ---
 
@@ -1411,7 +1411,7 @@ flowchart TD
 | Produce error rate rising | — | ✅ availability |
 
 > [!TIP]
-> **Why this mental model matters more than a pretty dashboard?** AIOps on-call paged wrongly will mute lag alerts → when a real incident hits (consumer deadlock) nobody knows. Layering signal/incident + multi-tier thresholds keeps alert trust — related to alert fatigue in [00-introduction](../00-introduction.md) and [08 — Alert Correlation](../09-alert-correlation/README.md).
+> **Why this mental model matters more than a pretty dashboard?** AIOps on-call paged wrongly will mute lag alerts → when a real incident hits (consumer deadlock) nobody knows. Layering signal/incident + multi-tier thresholds keeps alert trust — related to alert fatigue in [00-introduction](../00-introduction.md) and [10 — Alert Correlation](../10-alert-correlation/README.md).
 
 ---
 
@@ -1464,7 +1464,7 @@ def handle_anomaly(event: dict) -> None:
 
 > [!NOTE]
 > **KEY IDEA**
-> "Exactly-once effect" is cheap and sufficient for AIOps. Full EOS transactions help when **consume metrics → produce anomalies** is one atomic hop (avoid double-counting anomalies on retry). But correlation windows, RCA graphs, and LLMs — all stateful outside Kafka — still need `event_id` discipline. See `event_id` schema in [§9](#9-message-schema-and-serialization) and consumer design in [07](../08-anomaly-detection/README.md) / [08](../09-alert-correlation/README.md).
+> "Exactly-once effect" is cheap and sufficient for AIOps. Full EOS transactions help when **consume metrics → produce anomalies** is one atomic hop (avoid double-counting anomalies on retry). But correlation windows, RCA graphs, and LLMs — all stateful outside Kafka — still need `event_id` discipline. See `event_id` schema in [§9](#9-message-schema-and-serialization) and consumer design in [09](../09-anomaly-detection/README.md) / [10](../10-alert-correlation/README.md).
 
 ### When to use real Kafka transactions?
 
@@ -1492,7 +1492,7 @@ Do **not** use transactions as a charm against Kubernetes API remediation.
 | Duplicate event_id flood | Oversample one incident | Biased precision/recall |
 | Mixed units (ms vs s) | Silent scale error | Meaningless thresholds |
 | Breaking enum (signal_type) | Parse fail → mass DLQ | Under-representation, false negatives |
-| Null service_name | Group-by collapses | Topology correlation fails ([08](../09-alert-correlation/README.md)) |
+| Null service_name | Group-by collapses | Topology correlation fails ([10](../10-alert-correlation/README.md)) |
 
 ### Safe schema evolution
 
@@ -1552,7 +1552,7 @@ Key = pod_id:
 
 Key = service_name:
   every payment-service anomaly enters 1 partition, time-ordered
-  correlator ([08](../09-alert-correlation/README.md)) collapses 200 events → 1 incident
+  correlator ([10](../10-alert-correlation/README.md)) collapses 200 events → 1 incident
 ```
 
 > [!WARNING]
@@ -1612,7 +1612,7 @@ graph TD
 
 | Group | Latency SLO | auto.offset.reset | Commit | Notes |
 |-------|-------------|-------------------|--------|-------|
-| `correlation-engine` | seconds | latest (prod) | manual sync | Critical path — see [08](../09-alert-correlation/README.md) |
+| `correlation-engine` | seconds | latest (prod) | manual sync | Critical path — see [10](../10-alert-correlation/README.md) |
 | `audit-trail-writer` | minutes | earliest on new | async OK | Must not block realtime |
 | `ml-training-feeder` | hours/batch | earliest / seek | batch commit | May lag a lot — **signal**, do not page like correlation |
 | `grafana-annotator` | ~minute | latest | async | Best-effort |
@@ -1626,7 +1626,7 @@ graph TD
 Each extra consumer group adds fetch load on the broker (nearly multiplying reads). 5 groups on high-ingress raw-metrics is more expensive than 5 groups on anomalies (small volume). **Strong fan-out on processed events; careful fan-out on high-volume raw.**
 
 > [!TIP]
-> **Audit trail for remediation**: group `remediation-audit` on `aiops-remediation-triggers` + `results` builds an immutable story of "who/what triggered which action when" — critical for post-incident and regulated environments ([§26](#26-msk-vs-self-managed-for-regulated-industries), [15 — Famous Incidents](../16-famous-incidents/README.md)).
+> **Audit trail for remediation**: group `remediation-audit` on `aiops-remediation-triggers` + `results` builds an immutable story of "who/what triggered which action when" — critical for post-incident and regulated environments ([§26](#26-msk-vs-self-managed-for-regulated-industries), [17 — Famous Incidents](../17-famous-incidents/README.md)).
 
 ---
 
@@ -1689,7 +1689,7 @@ flowchart TB
 2. Verify bypass Alertmanager → PagerDuty still fires critical SLOs
 3. **Disable auto-remediation** (feature flag)
 4. Do not manually delete log segments; communicate "AIOps degraded"
-5. Recovery: lag drain + DLQ review; postmortem ([15](../16-famous-incidents/README.md))
+5. Recovery: lag drain + DLQ review; postmortem ([17](../17-famous-incidents/README.md))
 
 > [!TIP]
 > **Chaos test**: block Kafka from the AD namespace (NetworkPolicy) — PagerDuty must still receive high-priority pages from Prometheus. Untested bypass exists only on the wiki.
@@ -1745,7 +1745,7 @@ Mandatory remediation audit:
 | 2 | "Exactly-once" double restart | Rebalance between K8s restart and offset commit → service restarted twice | Non-idempotent side effect | [§21](#21-exactly-once-myths-in-aiops-pipeline) |
 | 3 | Schema "just one field" | Required field without default → correlator crash; training on data gap | Breaking schema + swallowed errors | [§22](#22-poison-messages-schema-evolution) |
 | 4 | Black Friday hot key | checkout = 60% volume → 1 partition maxed; scaling pods useless | Hot partition | [§23](#23-hot-partitions-from-high-cardinality-keys) |
-| 5 | Kafka down, all quiet | MSK network 18 minutes; Prometheus rules already disabled → no page | AIOps as sole path, no bypass | [§25](#25-failure-mode-kafka-down-aiops-blind-bypass), [15](../16-famous-incidents/README.md) |
+| 5 | Kafka down, all quiet | MSK network 18 minutes; Prometheus rules already disabled → no page | AIOps as sole path, no bypass | [§25](#25-failure-mode-kafka-down-aiops-blind-bypass), [17](../17-famous-incidents/README.md) |
 | 6 | Shared group "to save money" | Correlation + SIEM share group → only one side gets each partition | Fan-out confused with compete | [§24](#24-multi-consumer-fan-out-ad-correlation-audit) |
 
 ---
@@ -1762,9 +1762,9 @@ Use these questions to review your team's Kafka/AIOps design — before merging 
 6. Where is `event_id` generated? Is dedupe TTL ≥ the reprocess window?
 7. Schema Registry mode? Who may evolve production schema? Poison → DLQ or skip?
 8. List every `group.id` on `aiops-anomalies`. Which group is critical? Which may lag?
-9. Last Kafka-down chaos test? Did Alertmanager bypass fire? ([15](../16-famous-incidents/README.md))
+9. Last Kafka-down chaos test? Did Alertmanager bypass fire? ([17](../17-famous-incidents/README.md))
 10. Most expensive storage topic: have you computed ingress × retention × RF / compression?
-11. [07 — AD](../08-anomaly-detection/README.md) / [08 — Correlation](../09-alert-correlation/README.md): does key design match ordering assumptions?
+11. [09 — AD](../09-anomaly-detection/README.md) / [10 — Correlation](../10-alert-correlation/README.md): does key design match ordering assumptions?
 12. Correlation lag 10 minutes — does auto-remediation still fire? Who owns the feature flag?
 
 > [!TIP]
@@ -1814,7 +1814,7 @@ Use these questions to review your team's Kafka/AIOps design — before merging 
 | Cost | Storage ≈ ingress × retention × RF / compression |
 | Regulated | MSK usually wins audit evidence; self-managed needs a real Kafka team |
 
-**Next**: [07 — Anomaly Detection](../08-anomaly-detection/README.md) — consume raw from Kafka, publish `aiops-anomalies`.
+**Next**: [09 — Anomaly Detection](../09-anomaly-detection/README.md) — consume raw from Kafka, publish `aiops-anomalies`.
 
 ## References
 
@@ -1827,4 +1827,4 @@ Use these questions to review your team's Kafka/AIOps design — before merging 
 ## Further Reading
 
 - [Designing Event-Driven Systems (O'Reilly)](https://www.oreilly.com/library/view/designing-event-driven-systems/9781492038252/) · [Kafka Connect](https://kafka.apache.org/documentation/#connect) · [Flink + Kafka](https://flink.apache.org/connectors/kafka.html)
-- Downstream: [07 — AD](../08-anomaly-detection/README.md) · [08 — Correlation](../09-alert-correlation/README.md) · [15 — Incidents](../16-famous-incidents/README.md)
+- Downstream: [09 — AD](../09-anomaly-detection/README.md) · [10 — Correlation](../10-alert-correlation/README.md) · [17 — Incidents](../17-famous-incidents/README.md)

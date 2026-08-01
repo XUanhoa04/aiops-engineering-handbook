@@ -9,21 +9,21 @@
 - Hiểu biết cơ bản về hệ thống phân tán (CAP theorem, replication)
 - [02 — OpenTelemetry](../02-opentelemetry/README.vi.md) — Kafka làm exporter trong OTel Collector
 - [06 — Telemetry Data Plane](../06-data-plane/README.vi.md) — normalize / enrich / schema trước khi vào bus
-- [17 — Topology & Change](../17-topology-change/README.vi.md) — context plane được đọc ngay sau transport
-- [08 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — tiêu thụ dữ liệu từ Kafka
+- [08 — Topology & Change](../08-topology-change/README.vi.md) — context plane được đọc ngay sau transport
+- [09 — Anomaly Detection](../09-anomaly-detection/README.vi.md) — tiêu thụ dữ liệu từ Kafka
 
 ## Related Documents
 
 - [06 — Telemetry Data Plane](../06-data-plane/README.vi.md) — canonical events, retention, feature store
-- [17 — Topology & Change](../17-topology-change/README.vi.md) — topology snapshot và change-event topics
-- [08 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — tiêu thụ telemetry từ Kafka, publish anomaly events
-- [09 — Alert Correlation](../09-alert-correlation/README.vi.md) — tiêu thụ các sự kiện bất thường từ Kafka
-- [12 — Remediation](../12-remediation-safety-engine/README.vi.md) — gửi các kích hoạt remediation tới Kafka
-- [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md) — scenario transport, lag và cascade failure
+- [08 — Topology & Change](../08-topology-change/README.vi.md) — topology snapshot và change-event topics
+- [09 — Anomaly Detection](../09-anomaly-detection/README.vi.md) — tiêu thụ telemetry từ Kafka, publish anomaly events
+- [10 — Alert Correlation](../10-alert-correlation/README.vi.md) — tiêu thụ các sự kiện bất thường từ Kafka
+- [13 — Remediation](../13-remediation-safety-engine/README.vi.md) — gửi các kích hoạt remediation tới Kafka
+- [17 — Benchmark Replay](../17-aiops-benchmark-replay/README.vi.md) — scenario transport, lag và cascade failure
 
 ## Next Reading
 
-Sau chương này, hãy chuyển sang [17 — Topology & Change](../17-topology-change/README.vi.md), rồi mới sang [08 — Anomaly Detection](../08-anomaly-detection/README.vi.md). Topology/change là context contract của detection, correlation và RCA, không phải phụ lục đọc sau.
+Sau chương này, hãy chuyển sang [08 — Topology & Change](../08-topology-change/README.vi.md), rồi mới sang [09 — Anomaly Detection](../09-anomaly-detection/README.vi.md). Topology/change là context contract của detection, correlation và RCA, không phải phụ lục đọc sau.
 
 ---
 
@@ -233,9 +233,9 @@ Replay dataset inject:
 
 Broker uptime 99,99% chưa chứng minh những SLO này. Cluster xanh nhưng consumer watermark chậm 15 phút vẫn là AIOps outage.
 
-### Output contract sang Chapter 17 và 08–10
+### Output contract sang Chapter 08 và 09–11
 
-Chapter 07 bảo toàn canonical events, topology/change events, quality và revisions qua durable topics. Chapter 17 định nghĩa context graph/change plane được version hóa. Sau đó Detector/Correlation/RCA tiêu thụ event-time, identity, quality và snapshot contract; không chỉ đọc một message payload rồi tin nó luôn mới/duy nhất.
+Chapter 07 bảo toàn canonical events, topology/change events, quality và revisions qua durable topics. Chapter 08 định nghĩa context graph/change plane được version hóa. Sau đó Detector/Correlation/RCA tiêu thụ event-time, identity, quality và snapshot contract; không chỉ đọc một message payload rồi tin nó luôn mới/duy nhất.
 
 ---
 
@@ -409,7 +409,7 @@ graph LR
 - KHÔNG sử dụng random keys hoặc null keys nếu thứ tự tin nhắn là yếu tố quan trọng
 
 > [!WARNING]
-> **Edge case — key thay đổi ý nghĩa**: Nếu correlation engine cần thứ tự theo `service_name` nhưng producer key bằng `trace_id`, các anomaly của cùng service rơi vào nhiều partition → correlator thấy **out-of-order events** → false correlation hoặc miss cascade. Key design = correctness của [08 — Alert Correlation](../09-alert-correlation/README.vi.md), không chỉ throughput.
+> **Edge case — key thay đổi ý nghĩa**: Nếu correlation engine cần thứ tự theo `service_name` nhưng producer key bằng `trace_id`, các anomaly của cùng service rơi vào nhiều partition → correlator thấy **out-of-order events** → false correlation hoặc miss cascade. Key design = correctness của [10 — Alert Correlation](../10-alert-correlation/README.vi.md), không chỉ throughput.
 
 ### Partition Count Design
 
@@ -466,7 +466,7 @@ kafka-configs.sh --alter \
 **Khuyến nghị cho AIOps**: 7 ngày retention cho các telemetry topics (khung thời gian phát lại để huấn luyện lại mô hình). 30 ngày cho các alert/incident topics (phục vụ phân tích sau sự cố).
 
 > [!TIP]
-> **Vì sao 7 ngày raw, 30 ngày anomalies?** Raw telemetry volume lớn (metrics/logs/traces) — 7 ngày đủ để retrain feature window phổ biến (1–7 ngày) trong [07 — Anomaly Detection](../08-anomaly-detection/README.vi.md). Anomaly/alert volume nhỏ hơn ~100–1000× → giữ 30 ngày rẻ, phục vụ post-incident và audit. Incident topics: compact + long retention.
+> **Vì sao 7 ngày raw, 30 ngày anomalies?** Raw telemetry volume lớn (metrics/logs/traces) — 7 ngày đủ để retrain feature window phổ biến (1–7 ngày) trong [09 — Anomaly Detection](../09-anomaly-detection/README.vi.md). Anomaly/alert volume nhỏ hơn ~100–1000× → giữ 30 ngày rẻ, phục vụ post-incident và audit. Incident topics: compact + long retention.
 
 ---
 
@@ -1624,7 +1624,7 @@ flowchart TD
 | Produce error rate tăng | — | ✅ availability |
 
 > [!TIP]
-> **Vì sao mental model này quan trọng hơn dashboard đẹp?** On-call AIOps bị page sai sẽ tắt lag alerts → khi incident thật (consumer deadlock) không ai biết. Phân tầng signal/incident + multi-tier threshold giữ trust của alert — liên hệ alert fatigue trong [00-introduction](../00-introduction.vi.md) và [08 — Alert Correlation](../09-alert-correlation/README.vi.md).
+> **Vì sao mental model này quan trọng hơn dashboard đẹp?** On-call AIOps bị page sai sẽ tắt lag alerts → khi incident thật (consumer deadlock) không ai biết. Phân tầng signal/incident + multi-tier threshold giữ trust của alert — liên hệ alert fatigue trong [00-introduction](../00-introduction.vi.md) và [10 — Alert Correlation](../10-alert-correlation/README.vi.md).
 
 ---
 
@@ -1677,7 +1677,7 @@ def handle_anomaly(event: dict) -> None:
 
 > [!NOTE]
 > **Ý TƯỞNG**
-> "Exactly-once effect" rẻ và đủ cho AIOps. Full EOS transactions hữu ích khi **consume metrics → produce anomalies** trong một atomic hop (tránh double-count anomaly trên retry). Nhưng correlation window, RCA graph, LLM — tất cả stateful ngoài Kafka — vẫn cần `event_id` discipline. Xem schema `event_id` ở [§9](#9-message-schema-and-serialization) và consumer design ở [07](../08-anomaly-detection/README.vi.md) / [08](../09-alert-correlation/README.vi.md).
+> "Exactly-once effect" rẻ và đủ cho AIOps. Full EOS transactions hữu ích khi **consume metrics → produce anomalies** trong một atomic hop (tránh double-count anomaly trên retry). Nhưng correlation window, RCA graph, LLM — tất cả stateful ngoài Kafka — vẫn cần `event_id` discipline. Xem schema `event_id` ở [§9](#9-message-schema-and-serialization) và consumer design ở [09](../09-anomaly-detection/README.vi.md) / [10](../10-alert-correlation/README.vi.md).
 
 ### Khi nào dùng Kafka transactions thật?
 
@@ -1705,7 +1705,7 @@ def handle_anomaly(event: dict) -> None:
 | Duplicate event_id flood | Oversample một incident | Biased precision/recall |
 | Mixed units (ms vs s) | Silent scale error | Threshold vô nghĩa |
 | Breaking enum (signal_type) | Parse fail → DLQ hàng loạt | Under-representation, false negative |
-| Null service_name | Group-by sụp | Topology correlation fail ([08](../09-alert-correlation/README.vi.md)) |
+| Null service_name | Group-by sụp | Topology correlation fail ([10](../10-alert-correlation/README.vi.md)) |
 
 ### Schema evolution an toàn
 
@@ -1765,7 +1765,7 @@ Key = pod_id:
 
 Key = service_name:
   mọi anomaly payment-service vào 1 partition, đúng thứ tự thời gian
-  correlator ([08](../09-alert-correlation/README.vi.md)) gộp 200 events → 1 incident
+  correlator ([10](../10-alert-correlation/README.vi.md)) gộp 200 events → 1 incident
 ```
 
 > [!WARNING]
@@ -1825,7 +1825,7 @@ graph TD
 
 | Group | Latency SLO | auto.offset.reset | Commit | Ghi chú |
 |-------|-------------|-------------------|--------|---------|
-| `correlation-engine` | seconds | latest (prod) | manual sync | Critical path — xem [08](../09-alert-correlation/README.vi.md) |
+| `correlation-engine` | seconds | latest (prod) | manual sync | Critical path — xem [10](../10-alert-correlation/README.vi.md) |
 | `audit-trail-writer` | minutes | earliest on new | async OK | Không block realtime |
 | `ml-training-feeder` | hours/batch | earliest / seek | batch commit | Có thể lag lớn — **signal**, không page như correlation |
 | `grafana-annotator` | ~minute | latest | async | Best-effort |
@@ -1839,7 +1839,7 @@ graph TD
 Mỗi thêm 1 consumer group = thêm fetch load trên broker (gần như nhân bản đọc). 5 groups trên topic high-ingress raw-metrics đắt hơn 5 groups trên anomalies (volume nhỏ). **Fan-out mạnh ở tầng processed events; fan-out thận trọng ở raw high-volume.**
 
 > [!TIP]
-> **Audit trail cho remediation**: group `remediation-audit` trên `aiops-remediation-triggers` + `results` tạo immutable story "ai/cái gì trigger action lúc nào" — quan trọng post-incident và regulated environments ([§26](#26-msk-vs-self-managed-for-regulated-industries), [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md)).
+> **Audit trail cho remediation**: group `remediation-audit` trên `aiops-remediation-triggers` + `results` tạo immutable story "ai/cái gì trigger action lúc nào" — quan trọng post-incident và regulated environments ([§26](#26-msk-vs-self-managed-for-regulated-industries), [17 — Benchmark Replay](../17-aiops-benchmark-replay/README.vi.md)).
 
 ---
 
@@ -1902,7 +1902,7 @@ flowchart TB
 2. Verify bypass Alertmanager → PagerDuty vẫn fire critical SLO  
 3. **Disable auto-remediation** (feature flag)  
 4. Không xóa log segment tay; communicate "AIOps degraded"  
-5. Recovery: lag drain + DLQ review; postmortem ([15](../16-aiops-benchmark-replay/README.vi.md))
+5. Recovery: lag drain + DLQ review; postmortem ([17](../17-aiops-benchmark-replay/README.vi.md))
 
 > [!TIP]
 > **Chaos test**: block Kafka từ AD namespace (NetworkPolicy) — PagerDuty vẫn phải nhận high-priority từ Prometheus. Bypass không test = chỉ tồn tại trên wiki.
@@ -1958,7 +1958,7 @@ Remediation audit bắt buộc:
 | 2 | "Exactly-once" double restart | Rebalance giữa K8s restart và commit offset → service restart 2 lần | Side effect không idempotent | [§21](#21-exactly-once-myths-in-aiops-pipeline) |
 | 3 | Schema "chỉ thêm 1 field" | Field bắt buộc không default → correlator crash; training train trên data gap | Breaking schema + nuốt lỗi | [§22](#22-poison-messages-schema-evolution) |
 | 4 | Hot key Black Friday | checkout = 60% volume → 1 partition maxed; scale pods vô ích | Hot partition | [§23](#23-hot-partitions-from-high-cardinality-keys) |
-| 5 | Kafka down, all quiet | MSK network 18 phút; Prometheus rules đã tắt → không page | AIOps sole path, không bypass | [§25](#25-failure-mode-kafka-down-aiops-blind-bypass), [16](../16-aiops-benchmark-replay/README.vi.md) |
+| 5 | Kafka down, all quiet | MSK network 18 phút; Prometheus rules đã tắt → không page | AIOps sole path, không bypass | [§25](#25-failure-mode-kafka-down-aiops-blind-bypass), [17](../17-aiops-benchmark-replay/README.vi.md) |
 | 6 | Shared group "tiết kiệm" | Correlation + SIEM chung group → chỉ một bên nhận mỗi partition | Nhầm fan-out với compete | [§24](#24-multi-consumer-fan-out-ad-correlation-audit) |
 
 ---
@@ -1975,9 +1975,9 @@ Dùng các câu hỏi này để review thiết kế Kafka/AIOps của team — 
 6. `event_id` sinh ở đâu? TTL dedupe ≥ reprocess window chưa?
 7. Schema Registry mode? Ai được evolve schema production? Poison → DLQ hay skip?
 8. Liệt kê mọi `group.id` trên `aiops-anomalies`. Group nào critical? Group nào được lag?
-9. Lần chaos Kafka-down gần nhất? Bypass Alertmanager có fire không? ([15](../16-aiops-benchmark-replay/README.vi.md))
+9. Lần chaos Kafka-down gần nhất? Bypass Alertmanager có fire không? ([17](../17-aiops-benchmark-replay/README.vi.md))
 10. Storage topic đắt nhất: đã tính ingress × retention × RF / compression chưa?
-11. [07 — AD](../08-anomaly-detection/README.vi.md) / [08 — Correlation](../09-alert-correlation/README.vi.md): key design có khớp giả định ordering không?
+11. [09 — AD](../09-anomaly-detection/README.vi.md) / [10 — Correlation](../10-alert-correlation/README.vi.md): key design có khớp giả định ordering không?
 12. Correlation lag 10 phút — auto-remediation còn fire? Ai giữ feature flag?
 
 > [!TIP]
@@ -2027,7 +2027,7 @@ Dùng các câu hỏi này để review thiết kế Kafka/AIOps của team — 
 | Cost | Storage ≈ ingress × retention × RF / compression |
 | Regulated | MSK thường thắng audit evidence; self-managed cần team Kafka thật |
 
-**Next**: [07 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — consume raw từ Kafka, publish `aiops-anomalies`.
+**Next**: [09 — Anomaly Detection](../09-anomaly-detection/README.vi.md) — consume raw từ Kafka, publish `aiops-anomalies`.
 
 ## References
 
@@ -2040,6 +2040,6 @@ Dùng các câu hỏi này để review thiết kế Kafka/AIOps của team — 
 ## Further Reading
 
 - [Designing Event-Driven Systems (O'Reilly)](https://www.oreilly.com/library/view/designing-event-driven-systems/9781492038252/) · [Kafka Connect](https://kafka.apache.org/documentation/#connect) · [Flink + Kafka](https://flink.apache.org/connectors/kafka.html)
-- Downstream: [08 — AD](../08-anomaly-detection/README.vi.md) · [09 — Correlation](../09-alert-correlation/README.vi.md) · [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md)
+- Downstream: [09 — AD](../09-anomaly-detection/README.vi.md) · [10 — Correlation](../10-alert-correlation/README.vi.md) · [17 — Benchmark Replay](../17-aiops-benchmark-replay/README.vi.md)
 
 --8<-- "docs/includes/acceptance-footer.vi.md"

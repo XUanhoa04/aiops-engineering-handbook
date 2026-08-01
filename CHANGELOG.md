@@ -6,7 +6,10 @@ All notable changes to this handbook are documented here.
 
 ### Added
 
-- **Ch.17 Topology & Change Data Plane** (VI + EN) — service graph, sync freshness, change/deploy events, freezes, integration with enrich/correlation/RCA/remediation
+- **Ch.08 Topology & Change Data Plane** (VI + EN) — service graph, sync freshness, change/deploy events, freezes, integration with enrich/correlation/RCA/remediation
+- **Ch.18 Predictive Operations & Capacity Risk Engine** (VI) — multi-horizon uncertainty, dependency bottlenecks, time-to-exhaustion and proactive acceptance
+- **Ch.19 Incident Operations Control Plane** (VI) — command state, role leases, concurrent faults, action locks and multi-hour handoff
+- **Ch.20 AIOps Governance & Model Risk Engine** (VI) — capability risk tiers, decision envelopes, runtime gates, drift and revocation
 - **MkDocs Material** site (`mkdocs.yml`, `requirements-docs.txt`, `docs/index.md`)
 - **GitHub Actions** workflow [`.github/workflows/docs.yml`](.github/workflows/docs.yml) → GitHub Pages
 - Poster `docs/assets/diagrams/10-topology-change.png`

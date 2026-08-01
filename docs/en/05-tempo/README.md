@@ -18,7 +18,7 @@
 
 - [02 — OpenTelemetry](../02-opentelemetry/README.md) — tail sampling before data reaches Tempo
 - [03 — Prometheus](../03-prometheus/README.md) — exemplars linking metrics to Tempo traces
-- [09 — Root Cause Analysis](../10-root-cause-analysis/README.md) — traces as input to RCA
+- [11 — Root Cause Analysis](../11-root-cause-analysis/README.md) — traces as input to RCA
 
 ## Next Reading
 
@@ -1154,9 +1154,9 @@ def critical_path(spans):
 
 ### Links to other chapters
 
-- [08 — Alert Correlation](../09-alert-correlation/README.md) — group alerts by `related_trace_ids`
-- [09 — Root Cause Analysis](../10-root-cause-analysis/README.md) — span analysis, evidence scoring
-- [10 — LLM Agent](../11-llm-agent/README.md) — agent reads critical path + logs with the same `trace_id`
+- [10 — Alert Correlation](../10-alert-correlation/README.md) — group alerts by `related_trace_ids`
+- [11 — Root Cause Analysis](../11-root-cause-analysis/README.md) — span analysis, evidence scoring
+- [12 — LLM Agent](../12-investigation-engine/README.md) — agent reads critical path + logs with the same `trace_id`
 
 ---
 

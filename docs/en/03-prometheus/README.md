@@ -15,8 +15,8 @@
 
 ## Related Documents
 
-- [07 — Anomaly Detection](../08-anomaly-detection/README.md) — Prometheus metrics as input
-- [08 — Alert Correlation](../09-alert-correlation/README.md) — consumes alerts from Prometheus
+- [09 — Anomaly Detection](../09-anomaly-detection/README.md) — Prometheus metrics as input
+- [10 — Alert Correlation](../10-alert-correlation/README.md) — consumes alerts from Prometheus
 
 ## Next Reading
 

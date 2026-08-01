@@ -27,21 +27,21 @@
 
 ## Related Documents
 
-- [17 — Topology & Change](../17-topology-change/README.md) — service graph + change/deploy bus
+- [08 — Topology & Change](../08-topology-change/README.md) — service graph + change/deploy bus
 
 - [07 — Kafka](../07-kafka/README.md) — transport after the data plane; schema, lag, replay
-- [08 — Anomaly Detection](../08-anomaly-detection/README.md) — consumes features and normalized series
-- [09 — Alert Correlation](../09-alert-correlation/README.md) — needs topology-enriched context
-- [10 — Root Cause Analysis](../10-root-cause-analysis/README.md) — multi-signal evidence bundles
-- [11 — LLM Agent](../11-llm-agent/README.md) — context packs from stored/enriched telemetry
-- [12 — Remediation](../12-remediation/README.md) — action audit depends on durable event history
-- [13 — Production](../13-production/README.md) — control plane vs data plane, DR, dogfood
-- [15 — E-commerce & Banking](../15-ecommerce-banking/README.md) — PII, PCI, retention by domain
-- [16 — Famous Incidents](../16-famous-incidents/README.md) — blind spots when storage/control planes couple
+- [09 — Anomaly Detection](../09-anomaly-detection/README.md) — consumes features and normalized series
+- [10 — Alert Correlation](../10-alert-correlation/README.md) — needs topology-enriched context
+- [11 — Root Cause Analysis](../11-root-cause-analysis/README.md) — multi-signal evidence bundles
+- [12 — LLM Agent](../12-investigation-engine/README.md) — context packs from stored/enriched telemetry
+- [13 — Remediation](../13-remediation-safety/README.md) — action audit depends on durable event history
+- [14 — Production](../14-production-engine/README.md) — control plane vs data plane, DR, dogfood
+- [16 — E-commerce & Banking](../16-ecommerce-banking/README.md) — PII, PCI, retention by domain
+- [17 — Famous Incidents](../17-famous-incidents/README.md) — blind spots when storage/control planes couple
 
 ## Next Reading
 
-After this chapter, continue to [07 — Kafka / Kinesis](../07-kafka/README.md) for durable fan-out and replay. Intelligence starts at [08 — Anomaly Detection](../08-anomaly-detection/README.md).
+After this chapter, continue to [07 — Kafka / Kinesis](../07-kafka/README.md) for durable fan-out and replay. Intelligence starts at [09 — Anomaly Detection](../09-anomaly-detection/README.md).
 
 ---
 
@@ -142,9 +142,9 @@ This is **not** the same as Kubernetes control/data plane, but the metaphor help
 | Plane | Telemetry meaning | Failure mode if coupled |
 |-------|-------------------|-------------------------|
 | **Data plane** | Ingest → transform → store → serve features/queries | Lost signals, wrong features, retention surprises |
-| **Control plane** | Schema registry, routing config, sampling policy, ACL, model registry | Cannot change policy without restarting ingest; or worse — observability depends on the same cluster it monitors ([16 — Famous Incidents](../16-famous-incidents/README.md)) |
+| **Control plane** | Schema registry, routing config, sampling policy, ACL, model registry | Cannot change policy without restarting ingest; or worse — observability depends on the same cluster it monitors ([17 — Famous Incidents](../17-famous-incidents/README.md)) |
 
-See also production resilience patterns in [13 — Production](../13-production/README.md).
+See also production resilience patterns in [14 — Production](../14-production-engine/README.md).
 
 ### 2.2 Five contracts every signal must pass
 
@@ -452,7 +452,7 @@ msg / message / log  →  body
 err / error / exception.message  →  error.message (redacted)
 ```
 
-Drain or similar parsers should run **after** field normalize so templates are stable ([08 — Anomaly Detection](../08-anomaly-detection/README.md) log section).
+Drain or similar parsers should run **after** field normalize so templates are stable ([09 — Anomaly Detection](../09-anomaly-detection/README.md) log section).
 
 ### 5.5 Where to run normalize
 
@@ -549,7 +549,7 @@ flowchart LR
 |--------|------|------|
 | **Flink** | Event-time correctness; savepoints; scales joins & features; industry default next to Kafka for heavy stream ETL | Cluster cost; skill scarcity; easy to build an unowned platform |
 | **Kafka Streams** | No separate cluster; same deploy as services; strong exactly-once *within Kafka* story | JVM-centric; weaker for huge cross-topic CEP vs Flink; ops still on you |
-| **Consumer service** | Fast to ship Ch.08 detectors; language flexibility | Every team reinvents windowing; train–serve skew risk |
+| **Consumer service** | Fast to ship Ch.09 detectors; language flexibility | Every team reinvents windowing; train–serve skew risk |
 | **Spark** | Best for *offline* feature / training export; SQL familiarity | Wrong default for low-latency online features |
 
 #### Decision tree
@@ -603,7 +603,7 @@ Only rename / unit / drop / sample?
 | Deploy / CD webhooks | version, commit, change flag | near-real-time | Change-aware AD |
 | Service mesh / eBPF graph | deps edges, traffic share | 1–5m | Correlation, RCA |
 | CMDB / asset DB | criticality, PCI flag | 15–60m | Policy, retention |
-| Business config | tenant tier, payment PSP | 5–30m | Domain AD ([15](../15-ecommerce-banking/README.md)) |
+| Business config | tenant tier, payment PSP | 5–30m | Domain AD ([16](../16-ecommerce-banking/README.md)) |
 | Active incidents | suppress / related | real-time | FP control |
 
 ### 6.2 Enrichment architecture
@@ -640,7 +640,7 @@ Without this, every release looks like an anomaly. With it, you still detect reg
 
 ### 6.5 Topology enrichment for correlation
 
-Downstream [09 — Alert Correlation](../09-alert-correlation/README.md) and [10 — RCA](../10-root-cause-analysis/README.md) need:
+Downstream [10 — Alert Correlation](../10-alert-correlation/README.md) and [11 — RCA](../11-root-cause-analysis/README.md) need:
 
 - Directed edges (A calls B)
 - Shared fate (same node/AZ)
@@ -796,7 +796,7 @@ Read path:
 | Kafka raw telemetry | 3–7d | — | Export to S3 | Topic retention | Replay buffer |
 | Online features | hours–2d TTL | — | — | TTL | Memory |
 | Offline features | — | 90–400d | As training need | Version GC | Retrain |
-| Incident + remediation events | 90d | 1y | 1–7y WORM | Legal | [12](../12-remediation/README.md), regulated |
+| Incident + remediation events | 90d | 1y | 1–7y WORM | Legal | [13](../13-remediation-safety/README.md), regulated |
 | Schema / model lineage | forever-ish | — | Object | Never silent | Audit |
 | Topology snapshots | 30d | 90d | 1y | Policy | RCA replay |
 
@@ -804,8 +804,8 @@ Read path:
 
 | Domain | Override | Reference |
 |--------|----------|-----------|
-| E-commerce peak (BFCM) | Extend hot metrics 30d around peak; keep 2y seasonality rollups | [15](../15-ecommerce-banking/README.md) |
-| Banking / PCI | Strict PII TTL; longer audit of access & actions; residency | [15](../15-ecommerce-banking/README.md) |
+| E-commerce peak (BFCM) | Extend hot metrics 30d around peak; keep 2y seasonality rollups | [16](../16-ecommerce-banking/README.md) |
+| Banking / PCI | Strict PII TTL; longer audit of access & actions; residency | [16](../16-ecommerce-banking/README.md) |
 | Multi-tenant SaaS | Per-tenant retention class; noisy neighbor quotas | Production chapter |
 
 ### 9.3 Downsampling policy (metrics)
@@ -853,7 +853,7 @@ Document **which aggregations** (avg/p99/max) — AD on avg-only hides spikes.
 
 ### 10.2 Evidence bundle (AIOps product)
 
-For [10 — RCA](../10-root-cause-analysis/README.md) and [11 — LLM](../11-llm-agent/README.md), precompute or assemble:
+For [11 — RCA](../11-root-cause-analysis/README.md) and [12 — LLM](../12-investigation-engine/README.md), precompute or assemble:
 
 ```
 evidence_bundle:
@@ -911,7 +911,7 @@ sequenceDiagram
 | `dependency_error_fan_in` | Correlation features | Topology join |
 | `cpu_vs_request_ratio` | Saturation | K8s enrich |
 
-Anomaly Detection chapter assumes features exist; this chapter owns **how they are produced and served** ([08](../08-anomaly-detection/README.md)).
+Anomaly Detection chapter assumes features exist; this chapter owns **how they are produced and served** ([09](../09-anomaly-detection/README.md)).
 
 ### 11.2 Online store
 
@@ -1093,7 +1093,7 @@ Windows close after watermark; late events go to side output.
 | Service scaled to zero | Expected absence vs incident |
 | Sampling dropped spans | Do not treat as zero traffic without SpanMetrics |
 
-AD must distinguish **missing data** from **healthy zero**. Quality flags from §7 feed detectors ([08](../08-anomaly-detection/README.md)).
+AD must distinguish **missing data** from **healthy zero**. Quality flags from §7 feed detectors ([09](../09-anomaly-detection/README.md)).
 
 ### 13.5 Lifecycle state machine (per record class)
 
@@ -1145,7 +1145,7 @@ stateDiagram-v2
 5. **Tokenization** for join keys when needed (HMAC with keyed secret)
 6. **Retention shorter** for PII-bearing classes
 7. **Access audit** on Explore / warehouse queries
-8. **LLM path**: only redacted bundles ([11](../11-llm-agent/README.md))
+8. **LLM path**: only redacted bundles ([12](../12-investigation-engine/README.md))
 
 ### 14.3 Decision tree — store or drop
 
@@ -1159,7 +1159,7 @@ flowchart TD
 ```
 
 > [!IMPORTANT]
-> Banking and ecommerce patterns in [15 — E-commerce & Banking](../15-ecommerce-banking/README.md) may require PCI segmentation: card data **never** enters AIOps telemetry stores.
+> Banking and ecommerce patterns in [16 — E-commerce & Banking](../16-ecommerce-banking/README.md) may require PCI segmentation: card data **never** enters AIOps telemetry stores.
 
 ---
 
@@ -1391,12 +1391,12 @@ Phase 4: stop legacy fields
 | Gap | Why remains | Where addressed |
 |-----|-------------|-----------------|
 | **Durable multi-consumer fan-out & lag politics** | Transport problem | [07 — Kafka](../07-kafka/README.md) |
-| **Which detector algorithm to use** | Model problem | [08 — AD](../08-anomaly-detection/README.md) |
-| **Alert grouping correctness** | Graph + policy | [09 — Correlation](../09-alert-correlation/README.md) |
-| **Causal proof of root cause** | Epistemology + tests | [10 — RCA](../10-root-cause-analysis/README.md) |
-| **LLM hallucination on evidence** | Model + prompts | [11 — LLM](../11-llm-agent/README.md) |
-| **Safe auto-remediation** | Control theory + gates | [12 — Remediation](../12-remediation/README.md) |
-| **Org ownership / RACI** | People system | [13 — Production](../13-production/README.md) |
+| **Which detector algorithm to use** | Model problem | [09 — AD](../09-anomaly-detection/README.md) |
+| **Alert grouping correctness** | Graph + policy | [10 — Correlation](../10-alert-correlation/README.md) |
+| **Causal proof of root cause** | Epistemology + tests | [11 — RCA](../11-root-cause-analysis/README.md) |
+| **LLM hallucination on evidence** | Model + prompts | [12 — LLM](../12-investigation-engine/README.md) |
+| **Safe auto-remediation** | Control theory + gates | [13 — Remediation](../13-remediation-safety/README.md) |
+| **Org ownership / RACI** | People system | [14 — Production](../14-production-engine/README.md) |
 | **Perfect global identity** | M&A, shadow IT | Continuous governance |
 | **Zero PII forever** | Humans paste secrets | Defense in depth + culture |
 | **Cost → 0** | Physics of retention | Chargeback + sampling |
@@ -1546,7 +1546,7 @@ If materializer lag > threshold:
 | Supply chain | Signed pipeline images; map PRs reviewed |
 | Isolation | Restricted data_class network policies |
 | Audit | Who queried restricted logs; who changed maps |
-| Break-glass | Out-of-band access if plane depends on prod it monitors ([13](../13-production/README.md), [16](../16-famous-incidents/README.md)) |
+| Break-glass | Out-of-band access if plane depends on prod it monitors ([14](../14-production-engine/README.md), [17](../17-famous-incidents/README.md)) |
 
 > [!WARNING]
 > Feature stores often become a **second production database** of behavioral data. Apply the same threat model as customer data stores when features can reverse-identify users.
@@ -1626,7 +1626,7 @@ Use in design review before approving the next storage PO.
 9. How many **copies** of last week’s metrics exist (including notebooks)?
 10. Which pipeline gap in §19 are you pretending is closed?
 11. After [07 Kafka](../07-kafka/README.md) is down, what still works from this plane?
-12. For [08 AD](../08-anomaly-detection/README.md), is gap≠zero enforced?
+12. For [09 AD](../09-anomaly-detection/README.md), is gap≠zero enforced?
 
 > [!TIP]
 > Two consecutive vague answers on identity or feature parity → do not approve new ML models yet.
@@ -1725,7 +1725,7 @@ Use in design review before approving the next storage PO.
 | Maturity | L1 identity before L4 feature platform |
 | Gaps | Transport, models, org — named, not denied |
 
-**Next**: [07 — Kafka / Kinesis](../07-kafka/README.md) — durable transport, fan-out, lag, schema at the wire. Then [08 — Anomaly Detection](../08-anomaly-detection/README.md) consumes canonical features and series.
+**Next**: [07 — Kafka / Kinesis](../07-kafka/README.md) — durable transport, fan-out, lag, schema at the wire. Then [09 — Anomaly Detection](../09-anomaly-detection/README.md) consumes canonical features and series.
 
 ---
 
@@ -1740,7 +1740,7 @@ Use in design review before approving the next storage PO.
 7. [Grafana Mimir / Loki / Tempo docs](https://grafana.com/docs/) — pillar stores
 8. [Confluent Schema Registry](https://docs.confluent.io/platform/current/schema-registry/) — evolution modes
 9. [NIST Privacy Framework](https://www.nist.gov/privacy-framework) — data handling classes
-10. Handbook siblings: [00](../00-introduction.md) · [02](../02-opentelemetry/README.md) · [03](../03-prometheus/README.md) · [04](../04-loki/README.md) · [05](../05-tempo/README.md) · [07](../07-kafka/README.md) · [08](../08-anomaly-detection/README.md) · [09](../09-alert-correlation/README.md) · [10](../10-root-cause-analysis/README.md) · [11](../11-llm-agent/README.md) · [12](../12-remediation/README.md) · [13](../13-production/README.md) · [15](../15-ecommerce-banking/README.md) · [16](../16-famous-incidents/README.md)
+10. Handbook siblings: [00](../00-introduction.md) · [02](../02-opentelemetry/README.md) · [03](../03-prometheus/README.md) · [04](../04-loki/README.md) · [05](../05-tempo/README.md) · [07](../07-kafka/README.md) · [09](../09-anomaly-detection/README.md) · [10](../10-alert-correlation/README.md) · [11](../11-root-cause-analysis/README.md) · [12](../12-investigation-engine/README.md) · [13](../13-remediation-safety/README.md) · [14](../14-production-engine/README.md) · [16](../16-ecommerce-banking/README.md) · [17](../17-famous-incidents/README.md)
 
 ## Further Reading
 

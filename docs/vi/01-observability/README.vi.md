@@ -16,7 +16,7 @@
 - [03 — Prometheus](../03-prometheus/README.vi.md) — lưu trữ metrics
 - [04 — Loki](../04-loki/README.vi.md) — lưu trữ logs
 - [05 — Tempo](../05-tempo/README.vi.md) — lưu trữ traces
-- [07 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — tiêu thụ dữ liệu khả năng quan sát
+- [09 — Anomaly Detection](../09-anomaly-detection/README.vi.md) — tiêu thụ dữ liệu khả năng quan sát
 
 ## Next Reading
 
@@ -1727,7 +1727,7 @@ flowchart LR
 
 > [!TIP]
 > **Vì sao**
-> Postmortem dạy cách **tư duy**, không phải copy tool stack. Map mental model về [Ch14 Pattern Library](../14-aiops-pattern-library/README.vi.md) và kiểm chứng bằng [Ch16 Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md).
+> Postmortem dạy cách **tư duy**, không phải copy tool stack. Map mental model về [Ch14 Pattern Library](../15-aiops-pattern-library/README.vi.md) và kiểm chứng bằng [Ch16 Benchmark Replay](../17-aiops-benchmark-replay/README.vi.md).
 
 ### 22.1 "Everything is fine" dashboards — Google SRE mindset
 

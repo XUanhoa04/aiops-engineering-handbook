@@ -17,8 +17,8 @@
 ## Related Documents
 
 - [02 — OpenTelemetry](../02-opentelemetry/README.vi.md) — Loki exporter trong OTel Collector
-- [07 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — phát hiện bất thường trên log
-- [09 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — dữ liệu log làm đầu vào cho RCA
+- [09 — Anomaly Detection](../09-anomaly-detection/README.vi.md) — phát hiện bất thường trên log
+- [11 — Root Cause Analysis](../11-root-cause-analysis/README.vi.md) — dữ liệu log làm đầu vào cho RCA
 
 ## Next Reading
 

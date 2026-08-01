@@ -14,7 +14,13 @@ use_directory_urls: true
 exclude_docs: |
   includes/
   /README.md
+  /vi/11-llm-agent/
+  /vi/12-remediation/
+  /vi/13-production/
   /vi/13-bigtech-aiops/
+  /vi/14-bigtech-aiops/
+  /vi/15-ecommerce-banking/
+  /vi/16-famous-incidents/
 
 theme:
   name: material
@@ -107,18 +113,21 @@ nav:
           - 05 Trace causality: vi/05-tempo/README.vi.md
           - 06 Data & Feature Plane: vi/06-data-plane/README.vi.md
           - 07 Event Transport: vi/07-kafka/README.vi.md
-          - 17 Topology & Change: vi/17-topology-change/README.vi.md
+          - 08 Topology & Change: vi/08-topology-change/README.vi.md
       - Intelligence engines:
-          - 08 Persistent Detection: vi/08-anomaly-detection/README.vi.md
-          - 09 Alert Correlation: vi/09-alert-correlation/README.vi.md
-          - 10 Root Cause Analysis: vi/10-root-cause-analysis/README.vi.md
-          - 11 Investigation Engine: vi/11-investigation-engine/README.vi.md
-          - 12 Remediation Safety: vi/12-remediation-safety-engine/README.vi.md
-      - Production & reuse:
-          - 13 Production Engine: vi/13-production-engine/README.vi.md
-          - 14 Pattern Library: vi/14-aiops-pattern-library/README.vi.md
-          - 15 Domain Packs: vi/15-aiops-domain-packs/README.vi.md
-          - 16 Benchmark Replay: vi/16-aiops-benchmark-replay/README.vi.md
+          - 09 Persistent Detection: vi/09-anomaly-detection/README.vi.md
+          - 10 Alert Correlation: vi/10-alert-correlation/README.vi.md
+          - 11 Root Cause Analysis: vi/11-root-cause-analysis/README.vi.md
+          - 12 Investigation Engine: vi/12-investigation-engine/README.vi.md
+          - 13 Remediation Safety: vi/13-remediation-safety-engine/README.vi.md
+      - Production, learning & governance:
+          - 14 Production Engine: vi/14-production-engine/README.vi.md
+          - 15 Pattern Library: vi/15-aiops-pattern-library/README.vi.md
+          - 16 Domain Packs: vi/16-aiops-domain-packs/README.vi.md
+          - 17 Benchmark Replay: vi/17-aiops-benchmark-replay/README.vi.md
+          - 18 Predictive Operations: vi/18-predictive-operations/README.vi.md
+          - 19 Incident Operations: vi/19-incident-operations/README.vi.md
+          - 20 Governance & Model Risk: vi/20-aiops-governance/README.vi.md
   - English:
       - Foundations:
           - 00 Introduction: en/00-introduction.md
@@ -129,16 +138,16 @@ nav:
           - 05 Tempo: en/05-tempo/README.md
           - 06 Data Plane: en/06-data-plane/README.md
           - 07 Kafka: en/07-kafka/README.md
-          - 17 Topology & Change: en/17-topology-change/README.md
+          - 08 Topology & Change: en/08-topology-change/README.md
       - Intelligence:
-          - 08 Anomaly Detection: en/08-anomaly-detection/README.md
-          - 09 Alert Correlation: en/09-alert-correlation/README.md
-          - 10 Root Cause Analysis: en/10-root-cause-analysis/README.md
-          - 11 Investigation Engine: en/11-llm-agent/README.md
-          - 12 Remediation: en/12-remediation/README.md
+          - 09 Anomaly Detection: en/09-anomaly-detection/README.md
+          - 10 Alert Correlation: en/10-alert-correlation/README.md
+          - 11 Root Cause Analysis: en/11-root-cause-analysis/README.md
+          - 12 Investigation Engine: en/12-investigation-engine/README.md
+          - 13 Remediation: en/13-remediation-safety/README.md
       - Production & cases:
-          - 13 Production: en/13-production/README.md
-          - 14 Big Tech AIOps: en/14-bigtech-aiops/README.md
-          - 15 E-commerce & Banking: en/15-ecommerce-banking/README.md
-          - 16 Famous Incidents: en/16-famous-incidents/README.md
+          - 14 Production: en/14-production-engine/README.md
+          - 15 Big Tech AIOps: en/15-bigtech-aiops/README.md
+          - 16 E-commerce & Banking: en/16-ecommerce-banking/README.md
+          - 17 Famous Incidents: en/17-famous-incidents/README.md
   - Diagrams: assets/diagrams/README.md

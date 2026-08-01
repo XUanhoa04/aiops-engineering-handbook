@@ -18,7 +18,7 @@
 
 - [02 — OpenTelemetry](../02-opentelemetry/README.vi.md) — tail sampling trước khi đẩy dữ liệu vào Tempo
 - [03 — Prometheus](../03-prometheus/README.vi.md) — exemplars liên kết metrics với Tempo traces
-- [09 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — traces làm đầu vào cho RCA
+- [11 — Root Cause Analysis](../11-root-cause-analysis/README.vi.md) — traces làm đầu vào cho RCA
 
 ## Next Reading
 
@@ -28,7 +28,7 @@ Sau chương này, hãy chuyển sang [06 — Telemetry Data Plane](../06-data-p
 
 ## Cách đọc chương này
 
-Phần I đọc một failed trace, sau đó cố tình làm mất span, đảo clock, thêm retry, async queue và fan-out để xem RCA còn đứng vững không. Phần II giữ Tempo/TraceQL/storage/sampling reference. Đích đến là một trace evidence contract cho Chapter 09–10, không phải một UI tìm trace đẹp.
+Phần I đọc một failed trace, sau đó cố tình làm mất span, đảo clock, thêm retry, async queue và fan-out để xem RCA còn đứng vững không. Phần II giữ Tempo/TraceQL/storage/sampling reference. Đích đến là một trace evidence contract cho Chapter 10–11, không phải một UI tìm trace đẹp.
 
 ## Phần I — Từ request path đến causal evidence
 
@@ -83,7 +83,7 @@ Giả sử detector timestamps:
 | DB pool saturation | 10:12:00 | 2-min averaging | 10:10:00–10:10:30 |
 | DB acquire error spans | 10:10:44 | 2–5 s ingest | 10:10:39–10:10:42 |
 
-DB metric alert đến sau gateway nhưng estimated onset sớm hơn. Trace event time giúp, song clock uncertainty vẫn tồn tại. Nếu DB node chậm 90 giây, raw span timestamps có thể đặt DB “trước” giả. RCA Chapter 10 dùng onset intervals, ingest delay và clock health; các interval overlap được coi tie thay vì tạo thứ tự chắc chắn giả.
+DB metric alert đến sau gateway nhưng estimated onset sớm hơn. Trace event time giúp, song clock uncertainty vẫn tồn tại. Nếu DB node chậm 90 giây, raw span timestamps có thể đặt DB “trước” giả. RCA Chapter 11 dùng onset intervals, ingest delay và clock health; các interval overlap được coi tie thay vì tạo thứ tự chắc chắn giả.
 
 ### Retry làm duration/count nói dối
 
@@ -155,7 +155,7 @@ Exemplar là đường vào tốt từ metric spike tới trace cụ thể, như
 
 ### Từ traces sang service graph: observed graph không phải intended graph
 
-Trace-derived graph cho biết edge đã quan sát trong window. Nó bỏ edge không có traffic/sampled, có thể thêm edge tạm do debug/canary và không biết ownership/criticality. Chapter 17 hợp nhất observed graph với service catalog, mesh/cloud/config sources.
+Trace-derived graph cho biết edge đã quan sát trong window. Nó bỏ edge không có traffic/sampled, có thể thêm edge tạm do debug/canary và không biết ownership/criticality. Chapter 08 hợp nhất observed graph với service catalog, mesh/cloud/config sources.
 
 Mỗi edge nên có:
 
@@ -238,7 +238,7 @@ Replay gồm:
 - Backend partial không trả zero evidence giả.
 - Auth traces tạo failure episode riêng dù cùng gateway parent symptoms.
 
-### Output contract sang Chapter 09–10
+### Output contract sang Chapter 10–11
 
 Trace evidence gồm: trace/operation identity, parent/link graph, event intervals và clock uncertainty, retry/batch semantics, semantic outcome/failure family, critical/optional edge, sampled cohort/coverage, partial/truncation flags, deployment/scope và control-group statistics. RCA dùng nó cùng metric/log/topology/change evidence; trace không có quyền tự mình tuyên bố root cause.
 
@@ -1377,9 +1377,9 @@ def critical_path(spans):
 
 ### Liên kết chương khác
 
-- [08 — Alert Correlation](../09-alert-correlation/README.vi.md) — nhóm alert bằng `related_trace_ids`
-- [09 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — span analysis, evidence scoring
-- [10 — LLM Agent](../11-investigation-engine/README.vi.md) — agent đọc critical path + log cùng `trace_id`
+- [10 — Alert Correlation](../10-alert-correlation/README.vi.md) — nhóm alert bằng `related_trace_ids`
+- [11 — Root Cause Analysis](../11-root-cause-analysis/README.vi.md) — span analysis, evidence scoring
+- [12 — LLM Agent](../12-investigation-engine/README.vi.md) — agent đọc critical path + log cùng `trace_id`
 
 ---
 

@@ -1,6 +1,6 @@
 # Curriculum — AIOps Engineering Handbook
 
-Single source of truth for chapter order. Dual language: `docs/vi/` · `docs/en/`.
+Single source of truth for chapter order. Chapters 00–17 are dual-language (`docs/vi/` · `docs/en/`); the Vietnamese production track currently extends through Chapter 20.
 
 **Online site (GitHub Pages):** after first deploy →  
 `https://xuanhoa04.github.io/aiops-engineering-handbook/`
@@ -15,21 +15,25 @@ Local: `pip install -r requirements-docs.txt && mkdocs serve`
 Collect (02–05)
     → Data plane (06): normalize · enrich · validate · store · feature
     → Transport (07): Kafka / MSK
-    → Intelligence (08–11): detect · correlate · RCA · LLM
-    → Action (12): remediation + verify
-    → Production (13): run the platform
-    → Case studies (14–16)
-    → Topology & Change (17): graph + deploy/change bus (feeds 06/09/10/12)
+    → Topology & Change (08): graph + deploy/change bus
+    → Intelligence (09–13): detect · correlate · RCA · investigate · remediate
+    → Production & reuse (14–17): run · patterns · domains · replay
+    → Predict & coordinate (18–19): proactive risk · incident control
+    → Govern (20): model/tool/policy risk and runtime authority
 ```
 
 ```mermaid
 graph TD
     C[02-05 Collect] --> DP[06 Data plane]
     DP --> K[07 Kafka]
-    K --> I[08-11 Intelligence]
-    I --> A[12-13 Action + Prod]
-    A --> CS[14-16 Case studies]
-    TC[17 Topology + Change] --> DP
+    K --> TC[08 Topology + Change]
+    TC --> I[09-13 Intelligence + Action]
+    I --> A[14 Production]
+    A --> CS[15-17 Reuse + Replay]
+    CS --> P[18 Predictive Operations]
+    P --> O[19 Incident Operations]
+    O --> G[20 Governance]
+    TC --> DP
     TC --> I
     TC --> A
 ```
@@ -48,16 +52,19 @@ graph TD
 | 05 | `05-tempo` | Tempo | Traces / sampling |
 | 06 | `06-data-plane` | Telemetry Data Plane | Normalize, enrich, retention, feature store |
 | 07 | `07-kafka` | Kafka / Kinesis | Event bus, schema, replay |
-| 08 | `08-anomaly-detection` | Anomaly Detection | Detectors + feature use |
-| 09 | `09-alert-correlation` | Alert Correlation | Dedup, topology, alert enrich |
-| 10 | `10-root-cause-analysis` | Root Cause Analysis | Causation, ranking |
-| 11 | `11-llm-agent` | LLM Investigation Agent | RAG, tools, safety |
-| 12 | `12-remediation` | Automated Remediation | Gates, allow-list |
-| 13 | `13-production` | Production Operations | HA, DR, cost, game days |
-| 14 | `14-bigtech-aiops` | Big Tech AIOps | Google, Netflix, AWS, Meta, Uber |
-| 15 | `15-ecommerce-banking` | E-commerce & Banking | Domain constraints, money path |
-| 16 | `16-famous-incidents` | Famous Incidents | Public outages → design lessons |
-| **17** | **`17-topology-change`** | **Topology & Change** | **Service graph + change/deploy events** |
+| 08 | `08-topology-change` | Topology & Change | Service graph + change/deploy events |
+| 09 | `09-anomaly-detection` | Persistent Detection | Long incidents, drift, ensemble |
+| 10 | `10-alert-correlation` | Alert Correlation | Dedup, topology, concurrent faults |
+| 11 | `11-root-cause-analysis` | Root Cause Analysis | Causation, ranking, counter-evidence |
+| 12 | `12-investigation-engine` | Investigation Engine | Evidence ledger, bounded LLM, handoff |
+| 13 | `13-remediation-safety-engine` | Remediation Safety | Hard gates, canary, rollback |
+| 14 | `14-production-engine` | Production Engine | HA, DR, degraded mode, cost |
+| 15 | `15-aiops-pattern-library` | Pattern Library | Reusable patterns and boundaries |
+| 16 | `16-aiops-domain-packs` | Domain Packs | E-commerce, banking, money path |
+| 17 | `17-aiops-benchmark-replay` | Benchmark Replay | Incident timelines → regression evidence |
+| 18 | `18-predictive-operations` | Predictive Operations | Capacity risk, uncertainty, time-to-exhaustion |
+| 19 | `19-incident-operations` | Incident Operations | Command, state, handoff, concurrent incidents |
+| 20 | `20-aiops-governance` | Governance & Model Risk | Capability risk, policy, audit, revocation |
 
 ## File naming
 

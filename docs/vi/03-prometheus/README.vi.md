@@ -15,8 +15,8 @@
 
 ## Related Documents
 
-- [07 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — metrics của Prometheus làm input
-- [08 — Alert Correlation](../09-alert-correlation/README.vi.md) — tiêu thụ alerts từ Prometheus
+- [09 — Anomaly Detection](../09-anomaly-detection/README.vi.md) — metrics của Prometheus làm input
+- [10 — Alert Correlation](../10-alert-correlation/README.vi.md) — tiêu thụ alerts từ Prometheus
 
 ## Next Reading
 
@@ -26,7 +26,7 @@ Sau chương này, hãy chuyển sang [04 — Loki](../04-loki/README.vi.md).
 
 ## Cách đọc chương này
 
-Phần I đi từ raw samples tới feature/alert có thể dùng trong Chapter 08. Phần II giữ reference về Prometheus, TSDB, PromQL, HA và storage. Mọi công thức ở Phần I đều đi kèm một dãy số và một case mà cách tính ngây thơ thất bại.
+Phần I đi từ raw samples tới feature/alert có thể dùng trong Chapter 09. Phần II giữ reference về Prometheus, TSDB, PromQL, HA và storage. Mọi công thức ở Phần I đều đi kèm một dãy số và một case mà cách tính ngây thơ thất bại.
 
 ## Phần I — Khi time series trở thành evidence
 
@@ -88,7 +88,7 @@ Errors mỗi phút: `2, 3, 2, 3, 60, 75, 82, 80, 78, 74` trên 1.000 requests/ph
 
 Không chọn một cửa sổ “tốt nhất”. Dùng cửa sổ ngắn cho tốc độ và cửa sổ dài cho mức tiêu error budget. Cảnh báo page có thể yêu cầu cả hai vượt ngưỡng; ticket/candidate có thể mở khi short window rất cao dù long window chưa đủ.
 
-Khi incident đã mở, trạng thái không phụ thuộc việc 1-minute rate tạm rơi dưới threshold một phút. Lifecycle và recovery window thuộc Chapter 08/09.
+Khi incident đã mở, trạng thái không phụ thuộc việc 1-minute rate tạm rơi dưới threshold một phút. Lifecycle và recovery window thuộc Chapter 09 và 10.
 
 ### Low traffic: 50% error có thể chỉ là một request
 
@@ -154,7 +154,7 @@ Trong flash sale hợp lệ:
 - DB pool 48% → 66%;
 - burn-rate dưới page threshold.
 
-Đây là regime shift hợp lệ. Trong payment incident, traffic gần như không đổi nhưng pool/retry/error residual cùng lệch. Detector Chapter 08 freeze anomaly-contaminated residual baseline trong Firing, đồng thời có shadow baseline để đánh giá regime mới.
+Đây là regime shift hợp lệ. Trong payment incident, traffic gần như không đổi nhưng pool/retry/error residual cùng lệch. Detector Chapter 09 freeze anomaly-contaminated residual baseline trong Firing, đồng thời có shadow baseline để đánh giá regime mới.
 
 ### Cardinality: mỗi label là phép nhân
 
@@ -247,7 +247,7 @@ Golden metric replay gồm:
 - Replay local/remote store cho cùng quyết định trong allowed tolerance.
 - Cardinality/telemetry failure tạo quality incident và hạ confidence production incident.
 
-### Output contract sang Chapter 08–10
+### Output contract sang Chapter 09–10
 
 Metric feature xuất sang intelligence plane gồm: name/version, value/unit, scope, event interval, numerator/denominator, sample count, freshness, quality flags, source và baseline context. Alert chỉ là một consumer; anomaly detector, correlator và RCA đều cần raw evidence/feature, không nên chỉ nhận chuỗi text từ Alertmanager.
 

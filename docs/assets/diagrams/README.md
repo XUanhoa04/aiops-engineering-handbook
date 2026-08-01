@@ -14,17 +14,20 @@ Các poster Graphviz của handbook được audit và render lại ngày **2026
 | `14-trace-evidence.png` | Critical path, span-error propagation, coverage | 05 |
 | `09-data-plane.png` | Event time, temporal enrichment, quality, revision lineage | 06 |
 | `03-kafka-aiops-topics.png` | KRaft transport, data-product topics, isolated consumers | 07 |
-| `04-intelligence-layer.png` | Persistent detection, incident state, RCA, investigation | 08 |
-| `15-correlation-engine.png` | Dedup, topology/time grouping, overlapping-fault split | 09 |
-| `16-rca-engine.png` | First-red, trace propagation, downstream weight, multi-signal rank | 10 |
-| `17-investigation-engine.png` | Bounded read-only investigation with provenance | 11 |
-| `05-remediation-safety.png` | Proposal, policy gate, canary, verification, rollback | 12 |
-| `06-k8s-production.png` | Continuity, durable state, degraded modes, out-of-band page | 13 |
-| `18-pattern-library.png` | Pattern contract, acceptance, specialization, lifecycle | 14 |
-| `08-payment-critical-path.png` | Payment critical path and domain invariants | 15 |
-| `19-benchmark-replay.png` | Deterministic replay and regression gate | 16 |
-| `10-topology-change.png` | Temporal topology graph and change ledger | 17 |
-| `07-control-vs-data-plane.png` | Business, evidence, decision and safety failure domains | 13, 17 |
+| `10-topology-change.png` | Temporal topology graph and change ledger | 08 |
+| `04-intelligence-layer.png` | Persistent detection, incident state, RCA, investigation | 09, 18 |
+| `15-correlation-engine.png` | Dedup, topology/time grouping, overlapping-fault split | 10 |
+| `16-rca-engine.png` | First-red, trace propagation, downstream weight, multi-signal rank | 11 |
+| `17-investigation-engine.png` | Bounded read-only investigation with provenance | 12, 19 |
+| `05-remediation-safety.png` | Proposal, policy gate, canary, verification, rollback | 13 |
+| `06-k8s-production.png` | Continuity, durable state, degraded modes, out-of-band page | 14 |
+| `18-pattern-library.png` | Pattern contract, acceptance, specialization, lifecycle | 15 |
+| `08-payment-critical-path.png` | Payment critical path and domain invariants | 16 |
+| `19-benchmark-replay.png` | Deterministic replay, regression gate and governance evidence | 17, 20 |
+| `20-predictive-operations.png` | Multi-horizon forecast, capacity risk, refusal and safe outcome | 18 |
+| `21-incident-operations.png` | Command state, ledgers, fault split and explicit handoff | 19 |
+| `22-aiops-governance.png` | Capability risk, evaluation, runtime gates and revocation | 20 |
+| `07-control-vs-data-plane.png` | Business, evidence, decision and safety failure domains | 14, 17, 20 |
 
 ## Assumptions cập nhật
 

@@ -27,9 +27,9 @@ This handbook documents **architecture, design decisions, algorithms, operationa
 
 It is written at **Staff / Principal SRE** depth. It assumes you:
 
-- Are comfortable with distributed systems  
-- Understand Kubernetes and container orchestration  
-- Have hands-on cloud (especially AWS) operations experience  
+- Are comfortable with distributed systems
+- Understand Kubernetes and container orchestration
+- Have hands-on cloud (especially AWS) operations experience
 - Care about **why**, not only **how**
 
 Each chapter follows: **Why → What → How → Trade-offs → Edge cases → Problem-solving → Production practices → Mistakes → Monitoring → Scaling → Security → Cost → Improvement**.
@@ -39,7 +39,7 @@ Each chapter follows: **Why → What → How → Trade-offs → Edge cases → P
 | Focus | What you get |
 |-------|----------------|
 | **Concept-first** | Problem, idea, input data, algorithm steps, output, pros/cons, **when (not) to use** |
-| **Code second** | From Ch.08 onward, implementation sits under **“See the code below”** (collapsed by default) |
+| **Code second** | From Ch.09 onward, implementation sits under **“See the code below”** (collapsed by default) |
 | **Thinking over tools** | Mental models, decision trees, failure modes |
 | **Real production** | Big Tech patterns, e-commerce/banking constraints, public incident postmortems |
 
@@ -59,7 +59,7 @@ Goal: understand **why an AIOps pipeline is designed this way** and **when it fa
 
 **Main path:** Collect → **Data plane** (normalize · enrich · validate · hot/warm/cold store · feature store) → Transport (Kafka) → Intelligence (detect · correlate · RCA · LLM) → Action (decision · remediation · verify).
 
-**Side plane:** **Topology & change** (Ch.17) feeds enrichment, correlation, RCA, and remediation freeze/risk gates.
+**Side plane:** **Topology & change** (Ch.08) feeds enrichment, correlation, RCA, and remediation freeze/risk gates.
 
 ---
 
@@ -76,16 +76,20 @@ graph LR
     E --> DP
     F --> DP
     DP --> G[07 Kafka]
-    G --> H[08 Anomaly]
-    H --> I[09 Correlation]
-    I --> J[10 RCA]
-    J --> K[11 LLM]
-    K --> L[12 Remediation]
-    L --> M[13 Production]
-    M --> N[14 Big Tech]
-    N --> O[15 Ecom Bank]
-    O --> P[16 Incidents]
-    DP --> Q[17 Topology Change]
+    G --> Q[08 Topology Change]
+    Q --> H[09 Persistent Detection]
+    H --> I[10 Correlation]
+    I --> J[11 RCA]
+    J --> K[12 Investigation]
+    K --> L[13 Remediation Safety]
+    L --> M[14 Production]
+    M --> N[15 Pattern Library]
+    N --> O[16 Domain Packs]
+    O --> P[17 Benchmark Replay]
+    P --> R[18 Predictive Operations]
+    R --> S[19 Incident Operations]
+    S --> T[20 Governance]
+    Q --> DP
     Q --> I
     Q --> J
     Q --> L
@@ -101,14 +105,14 @@ graph LR
 
 **Recommended path:**
 
-1. **Foundation** (00–01) — alert fatigue, OODA, SLO, observability before AI  
-2. **Collect** (02–05) — OpenTelemetry, Prometheus, Loki, Tempo  
-3. **Data plane** (06) — normalize → enrich → validate → storage/retention → feature store (**when you need each**)  
-4. **Transport** (07) — Kafka/MSK, schema, replay  
-5. **Intelligence** (08–11) — detect → correlate → RCA → LLM  
-6. **Action + production** (12–13) — safe remediation, dogfooding, DR  
-7. **Case studies** (14–16) — Big Tech, e-commerce/banking, famous incidents  
-8. **Topology & change** (17) — service graph + deploy/change bus (feeds 06 / 09 / 10 / 12)  
+1. **Foundation** (00–01) — alert fatigue, OODA, SLO, observability before AI
+2. **Collect** (02–05) — OpenTelemetry, Prometheus, Loki, Tempo
+3. **Data plane** (06) — normalize → enrich → validate → storage/retention → feature store (**when you need each**)
+4. **Transport** (07) — Kafka/MSK, schema, replay
+5. **Topology & change** (08) — service graph + deploy/change bus
+6. **Intelligence** (09–13) — persistent detection → correlation → RCA → investigation → safe remediation
+7. **Production & reusable evidence** (14–17) — production engine → patterns → domain packs → benchmark replay
+8. **Proactive operations & control** (18–20, Vietnamese) — predictive risk → incident command → governance
 
 **Read online:** [GitHub Pages](https://xuanhoa04.github.io/aiops-engineering-handbook/) · local: `pip install -r requirements-docs.txt && mkdocs serve`
 
@@ -116,7 +120,7 @@ graph LR
 
 ## Table of contents (dual language)
 
-**18 chapters** per language (English + Vietnamese). Same numbering; pick your language column.
+The shared English/Vietnamese sequence is numbered continuously from 00–17. The Vietnamese production track continues with Chapters 18–20.
 
 ### Foundation
 
@@ -146,35 +150,43 @@ graph LR
 |---|---------|------------|--------|
 | 07 | [Kafka / Kinesis](docs/en/07-kafka/README.md) | [Kafka / Kinesis](docs/vi/07-kafka/README.vi.md) | Event bus, schema, lag, replay |
 
+### Topology & change plane
+
+| # | English | Vietnamese | Topic |
+|---|---------|------------|--------|
+| 08 | [Topology & Change](docs/en/08-topology-change/README.md) | [Topology & Change](docs/vi/08-topology-change/README.vi.md) | Service graph, change/deploy bus, freezes |
+
 ### Intelligence
 
 | # | English | Vietnamese | Topic |
 |---|---------|------------|--------|
-| 08 | [Anomaly Detection](docs/en/08-anomaly-detection/README.md) | [Anomaly Detection](docs/vi/08-anomaly-detection/README.vi.md) | Detectors, ensemble, drift, when **not** to use ML |
-| 09 | [Alert Correlation](docs/en/09-alert-correlation/README.md) | [Alert Correlation](docs/vi/09-alert-correlation/README.vi.md) | Dedup, topology, cascade storms |
-| 10 | [Root Cause Analysis](docs/en/10-root-cause-analysis/README.md) | [Root Cause Analysis](docs/vi/10-root-cause-analysis/README.vi.md) | Causation, multi-root, evidence |
-| 11 | [LLM Investigation Agent](docs/en/11-llm-agent/README.md) | [LLM Investigation Agent](docs/vi/11-llm-agent/README.vi.md) | RAG, tools, hallucination, safety |
+| 09 | [Anomaly Detection](docs/en/09-anomaly-detection/README.md) | [Persistent Detection](docs/vi/09-anomaly-detection/README.vi.md) | Long-incident detection, ensemble, drift |
+| 10 | [Alert Correlation](docs/en/10-alert-correlation/README.md) | [Alert Correlation](docs/vi/10-alert-correlation/README.vi.md) | Dedup, topology, concurrent faults |
+| 11 | [Root Cause Analysis](docs/en/11-root-cause-analysis/README.md) | [Root Cause Analysis](docs/vi/11-root-cause-analysis/README.vi.md) | Causation, multi-root, evidence |
+| 12 | [Investigation Engine](docs/en/12-investigation-engine/README.md) | [Investigation Engine](docs/vi/12-investigation-engine/README.vi.md) | Hypothesis ledger, bounded LLM, handoff |
+| 13 | [Automated Remediation](docs/en/13-remediation-safety/README.md) | [Remediation Safety](docs/vi/13-remediation-safety-engine/README.vi.md) | Gates, bounded action, verification |
 
 ### Action + production
 
 | # | English | Vietnamese | Topic |
 |---|---------|------------|--------|
-| 12 | [Automated Remediation](docs/en/12-remediation/README.md) | [Automated Remediation](docs/vi/12-remediation/README.vi.md) | Gates, allow-list, verification |
-| 13 | [Production Operations](docs/en/13-production/README.md) | [Production Operations](docs/vi/13-production/README.vi.md) | HA/DR, cost, game days |
+| 14 | [Production Operations](docs/en/14-production-engine/README.md) | [Production Engine](docs/vi/14-production-engine/README.vi.md) | HA/DR, degraded mode, cost, game days |
 
 ### Case studies
 
 | # | English | Vietnamese | Topic |
 |---|---------|------------|--------|
-| 14 | [Big Tech AIOps](docs/en/14-bigtech-aiops/README.md) | [Big Tech AIOps](docs/vi/14-bigtech-aiops/README.vi.md) | Google, Netflix, AWS, Meta, Uber |
-| 15 | [E-commerce & Banking](docs/en/15-ecommerce-banking/README.md) | [E-commerce & Banking](docs/vi/15-ecommerce-banking/README.vi.md) | BFCM, PCI, money-path safety |
-| 16 | [Famous Incidents](docs/en/16-famous-incidents/README.md) | [Famous Incidents](docs/vi/16-famous-incidents/README.vi.md) | S3, DynamoDB DNS, Meta, Cloudflare |
+| 15 | [Big Tech AIOps](docs/en/15-bigtech-aiops/README.md) | [Pattern Library](docs/vi/15-aiops-pattern-library/README.vi.md) | Reusable patterns and do-not-use boundaries |
+| 16 | [E-commerce & Banking](docs/en/16-ecommerce-banking/README.md) | [Domain Packs](docs/vi/16-aiops-domain-packs/README.vi.md) | Peak, PCI, ledger and money-path invariants |
+| 17 | [Famous Incidents](docs/en/17-famous-incidents/README.md) | [Benchmark Replay](docs/vi/17-aiops-benchmark-replay/README.vi.md) | Incident timelines as regression evidence |
 
-### Topology & change plane
+### Vietnamese production extension
 
 | # | English | Vietnamese | Topic |
 |---|---------|------------|--------|
-| 17 | [Topology & Change](docs/en/17-topology-change/README.md) | [Topology & Change](docs/vi/17-topology-change/README.vi.md) | Service graph, change/deploy bus, freezes |
+| 18 | — | [Predictive Operations](docs/vi/18-predictive-operations/README.vi.md) | Forecast uncertainty, capacity risk and time-to-exhaustion |
+| 19 | — | [Incident Operations](docs/vi/19-incident-operations/README.vi.md) | Command, state, handoff and concurrent incidents |
+| 20 | — | [Governance & Model Risk](docs/vi/20-aiops-governance/README.vi.md) | Capability risk, runtime policy and audit |
 
 ---
 
@@ -191,22 +203,27 @@ graph TD
     LOKI --> DP
     TEMPO --> DP
     DP --> KAFKA[07-kafka]
-    KAFKA --> AD[08-anomaly-detection]
-    AD --> AC[09-alert-correlation]
-    AC --> RCA[10-root-cause-analysis]
-    RCA --> LLM[11-llm-agent]
-    LLM --> REM[12-remediation]
-    REM --> PROD[13-production]
-    PROD --> BIG[14-bigtech-aiops]
-    BIG --> DOM[15-ecommerce-banking]
-    DOM --> INC[16-famous-incidents]
-    TOPO[17-topology-change] --> DP
+    KAFKA --> AD[09-anomaly-detection]
+    AD --> AC[10-alert-correlation]
+    AC --> RCA[11-root-cause-analysis]
+    RCA --> LLM[12-investigation-engine]
+    LLM --> REM[13-remediation-safety]
+    REM --> PROD[14-production-engine]
+    PROD --> BIG[15-bigtech-aiops]
+    BIG --> DOM[16-ecommerce-banking]
+    DOM --> INC[17-famous-incidents]
+    TOPO[08-topology-change] --> DP
     TOPO --> AC
     TOPO --> RCA
     TOPO --> REM
 
     DP -.->|features| AD
     INC -.->|game days| PROD
+    INC --> PRED[18-predictive-operations]
+    PRED --> OPS[19-incident-operations]
+    OPS --> GOV[20-aiops-governance]
+    GOV -.->|runtime policy| LLM
+    GOV -.->|runtime policy| REM
 
     style DP fill:#ede9fe,color:#1e293b
     style TOPO fill:#ede9fe,color:#1e293b
@@ -218,22 +235,22 @@ graph TD
 
 ## How to use this handbook
 
-> For each section, answer three questions before moving on:  
-> (1) What real problem does this solve?  
-> (2) What is the trade-off?  
+> For each section, answer three questions before moving on:
+> (1) What real problem does this solve?
+> (2) What is the trade-off?
 > (3) Which edge case breaks this design?
 
-Choose **[English](docs/en/)** or **[Vietnamese](docs/vi/)** — same chapter numbers.
+Choose **[English](docs/en/)** or **[Vietnamese](docs/vi/)**. Chapters 00–17 share the same numbers; the Vietnamese track adds 18–20.
 
 ### By role
 
 | Role | Suggested path |
 |------|----------------|
-| **DevOps / SRE** | [Observability](docs/en/01-observability/README.md) → [Prometheus](docs/en/03-prometheus/README.md) → [Data plane](docs/en/06-data-plane/README.md) → [Kafka](docs/en/07-kafka/README.md) → [Remediation](docs/en/12-remediation/README.md) → [Incidents](docs/en/16-famous-incidents/README.md) |
-| **Platform Engineer** | [OpenTelemetry](docs/en/02-opentelemetry/README.md) → metrics/logs/traces (03–05) → [Data plane](docs/en/06-data-plane/README.md) → [Production](docs/en/13-production/README.md) |
-| **ML Engineer** | [Anomaly Detection](docs/en/08-anomaly-detection/README.md) → [Correlation](docs/en/09-alert-correlation/README.md) → [RCA](docs/en/10-root-cause-analysis/README.md) → [LLM Agent](docs/en/11-llm-agent/README.md) |
-| **Architect / Tech Lead** | [Introduction](docs/en/00-introduction.md) → [Production](docs/en/13-production/README.md) → [Big Tech](docs/en/14-bigtech-aiops/README.md) → [E-commerce & Banking](docs/en/15-ecommerce-banking/README.md) |
-| **On-call / IC** | [Famous Incidents](docs/en/16-famous-incidents/README.md) → [Correlation](docs/en/09-alert-correlation/README.md) → [RCA](docs/en/10-root-cause-analysis/README.md) → [Remediation](docs/en/12-remediation/README.md) |
+| **DevOps / SRE** | [Observability](docs/en/01-observability/README.md) → [Prometheus](docs/en/03-prometheus/README.md) → [Data plane](docs/en/06-data-plane/README.md) → [Kafka](docs/en/07-kafka/README.md) → [Remediation](docs/en/13-remediation-safety/README.md) → [Incidents](docs/en/17-famous-incidents/README.md) |
+| **Platform Engineer** | [OpenTelemetry](docs/en/02-opentelemetry/README.md) → metrics/logs/traces (03–05) → [Data plane](docs/en/06-data-plane/README.md) → [Production](docs/en/14-production-engine/README.md) |
+| **ML Engineer** | [Anomaly Detection](docs/en/09-anomaly-detection/README.md) → [Correlation](docs/en/10-alert-correlation/README.md) → [RCA](docs/en/11-root-cause-analysis/README.md) → [LLM Agent](docs/en/12-investigation-engine/README.md) |
+| **Architect / Tech Lead** | [Introduction](docs/en/00-introduction.md) → [Production](docs/en/14-production-engine/README.md) → [Big Tech](docs/en/15-bigtech-aiops/README.md) → [E-commerce & Banking](docs/en/16-ecommerce-banking/README.md) |
+| **On-call / IC** | [Famous Incidents](docs/en/17-famous-incidents/README.md) → [Correlation](docs/en/10-alert-correlation/README.md) → [RCA](docs/en/11-root-cause-analysis/README.md) → [Remediation](docs/en/13-remediation-safety/README.md) |
 
 ---
 
@@ -263,7 +280,7 @@ Choose **[English](docs/en/)** or **[Vietnamese](docs/vi/)** — same chapter nu
 | [docs/en/00-introduction.md](docs/en/00-introduction.md) | Start in English |
 | [docs/vi/00-introduction.vi.md](docs/vi/00-introduction.vi.md) | Start in Vietnamese |
 | [docs/en/06-data-plane/README.md](docs/en/06-data-plane/README.md) | Normalize / enrich / store / feature (**when to use**) |
-| [docs/en/17-topology-change/README.md](docs/en/17-topology-change/README.md) | Topology graph + change/deploy bus |
+| [docs/en/08-topology-change/README.md](docs/en/08-topology-change/README.md) | Topology graph + change/deploy bus |
 | [GitHub Pages](https://xuanhoa04.github.io/aiops-engineering-handbook/) | Read online (MkDocs Material) |
 | [docs/assets/diagrams/](docs/assets/diagrams/) | Architecture posters (PNG) |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
@@ -284,11 +301,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) · [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.m
 
 Chapter quality bar:
 
-- **Technically accurate** — grounded in production practice / public sources  
-- **Deep** — Staff/Principal trade-offs, not tutorial fluff  
-- **When to use** — not only *what it is*, but *when you need it / when you should not*  
-- **Edge cases** — how the design breaks and how to defend it  
-- **Production-ready** — monitoring, scaling, security, cost  
+- **Technically accurate** — grounded in production practice / public sources
+- **Deep** — Staff/Principal trade-offs, not tutorial fluff
+- **When to use** — not only *what it is*, but *when you need it / when you should not*
+- **Edge cases** — how the design breaks and how to defend it
+- **Production-ready** — monitoring, scaling, security, cost
 
 Issues / PRs: [github.com/XUanhoa04/aiops-engineering-handbook](https://github.com/XUanhoa04/aiops-engineering-handbook)
 
