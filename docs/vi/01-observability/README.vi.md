@@ -1734,7 +1734,7 @@ flowchart LR
 
 > [!TIP]
 > **Vì sao**
-> Postmortem dạy cách **tư duy**, không phải copy tool stack. Map mental model về [Ch14 Pattern Library](../14-bigtech-aiops/README.vi.md) và kiểm chứng bằng [Ch16 Benchmark Replay](../16-famous-incidents/README.vi.md).
+> Postmortem dạy cách **tư duy**, không phải copy tool stack. Map mental model về [Ch14 Pattern Library](../14-aiops-pattern-library/README.vi.md) và kiểm chứng bằng [Ch16 Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md).
 
 ### 22.1 "Everything is fine" dashboards — Google SRE mindset
 

@@ -654,8 +654,8 @@ Pattern Library biến những bài học đó thành lựa chọn có điều k
 
 ## Đọc tiếp
 
-- [15 — Domain Packs](../15-ecommerce-banking/README.vi.md)
-- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md)
+- [15 — Domain Packs](../15-aiops-domain-packs/README.vi.md)
+- [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md)
 - [Acceptance Template chung](../acceptance-template.vi.md)
 
 --8<-- "docs/includes/acceptance-footer.vi.md"

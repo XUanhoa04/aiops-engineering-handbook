@@ -7,9 +7,9 @@
 ## Prerequisites
 
 - [10 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md): đưa ra candidate và causal evidence, không phải quyền hành động.
-- [11 — Investigation Engine](../11-llm-agent/README.vi.md): cung cấp incident revision, hypothesis, evidence và proposal có giới hạn.
+- [11 — Investigation Engine](../11-investigation-engine/README.vi.md): cung cấp incident revision, hypothesis, evidence và proposal có giới hạn.
 - [17 — Topology & Change Intelligence](../17-topology-change/README.vi.md): cung cấp dependency, ownership, shared resource và change state.
-- [13 — Production Engine](../13-production/README.vi.md): quy định degraded mode, audit, disaster recovery và kill switch.
+- [13 — Production Engine](../13-production-engine/README.vi.md): quy định degraded mode, audit, disaster recovery và kill switch.
 
 ## Sau chapter này, người đọc phải làm được gì?
 
@@ -983,9 +983,9 @@ Trong case payment, engine không tăng gấp đôi pool dù RCA nói pool exhau
 
 ## Tài liệu liên quan
 
-- [11 — Investigation Engine](../11-llm-agent/README.vi.md)
-- [13 — Production Engine](../13-production/README.vi.md)
-- [15 — Domain Packs](../15-ecommerce-banking/README.vi.md)
-- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md)
+- [11 — Investigation Engine](../11-investigation-engine/README.vi.md)
+- [13 — Production Engine](../13-production-engine/README.vi.md)
+- [15 — Domain Packs](../15-aiops-domain-packs/README.vi.md)
+- [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md)
 
 --8<-- "docs/includes/acceptance-footer.vi.md"

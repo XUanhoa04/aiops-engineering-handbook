@@ -1501,7 +1501,7 @@ Luôn hỏi:
 
 > [!TIP]
 > **Vì sao**
-> Vendor-neutral không miễn nhiễm operational failure. Map sang [Ch14 Pattern Library](../14-bigtech-aiops/README.vi.md) và [Ch16 Benchmark Replay](../16-famous-incidents/README.vi.md).
+> Vendor-neutral không miễn nhiễm operational failure. Map sang [Ch14 Pattern Library](../14-aiops-pattern-library/README.vi.md) và [Ch16 Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md).
 
 ### 21.1 Agent/sidecar blast radius
 

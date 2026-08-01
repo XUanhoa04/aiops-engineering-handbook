@@ -13,12 +13,12 @@
 ## Related Documents
 
 - [10 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — nhận các nhóm cảnh báo tương quan làm đầu vào
-- [11 — LLM Agent](../11-llm-agent/README.vi.md) — sử dụng ngữ cảnh tương quan để điều tra sự cố
+- [11 — LLM Agent](../11-investigation-engine/README.vi.md) — sử dụng ngữ cảnh tương quan để điều tra sự cố
 - [03 — Prometheus](../03-prometheus/README.vi.md) — phân nhóm cảnh báo trên Alertmanager (mức độ liên kết đơn giản)
-- [13 — Production Operations](../13-production/README.vi.md) — SLO correlation engine, storm drills
-- [14 — Pattern Library](../14-bigtech-aiops/README.vi.md) — topology correlation và symptom compression patterns
-- [15 — Domain Packs](../15-ecommerce-banking/README.vi.md) — multi-region cascade và payment fan-out storms
-- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md) — alert-storm và concurrent-fault scenarios
+- [13 — Production Operations](../13-production-engine/README.vi.md) — SLO correlation engine, storm drills
+- [14 — Pattern Library](../14-aiops-pattern-library/README.vi.md) — topology correlation và symptom compression patterns
+- [15 — Domain Packs](../15-aiops-domain-packs/README.vi.md) — multi-region cascade và payment fan-out storms
+- [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md) — alert-storm và concurrent-fault scenarios
 
 ## Next Reading
 
@@ -673,7 +673,7 @@ Con số chỉ minh họa. Cost thực theo raw events/s, active episodes, graph
 > [!IMPORTANT]
 > Khi `stale_graph=true`, **tắt** causal ordering dựa topology; chỉ temporal clustering + hiển thị banner: *"Topology outdated — correlation confidence reduced"*. Đừng im lặng dùng graph thối.
 
-**Operational rule**: refresh graph mỗi 5–15 phút; metric `aiops_topology_graph_age_seconds`; page platform nếu age > 30 phút. Domain semantics cho multi-region: [15 — Domain Packs](../15-ecommerce-banking/README.vi.md).
+**Operational rule**: refresh graph mỗi 5–15 phút; metric `aiops_topology_graph_age_seconds`; page platform nếu age > 30 phút. Domain semantics cho multi-region: [15 — Domain Packs](../15-aiops-domain-packs/README.vi.md).
 
 ### 19.2 Time-window tuning: quá ngắn vs quá dài
 
@@ -711,7 +711,7 @@ Con số chỉ minh họa. Cost thực theo raw events/s, active episodes, graph
 > [!TIP]
 > **UX an toàn**: khi score merge ở vùng xám (0.55–0.70), tạo **incident linked** (related) thay vì hard-merge. On-call thấy "có thể liên quan" nhưng vẫn có 2 timeline — tốt hơn 1 timeline sai.
 
-Scenario multi-failure: [16 — Benchmark Replay](../16-famous-incidents/README.vi.md).
+Scenario multi-failure: [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md).
 
 ### 19.4 Storm suppression UX cho con người
 
@@ -746,7 +746,7 @@ Suppression kỹ thuật (dedup, silence) không đủ — cần **UX giúp não
 > [!NOTE]
 > **Câu hỏi kiểm tra**: Bạn nhận 1 incident card với 80 suppressed alerts nhưng root là `api-gateway`. Bạn tin hay nghi? Dựa vào **signal nào** để quyết định split?
 
-Drill storm định kỳ trong game day: [13 — Production](../13-production/README.vi.md). Pattern composition: [14 — Pattern Library](../14-bigtech-aiops/README.vi.md).
+Drill storm định kỳ trong game day: [13 — Production](../13-production-engine/README.vi.md). Pattern composition: [14 — Pattern Library](../14-aiops-pattern-library/README.vi.md).
 
 ### 19.6 Decision log: merge / link / split
 

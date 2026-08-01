@@ -607,8 +607,8 @@ Pattern chỉ được coi là áp dụng thành công khi Domain Pack có golde
 
 ## Đọc tiếp
 
-- [14 — Pattern Library](../14-bigtech-aiops/README.vi.md)
-- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md)
+- [14 — Pattern Library](../14-aiops-pattern-library/README.vi.md)
+- [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md)
 - [Acceptance Template chung](../acceptance-template.vi.md)
 
 --8<-- "docs/includes/acceptance-footer.vi.md"

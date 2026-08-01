@@ -14,11 +14,11 @@
 
 - [09 — Alert Correlation](../09-alert-correlation/README.vi.md) — nhận các sự kiện bất thường
 - [10 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — sử dụng ngữ cảnh bất thường
-- [11 — LLM Agent](../11-llm-agent/README.vi.md) — sử dụng tín hiệu bất thường phục vụ điều tra sự cố
-- [13 — Production Operations](../13-production/README.vi.md) — vận hành detector trên production, SLO platform
-- [14 — Pattern Library](../14-bigtech-aiops/README.vi.md) — pattern detection và production forces
-- [15 — Domain Packs](../15-ecommerce-banking/README.vi.md) — peak, calendar, compliance và money-path detection
-- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md) — drift, confounder và long-incident scenarios
+- [11 — LLM Agent](../11-investigation-engine/README.vi.md) — sử dụng tín hiệu bất thường phục vụ điều tra sự cố
+- [13 — Production Operations](../13-production-engine/README.vi.md) — vận hành detector trên production, SLO platform
+- [14 — Pattern Library](../14-aiops-pattern-library/README.vi.md) — pattern detection và production forces
+- [15 — Domain Packs](../15-aiops-domain-packs/README.vi.md) — peak, calendar, compliance và money-path detection
+- [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md) — drift, confounder và long-incident scenarios
 
 ## Next Reading
 
@@ -1601,7 +1601,7 @@ Ba hiện tượng trông giống nhau trên dashboard nhưng đòi hỏi phản
 **Playbook quyết định**:
 
 
-Xem thêm seasonality semantics tại [15 — Domain Packs](../15-ecommerce-banking/README.vi.md) và regression scenarios tại [16 — Benchmark Replay](../16-famous-incidents/README.vi.md).
+Xem thêm seasonality semantics tại [15 — Domain Packs](../15-aiops-domain-packs/README.vi.md) và regression scenarios tại [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md).
 
 ### 25.2 Alert Fatigue từ mô hình quá nhạy
 
@@ -1699,7 +1699,7 @@ Không có label sạch → không có retrain có ý nghĩa. Nhưng **label t�
 > [!NOTE]
 > **Câu hỏi kiểm tra**: Detector im ắng 48h trên production 100 service — bạn kiểm tra **3 tín hiệu nào trước** trước khi tin rằng "hệ thống khỏe"?
 
-Liên hệ vận hành platform-level: [13 — Production](../13-production/README.vi.md). Cách chọn detection pattern theo tier: [14 — Pattern Library](../14-bigtech-aiops/README.vi.md).
+Liên hệ vận hành platform-level: [13 — Production](../13-production-engine/README.vi.md). Cách chọn detection pattern theo tier: [14 — Pattern Library](../14-aiops-pattern-library/README.vi.md).
 
 ### 25.7 Case study end-to-end: checkout chậm sau deploy
 

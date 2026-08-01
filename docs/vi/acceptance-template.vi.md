@@ -403,7 +403,7 @@ Khi một capability pass template, người review biết chính xác phạm vi
 
 ## Liên kết nhanh
 
-- [14 — Pattern Library](14-bigtech-aiops/README.vi.md)
-- [15 — Domain Packs](15-ecommerce-banking/README.vi.md)
-- [16 — Benchmark Replay](16-famous-incidents/README.vi.md)
-- [13 — Production Engine](13-production/README.vi.md)
+- [14 — Pattern Library](14-aiops-pattern-library/README.vi.md)
+- [15 — Domain Packs](15-aiops-domain-packs/README.vi.md)
+- [16 — Benchmark Replay](16-aiops-benchmark-replay/README.vi.md)
+- [13 — Production Engine](13-production-engine/README.vi.md)

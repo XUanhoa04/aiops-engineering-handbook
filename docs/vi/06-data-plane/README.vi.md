@@ -31,11 +31,11 @@
 - [08 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — consumer feature / train-serve
 - [09 — Alert Correlation](../09-alert-correlation/README.vi.md) — cần topology & canonical incident events
 - [10 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — phụ thuộc enrichment + change context
-- [11 — LLM Agent](../11-llm-agent/README.vi.md) — context pack từ store / KB / embedding
-- [12 — Remediation](../12-remediation/README.vi.md) — audit store, verify metrics
-- [13 — Production](../13-production/README.vi.md) — SLO của chính pipeline
-- [15 — Domain Packs](../15-ecommerce-banking/README.vi.md) — retention, PII và money-path semantics
-- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md) — control/data-plane failure scenarios
+- [11 — LLM Agent](../11-investigation-engine/README.vi.md) — context pack từ store / KB / embedding
+- [12 — Remediation](../12-remediation-safety-engine/README.vi.md) — audit store, verify metrics
+- [13 — Production](../13-production-engine/README.vi.md) — SLO của chính pipeline
+- [15 — Domain Packs](../15-aiops-domain-packs/README.vi.md) — retention, PII và money-path semantics
+- [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md) — control/data-plane failure scenarios
 
 ## Next Reading
 
@@ -324,13 +324,13 @@ Collect → Normalize → Enrich → Validate → Buffer/Store → Feature → D
 
 ### 1.4 Quan hệ với control plane
 
-Đừng nhầm **telemetry data plane** (chương này) với **Kubernetes control plane** hay **product data plane** trong [Benchmark Replay](../16-famous-incidents/README.vi.md). Ở đây:
+Đừng nhầm **telemetry data plane** (chương này) với **Kubernetes control plane** hay **product data plane** trong [Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md). Ở đây:
 
 - **Telemetry Data Plane**: đường đi và biến đổi của metrics/logs/traces/events phục vụ AIOps.
 - **Intelligence Plane**: detect → correlate → RCA → LLM → decide.
 - **Action / Control Plane (AIOps)**: remediation policy, break-glass, audit.
 
-Ba plane phải fail độc lập. Data plane down ≠ product traffic down — nhưng intelligence sẽ mù. Xem thêm [Production](../13-production/README.vi.md) về fail-open alerting.
+Ba plane phải fail độc lập. Data plane down ≠ product traffic down — nhưng intelligence sẽ mù. Xem thêm [Production](../13-production-engine/README.vi.md) về fail-open alerting.
 
 ---
 
@@ -1133,7 +1133,7 @@ Chi tiết §11.
 
 **WHEN cần**:
 
-- Join telemetry với business KPIs (GMV, auth success) cho [e-commerce/banking](../15-ecommerce-banking/README.vi.md).
+- Join telemetry với business KPIs (GMV, auth success) cho [e-commerce/banking](../15-aiops-domain-packs/README.vi.md).
 - Ad-hoc data science ngoài PromQL.
 - Long-horizon seasonality yearly.
 
@@ -1145,7 +1145,7 @@ Chi tiết §11.
 |-------|----------|----------|
 | **Incident store** | IncidentEvent, links, timeline | OLTP updates state; không nhét Kafka log |
 | **Audit store** | Who approved remediate, policy decisions | Immutable, WORM khi regulated |
-| **Embedding / KB** | Runbooks, postmortems, chunk vectors | Serving LLM retrieval [11](../11-llm-agent/README.vi.md) |
+| **Embedding / KB** | Runbooks, postmortems, chunk vectors | Serving LLM retrieval [11](../11-investigation-engine/README.vi.md) |
 
 ### 8.8 Decision: đặt dữ liệu ở đâu?
 
@@ -1264,7 +1264,7 @@ stateDiagram-v2
 ### 10.5 Audit
 
 - Immutable decisions: pages fired, suppressions, remediations.
-- **WHEN**: always for actions; long for regulated industries ([15](../15-ecommerce-banking/README.vi.md)).
+- **WHEN**: always for actions; long for regulated industries ([15](../15-aiops-domain-packs/README.vi.md)).
 
 ### 10.6 Delete & legal hold
 
@@ -1340,7 +1340,7 @@ flowchart TD
 | **Full FS (Feast/Tecton/custom)** | Nhiều model, entity keys, online low-latency | Cao — chỉ khi ROI |
 
 > [!TIP]
-> Org 30–100 eng thường thắng với **feature definitions trong Git + test parity online/offline**, chưa cần platform hyperscale. Xem cách chọn theo forces trong [Pattern Library](../14-bigtech-aiops/README.vi.md).
+> Org 30–100 eng thường thắng với **feature definitions trong Git + test parity online/offline**, chưa cần platform hyperscale. Xem cách chọn theo forces trong [Pattern Library](../14-aiops-pattern-library/README.vi.md).
 
 ### 11.5 Entity keys AIOps
 
@@ -1446,9 +1446,9 @@ flowchart LR
 
 ### 13.2 WHEN redaction bắt buộc early
 
-- Banking / healthcare / identity platforms ([15](../15-ecommerce-banking/README.vi.md)).
+- Banking / healthcare / identity platforms ([15](../15-aiops-domain-packs/README.vi.md)).
 - Multi-tenant với risk cross-tenant leakage.
-- Bất kỳ path nào feed LLM agent ([11](../11-llm-agent/README.vi.md)).
+- Bất kỳ path nào feed LLM agent ([11](../11-investigation-engine/README.vi.md)).
 
 ### 13.3 WHEN có thể trì hoãn (cẩn trọng)
 
@@ -1587,7 +1587,7 @@ flowchart LR
 | **Train on prod raw unrestricted** | Leak + skew | Materialized governed sets |
 | **Enrich from CMDB weekly only** | Owner sai sau reorg | Webhook + miss metrics |
 | **Detector owns features privately** | 5 z-score khác nhau | Shared feature_set version |
-| **Fail-closed intelligence** | Kafka down → no pages at all | Fail-open baseline alerts [13](../13-production/README.vi.md) |
+| **Fail-closed intelligence** | Kafka down → no pages at all | Fail-open baseline alerts [13](../13-production-engine/README.vi.md) |
 | **Cardinality as feature** | user_id label “để AD” | Aggregate / hash carefully |
 | **Reprocess = re-page** | Replay spam on-call | Idempotent + shadow mode |
 
@@ -1924,7 +1924,7 @@ Dùng trong design review hoặc phỏng vấn Principal. Không có đáp án m
 
 #### G) Cost anomaly on the data plane itself
 
-- Detect “ingest cost spike” như một class anomaly — gợi ý ở [08](../08-anomaly-detection/README.vi.md) / [13](../13-production/README.vi.md), chưa playbook riêng.
+- Detect “ingest cost spike” như một class anomaly — gợi ý ở [08](../08-anomaly-detection/README.vi.md) / [13](../13-production-engine/README.vi.md), chưa playbook riêng.
 
 > [!TIP]
 > Khi leadership hỏi “còn thiếu gì?”, đưa §21.2 thay vì hứa feature store cure-all. Sự trung thực này giữ trust — tài sản quý hơn một model mới.
@@ -1954,7 +1954,7 @@ Collect → Normalize → Enrich → Validate → Buffer/Store → Feature → D
 
 | Trước | Chương này | Sau |
 |-------|------------|-----|
-| [02 OTel](../02-opentelemetry/README.vi.md) [03 Prom](../03-prometheus/README.vi.md) [04 Loki](../04-loki/README.vi.md) [05 Tempo](../05-tempo/README.vi.md) | **06 Data Plane** | [07 Kafka](../07-kafka/README.vi.md) → [08 AD](../08-anomaly-detection/README.vi.md) → … → [13 Production](../13-production/README.vi.md) |
+| [02 OTel](../02-opentelemetry/README.vi.md) [03 Prom](../03-prometheus/README.vi.md) [04 Loki](../04-loki/README.vi.md) [05 Tempo](../05-tempo/README.vi.md) | **06 Data Plane** | [07 Kafka](../07-kafka/README.vi.md) → [08 AD](../08-anomaly-detection/README.vi.md) → … → [13 Production](../13-production-engine/README.vi.md) |
 
 ### 22.3 Poster
 

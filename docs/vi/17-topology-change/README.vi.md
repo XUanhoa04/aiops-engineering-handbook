@@ -4,7 +4,7 @@
 
 *Poster: topology sync + change bus → enrich / correlate / RCA / remediation freeze.*
 
-> **Topology (đồ thị phụ thuộc dịch vụ / CMDB-like graph) và change/deploy event plane là hai data product first-class mà hầu hết nền tảng AIOps “giả định có sẵn” nhưng hiếm khi vận hành đúng. Chương này lấp khoảng trống: cách mô hình hóa, đồng bộ, giữ tươi, và contract với enrichment ([06](../06-data-plane/README.vi.md)), correlation ([09](../09-alert-correlation/README.vi.md)), RCA ([10](../10-root-cause-analysis/README.vi.md)), và remediation an toàn ([12](../12-remediation/README.vi.md)). Không có topology + change tin cậy, intelligence layer chỉ là máy đoán triệu chứng.**
+> **Topology (đồ thị phụ thuộc dịch vụ / CMDB-like graph) và change/deploy event plane là hai data product first-class mà hầu hết nền tảng AIOps “giả định có sẵn” nhưng hiếm khi vận hành đúng. Chương này lấp khoảng trống: cách mô hình hóa, đồng bộ, giữ tươi, và contract với enrichment ([06](../06-data-plane/README.vi.md)), correlation ([09](../09-alert-correlation/README.vi.md)), RCA ([10](../10-root-cause-analysis/README.vi.md)), và remediation an toàn ([12](../12-remediation-safety-engine/README.vi.md)). Không có topology + change tin cậy, intelligence layer chỉ là máy đoán triệu chứng.**
 
 ### Architecture poster — pipeline AIOps end-to-end
 
@@ -31,12 +31,12 @@
 - [08 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — feature `deploy_age`, `change_in_window`
 - [09 — Alert Correlation](../09-alert-correlation/README.vi.md) — topology-aware grouping
 - [10 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — change-driven RCA, graph walk
-- [11 — LLM Agent](../11-llm-agent/README.vi.md) — context pack: owner, deps, recent changes
-- [12 — Remediation](../12-remediation/README.vi.md) — blast radius, freeze, dual-control
-- [13 — Production](../13-production/README.vi.md) — platform SLO, game days
-- [14 — Pattern Library](../14-bigtech-aiops/README.vi.md) — topology-aware correlation và stale-graph patterns
-- [15 — Domain Packs](../15-ecommerce-banking/README.vi.md) — payment path, audit và dual-control semantics
-- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md) — cascade, partial failure và change-confounder scenarios
+- [11 — LLM Agent](../11-investigation-engine/README.vi.md) — context pack: owner, deps, recent changes
+- [12 — Remediation](../12-remediation-safety-engine/README.vi.md) — blast radius, freeze, dual-control
+- [13 — Production](../13-production-engine/README.vi.md) — platform SLO, game days
+- [14 — Pattern Library](../14-aiops-pattern-library/README.vi.md) — topology-aware correlation và stale-graph patterns
+- [15 — Domain Packs](../15-aiops-domain-packs/README.vi.md) — payment path, audit và dual-control semantics
+- [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md) — cascade, partial failure và change-confounder scenarios
 
 ## Next Reading
 
@@ -352,7 +352,7 @@ Cloud tags (`team`, `service`, `env`, `cost-center`) đủ khi:
 - Ít call-graph app (batch ETL, simple 3-tier).
 - Chưa có microservice cascade.
 
-**Không đủ** khi payment path có 8 hop ([15](../15-ecommerce-banking/README.vi.md), [diagram payment path](../../assets/diagrams/08-payment-critical-path.png)).
+**Không đủ** khi payment path có 8 hop ([15](../15-aiops-domain-packs/README.vi.md), [diagram payment path](../../assets/diagrams/08-payment-critical-path.png)).
 
 ### 3.5 Hybrid thực dụng (khuyến nghị đa số org)
 
@@ -872,7 +872,7 @@ Topology edit = **change** — phải vào change plane (§8–9).
 | Edge precision (sampled audit) | > 95% critical paths |
 | Time to detect sync fail | < 5 min alert |
 
-Burn error budget topology → **freeze** feature flags bật topo-auto-remediation (liên hệ [13](../13-production/README.vi.md)).
+Burn error budget topology → **freeze** feature flags bật topo-auto-remediation (liên hệ [13](../13-production-engine/README.vi.md)).
 
 > [!WARNING]
 > Đừng page on-call app vì `graph_age` vàng nếu chưa có runbook — page **platform AIOps**. Nhưng **cấm im lặng**.
@@ -1061,7 +1061,7 @@ Flag systems: LaunchDarkly, Unleash, Flagsmith, home-grown — adapter thống n
 
 </details>
 
-Nguồn: session recording (Teleport), `kubectl` audit, AWS Console — normalize best-effort; **missing manual change** là blind spot lớn (xem [16](../16-famous-incidents/README.vi.md)).
+Nguồn: session recording (Teleport), `kubectl` audit, AWS Console — normalize best-effort; **missing manual change** là blind spot lớn (xem [16](../16-aiops-benchmark-replay/README.vi.md)).
 
 ### 9.6 Freeze windows
 
@@ -1193,7 +1193,7 @@ T+0:18  error_rate payment ↑; order/checkout alerts fan-out
 **Orient đúng:** topology nói checkout→payment→ledger; change bus có *cả hai* events; RCA/LLM phải surface **compound**, không pick-one-greedy. Remediation: pause ramp deploy *trước* scale storm nếu canary error attributed; scale nếu baseline saturating.
 
 > [!IMPORTANT]
-> Compound failure là norm trong commerce peak ([15](../15-ecommerce-banking/README.vi.md), [16](../16-famous-incidents/README.vi.md)). Change correlation đơn nhân là anti-pattern nhận thức.
+> Compound failure là norm trong commerce peak ([15](../15-aiops-domain-packs/README.vi.md), [16](../16-aiops-benchmark-replay/README.vi.md)). Change correlation đơn nhân là anti-pattern nhận thức.
 
 ### 10.8 Window configuration defaults (starting point)
 
@@ -1212,7 +1212,7 @@ Tune bằng postmortem false-blame — không copy hyperscale defaults mù.
 
 > [!NOTE]
 > **Ý TƯỞNG**
-> Remediation an toàn ([12](../12-remediation/README.vi.md)) cần **dual-control với change calendar**: không auto-restart payment lúc freeze Black Friday chỉ vì RCA tự tin 0.9. Freeze và risk score là **gates**, không decoration.
+> Remediation an toàn ([12](../12-remediation-safety-engine/README.vi.md)) cần **dual-control với change calendar**: không auto-restart payment lúc freeze Black Friday chỉ vì RCA tự tin 0.9. Freeze và risk score là **gates**, không decoration.
 
 ### 11.1 Risk score inputs
 
@@ -1285,7 +1285,7 @@ RCA suggest restart 20 services → score blast via topology subgraph × tier we
 
 ### 11.6 Banking dual-control (preview §14)
 
-Hai approver roles khác nhau; maker ≠ checker; mọi decision immutable log ([15](../15-ecommerce-banking/README.vi.md)).
+Hai approver roles khác nhau; maker ≠ checker; mọi decision immutable log ([15](../15-aiops-domain-packs/README.vi.md)).
 
 ---
 
@@ -1433,7 +1433,7 @@ Safety poster: [diagram](../../assets/diagrams/05-remediation-safety.png).
 
 > [!NOTE]
 > **Ý TƯỞNG**
-> Ở banking/e-commerce regulated ([15](../15-ecommerce-banking/README.vi.md)), topology không chỉ kỹ thuật — là **bản đồ trách nhiệm và blast radius tiền**. Mọi chỉnh sửa ownership/tier/edges declared phải audit được như change production.
+> Ở banking/e-commerce regulated ([15](../15-aiops-domain-packs/README.vi.md)), topology không chỉ kỹ thuật — là **bản đồ trách nhiệm và blast radius tiền**. Mọi chỉnh sửa ownership/tier/edges declared phải audit được như change production.
 
 ### 14.1 Threats
 
@@ -1654,7 +1654,7 @@ Node drain → mesh edges biến mất hàng loạt:
 | Startup 10 eng | L2 |
 | Mid 50–150 eng | L3 |
 | Large / bank | L4 |
-| Hyperscale | L5 patterns chọn lọc ([14](../14-bigtech-aiops/README.vi.md)) |
+| Hyperscale | L5 patterns chọn lọc ([14](../14-aiops-pattern-library/README.vi.md)) |
 
 ### 17.4 Không nhảy cóc
 
@@ -1682,7 +1682,7 @@ Jump L2→L4 không có health/fallback = anti-pattern §16.5.
 5. [ ] Env/region dimensions on every node.
 6. [ ] Edge types differentiated (`calls` vs `writes_to` vs `runs_on`).
 7. [ ] External dependencies modeled.
-8. [ ] Payment/money path declared & reviewed ([15](../15-ecommerce-banking/README.vi.md)).
+8. [ ] Payment/money path declared & reviewed ([15](../15-aiops-domain-packs/README.vi.md)).
 
 ### 18.2 Sources & sync
 
@@ -1742,7 +1742,7 @@ Jump L2→L4 không có health/fallback = anti-pattern §16.5.
 47. [ ] Runbooks for stale graph & change bus lag.
 48. [ ] Cost budgets for graph DB/cache.
 49. [ ] Quarterly critical-path certification.
-50. [ ] Game day: deploy bad + topo/change assisted recovery ([13](../13-production/README.vi.md)).
+50. [ ] Game day: deploy bad + topo/change assisted recovery ([13](../13-production-engine/README.vi.md)).
 
 ### 18.8 Quality KPIs
 
@@ -1951,12 +1951,12 @@ Tự chấm trước khi ship platform:
 - [08 — Anomaly Detection](../08-anomaly-detection/README.vi.md)
 - [09 — Alert Correlation](../09-alert-correlation/README.vi.md)
 - [10 — RCA](../10-root-cause-analysis/README.vi.md)
-- [11 — LLM Agent](../11-llm-agent/README.vi.md)
-- [12 — Remediation](../12-remediation/README.vi.md)
-- [13 — Production](../13-production/README.vi.md)
-- [14 — Pattern Library](../14-bigtech-aiops/README.vi.md)
-- [15 — Domain Packs](../15-ecommerce-banking/README.vi.md)
-- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md)
+- [11 — LLM Agent](../11-investigation-engine/README.vi.md)
+- [12 — Remediation](../12-remediation-safety-engine/README.vi.md)
+- [13 — Production](../13-production-engine/README.vi.md)
+- [14 — Pattern Library](../14-aiops-pattern-library/README.vi.md)
+- [15 — Domain Packs](../15-aiops-domain-packs/README.vi.md)
+- [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md)
 - [Architecture diagrams](../../assets/diagrams/README.md)
 
 ### Khái niệm công nghiệp (đọc thêm)

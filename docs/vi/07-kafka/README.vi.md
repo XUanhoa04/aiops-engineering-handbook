@@ -18,8 +18,8 @@
 - [17 — Topology & Change](../17-topology-change/README.vi.md) — topology snapshot và change-event topics
 - [08 — Anomaly Detection](../08-anomaly-detection/README.vi.md) — tiêu thụ telemetry từ Kafka, publish anomaly events
 - [09 — Alert Correlation](../09-alert-correlation/README.vi.md) — tiêu thụ các sự kiện bất thường từ Kafka
-- [12 — Remediation](../12-remediation/README.vi.md) — gửi các kích hoạt remediation tới Kafka
-- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md) — scenario transport, lag và cascade failure
+- [12 — Remediation](../12-remediation-safety-engine/README.vi.md) — gửi các kích hoạt remediation tới Kafka
+- [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md) — scenario transport, lag và cascade failure
 
 ## Next Reading
 
@@ -1835,7 +1835,7 @@ graph TD
 Mỗi thêm 1 consumer group = thêm fetch load trên broker (gần như nhân bản đọc). 5 groups trên topic high-ingress raw-metrics đắt hơn 5 groups trên anomalies (volume nhỏ). **Fan-out mạnh ở tầng processed events; fan-out thận trọng ở raw high-volume.**
 
 > [!TIP]
-> **Audit trail cho remediation**: group `remediation-audit` trên `aiops-remediation-triggers` + `results` tạo immutable story "ai/cái gì trigger action lúc nào" — quan trọng post-incident và regulated environments ([§26](#26-msk-vs-self-managed-for-regulated-industries), [16 — Benchmark Replay](../16-famous-incidents/README.vi.md)).
+> **Audit trail cho remediation**: group `remediation-audit` trên `aiops-remediation-triggers` + `results` tạo immutable story "ai/cái gì trigger action lúc nào" — quan trọng post-incident và regulated environments ([§26](#26-msk-vs-self-managed-for-regulated-industries), [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md)).
 
 ---
 
@@ -1898,7 +1898,7 @@ flowchart TB
 2. Verify bypass Alertmanager → PagerDuty vẫn fire critical SLO  
 3. **Disable auto-remediation** (feature flag)  
 4. Không xóa log segment tay; communicate "AIOps degraded"  
-5. Recovery: lag drain + DLQ review; postmortem ([15](../16-famous-incidents/README.vi.md))
+5. Recovery: lag drain + DLQ review; postmortem ([15](../16-aiops-benchmark-replay/README.vi.md))
 
 > [!TIP]
 > **Chaos test**: block Kafka từ AD namespace (NetworkPolicy) — PagerDuty vẫn phải nhận high-priority từ Prometheus. Bypass không test = chỉ tồn tại trên wiki.
@@ -1954,7 +1954,7 @@ Remediation audit bắt buộc:
 | 2 | "Exactly-once" double restart | Rebalance giữa K8s restart và commit offset → service restart 2 lần | Side effect không idempotent | [§21](#21-exactly-once-myths-in-aiops-pipeline) |
 | 3 | Schema "chỉ thêm 1 field" | Field bắt buộc không default → correlator crash; training train trên data gap | Breaking schema + nuốt lỗi | [§22](#22-poison-messages-schema-evolution) |
 | 4 | Hot key Black Friday | checkout = 60% volume → 1 partition maxed; scale pods vô ích | Hot partition | [§23](#23-hot-partitions-from-high-cardinality-keys) |
-| 5 | Kafka down, all quiet | MSK network 18 phút; Prometheus rules đã tắt → không page | AIOps sole path, không bypass | [§25](#25-failure-mode-kafka-down-aiops-blind-bypass), [16](../16-famous-incidents/README.vi.md) |
+| 5 | Kafka down, all quiet | MSK network 18 phút; Prometheus rules đã tắt → không page | AIOps sole path, không bypass | [§25](#25-failure-mode-kafka-down-aiops-blind-bypass), [16](../16-aiops-benchmark-replay/README.vi.md) |
 | 6 | Shared group "tiết kiệm" | Correlation + SIEM chung group → chỉ một bên nhận mỗi partition | Nhầm fan-out với compete | [§24](#24-multi-consumer-fan-out-ad-correlation-audit) |
 
 ---
@@ -1971,7 +1971,7 @@ Dùng các câu hỏi này để review thiết kế Kafka/AIOps của team — 
 6. `event_id` sinh ở đâu? TTL dedupe ≥ reprocess window chưa?
 7. Schema Registry mode? Ai được evolve schema production? Poison → DLQ hay skip?
 8. Liệt kê mọi `group.id` trên `aiops-anomalies`. Group nào critical? Group nào được lag?
-9. Lần chaos Kafka-down gần nhất? Bypass Alertmanager có fire không? ([15](../16-famous-incidents/README.vi.md))
+9. Lần chaos Kafka-down gần nhất? Bypass Alertmanager có fire không? ([15](../16-aiops-benchmark-replay/README.vi.md))
 10. Storage topic đắt nhất: đã tính ingress × retention × RF / compression chưa?
 11. [07 — AD](../08-anomaly-detection/README.vi.md) / [08 — Correlation](../09-alert-correlation/README.vi.md): key design có khớp giả định ordering không?
 12. Correlation lag 10 phút — auto-remediation còn fire? Ai giữ feature flag?
@@ -2036,6 +2036,6 @@ Dùng các câu hỏi này để review thiết kế Kafka/AIOps của team — 
 ## Further Reading
 
 - [Designing Event-Driven Systems (O'Reilly)](https://www.oreilly.com/library/view/designing-event-driven-systems/9781492038252/) · [Kafka Connect](https://kafka.apache.org/documentation/#connect) · [Flink + Kafka](https://flink.apache.org/connectors/kafka.html)
-- Downstream: [08 — AD](../08-anomaly-detection/README.vi.md) · [09 — Correlation](../09-alert-correlation/README.vi.md) · [16 — Benchmark Replay](../16-famous-incidents/README.vi.md)
+- Downstream: [08 — AD](../08-anomaly-detection/README.vi.md) · [09 — Correlation](../09-alert-correlation/README.vi.md) · [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md)
 
 --8<-- "docs/includes/acceptance-footer.vi.md"

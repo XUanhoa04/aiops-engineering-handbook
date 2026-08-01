@@ -1372,7 +1372,7 @@ def critical_path(spans):
 
 - [08 — Alert Correlation](../09-alert-correlation/README.vi.md) — nhóm alert bằng `related_trace_ids`
 - [09 — Root Cause Analysis](../10-root-cause-analysis/README.vi.md) — span analysis, evidence scoring
-- [10 — LLM Agent](../11-llm-agent/README.vi.md) — agent đọc critical path + log cùng `trace_id`
+- [10 — LLM Agent](../11-investigation-engine/README.vi.md) — agent đọc critical path + log cùng `trace_id`
 
 ---
 

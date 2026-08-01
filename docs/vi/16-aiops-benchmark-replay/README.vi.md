@@ -817,9 +817,9 @@ Nếu mỗi revision phải vượt qua các câu hỏi đó trước rollout, A
 
 ## Tài liệu liên quan
 
-- [14 — Pattern Library](../14-bigtech-aiops/README.vi.md)
-- [15 — Domain Packs](../15-ecommerce-banking/README.vi.md)
+- [14 — Pattern Library](../14-aiops-pattern-library/README.vi.md)
+- [15 — Domain Packs](../15-aiops-domain-packs/README.vi.md)
 - [Acceptance Template chung](../acceptance-template.vi.md)
-- [13 — Production Engine](../13-production/README.vi.md)
+- [13 — Production Engine](../13-production-engine/README.vi.md)
 
 --8<-- "docs/includes/acceptance-footer.vi.md"

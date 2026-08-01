@@ -13,16 +13,16 @@
 
 ## Related Documents
 
-- [10 — LLM Agent](../11-llm-agent/README.vi.md) — sử dụng đầu ra của RCA để điều tra và xử lý
-- [11 — Remediation](../12-remediation/README.vi.md) — kết quả RCA giúp định hướng lựa chọn phương án khắc phục
-- [12 — Production Operations](../13-production/README.vi.md) — đo accuracy RCA, game day drills
-- [14 — Pattern Library](../14-bigtech-aiops/README.vi.md) — causal diagnosis patterns
-- [15 — Domain Packs](../15-ecommerce-banking/README.vi.md) — RCA cho payment cascade và fraud confounders
-- [16 — Benchmark Replay](../16-famous-incidents/README.vi.md) — correlation≠causation scenarios
+- [10 — LLM Agent](../11-investigation-engine/README.vi.md) — sử dụng đầu ra của RCA để điều tra và xử lý
+- [11 — Remediation](../12-remediation-safety-engine/README.vi.md) — kết quả RCA giúp định hướng lựa chọn phương án khắc phục
+- [12 — Production Operations](../13-production-engine/README.vi.md) — đo accuracy RCA, game day drills
+- [14 — Pattern Library](../14-aiops-pattern-library/README.vi.md) — causal diagnosis patterns
+- [15 — Domain Packs](../15-aiops-domain-packs/README.vi.md) — RCA cho payment cascade và fraud confounders
+- [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md) — correlation≠causation scenarios
 
 ## Next Reading
 
-Sau chương này, hãy chuyển sang [10 — LLM Agent](../11-llm-agent/README.vi.md).
+Sau chương này, hãy chuyển sang [10 — LLM Agent](../11-investigation-engine/README.vi.md).
 
 ---
 
@@ -773,7 +773,7 @@ Theo dõi cost per RCA result, bytes log scanned, traces fetched, graph nodes vi
 > 4) Giả thuyết có **counter-evidence** đã bị bác?
 > Nếu chỉ (1) temporal gần — ghi `confidence_cap=0.55`.
 
-Bài kiểm chứng outage class: [16 — Benchmark Replay](../16-famous-incidents/README.vi.md).
+Bài kiểm chứng outage class: [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md).
 
 ### 20.2 Confounding: deploy + traffic spike cùng lúc
 
@@ -848,7 +848,7 @@ RCA không được thành black hole CPU. On-call cần **hypothesis lúc t+45s
 > [!NOTE]
 > **Câu hỏi kiểm tra**: Confidence 0.94 nhưng chỉ có metric correlation, không log/trace/change — bạn **có được** kích hoạt auto-remediate không? Vì sao?
 
-Drill RCA bằng [16 — Benchmark Replay](../16-famous-incidents/README.vi.md) · vận hành accuracy: [13 — Production](../13-production/README.vi.md).
+Drill RCA bằng [16 — Benchmark Replay](../16-aiops-benchmark-replay/README.vi.md) · vận hành accuracy: [13 — Production](../13-production-engine/README.vi.md).
 
 ### 20.7 Case study end-to-end: một incident, ba giả thuyết và hai root
 

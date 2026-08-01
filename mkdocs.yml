@@ -11,6 +11,8 @@ edit_uri: edit/main/docs/
 docs_dir: docs
 site_dir: site
 use_directory_urls: true
+exclude_docs: |
+  includes/
 
 theme:
   name: material
@@ -106,12 +108,12 @@ nav:
       - 08 Anomaly Detection: vi/08-anomaly-detection/README.vi.md
       - 09 Alert Correlation: vi/09-alert-correlation/README.vi.md
       - 10 Root Cause Analysis: vi/10-root-cause-analysis/README.vi.md
-      - 11 LLM Agent: vi/11-llm-agent/README.vi.md
-      - 12 Remediation: vi/12-remediation/README.vi.md
-      - 13 Production: vi/13-production/README.vi.md
-      - 14 AIOps Pattern Library: vi/14-bigtech-aiops/README.vi.md
-      - 15 AIOps Domain Packs: vi/15-ecommerce-banking/README.vi.md
-      - 16 AIOps Benchmark Replay: vi/16-famous-incidents/README.vi.md
+      - 11 Investigation Engine: vi/11-investigation-engine/README.vi.md
+      - 12 Remediation Safety Engine: vi/12-remediation-safety-engine/README.vi.md
+      - 13 Production Engine: vi/13-production-engine/README.vi.md
+      - 14 AIOps Pattern Library: vi/14-aiops-pattern-library/README.vi.md
+      - 15 AIOps Domain Packs: vi/15-aiops-domain-packs/README.vi.md
+      - 16 AIOps Benchmark Replay: vi/16-aiops-benchmark-replay/README.vi.md
   - English:
       - 00 Introduction: en/00-introduction.md
       - 01 Observability: en/01-observability/README.md
