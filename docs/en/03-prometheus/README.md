@@ -20,52 +20,6 @@ After this chapter, continue to [04 — Loki](../04-loki/README.md).
 
 ---
 
-## Sub-Documents
-
-| Document | Description |
-|----------|-------------|
-| [Architecture](architecture.md) | Internal components, data flow |
-| [TSDB](tsdb.md) | TSDB internals: WAL, compaction |
-| [Scraping](scraping.md) | Scrape engine, exporters |
-| [Service Discovery](service-discovery.md) | Kubernetes SD, relabeling |
-| [Recording Rules](recording-rules.md) | Pre-aggregation, federation |
-| [Alerting](alerting.md) | Alert rules, Alertmanager, routing |
-| [High Availability](high-availability.md) | HA pair, Thanos, VictoriaMetrics |
-| [Production](production.md) | Sizing, tuning, operations |
-
----
-
-## Table of Contents
-
-1. [Why Prometheus?](#1-why-prometheus)
-2. [Internal Architecture](#2-internal-architecture)
-3. [TSDB Internals](#3-tsdb-internals)
-4. [The Scraping Engine](#4-the-scraping-engine)
-5. [Service Discovery](#5-service-discovery)
-6. [PromQL Deep Dive](#6-promql-deep-dive)
-7. [Recording Rules](#7-recording-rules)
-8. [Alerting Rules and Alertmanager](#8-alerting-rules-and-alertmanager)
-9. [Remote Write and Remote Read](#9-remote-write-and-remote-read)
-10. [High Availability](#10-high-availability)
-11. [Prometheus vs CloudWatch](#11-prometheus-vs-cloudwatch)
-12. [Prometheus vs VictoriaMetrics](#12-prometheus-vs-victoriametrics)
-13. [Thanos Architecture](#13-thanos-architecture)
-14. [Production Configuration](#14-production-configuration)
-15. [Common Mistakes](#15-common-mistakes)
-16. [Monitoring Prometheus](#16-monitoring-prometheus)
-17. [Scaling](#17-scaling)
-18. [Security](#18-security)
-19. [Cost](#19-cost)
-20. [Production problem-solving mindset](#20-production-problem-solving-mindset)
-21. [Real-world edge cases](#21-real-world-edge-cases)
-22. [Decision trees](#22-decision-trees)
-23. [Lessons from Big Tech / public incidents](#23-lessons-from-big-tech--public-incidents)
-24. [Socratic questions for on-call](#24-socratic-questions-for-on-call)
-25. [Improvement experiments (30/60/90 days)](#25-improvement-experiments-306090-days)
-26. [Production Review](#26-production-review)
-
----
-
 ## 1. Why Prometheus?
 
 > [!NOTE]
@@ -1485,7 +1439,7 @@ North-star:
 
 1. **Native Histograms migration path**: Prometheus 2.40+ supports native histograms (exponential buckets). Teams using classic histograms should have a migration plan. Changes are needed in both SDK code and Prometheus config.
 
-2. **Prometheus Operator**: Most production deployments use Prometheus Operator (kube-prometheus-stack) with CRDs such as ServiceMonitor, PodMonitor, PrometheusRule. See [production.md](production.md).
+2. **Prometheus Operator**: Most production deployments use Prometheus Operator (kube-prometheus-stack) with CRDs such as ServiceMonitor, PodMonitor, PrometheusRule. See production guidance in this chapter.
 
 3. **OTLP receiver in Prometheus 2.47+**: Prometheus can receive OTLP directly without OTel Collector. But you lose the Collector’s transformation/enrichment capabilities.
 

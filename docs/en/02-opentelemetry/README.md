@@ -22,34 +22,6 @@ After this chapter, continue to [03 — Prometheus](../03-prometheus/README.md).
 
 ---
 
-## Table of Contents
-
-1. [Why OpenTelemetry?](#1-why-opentelemetry)
-2. [OTel Components Overview](#2-otel-components-overview)
-3. [OTLP Protocol](#3-otlp-protocol)
-4. [The OTel Collector Deep Dive](#4-the-otel-collector-deep-dive)
-5. [Receiver Configuration](#5-receiver-configuration)
-6. [Processor Configuration](#6-processor-configuration)
-7. [Exporter Configuration](#7-exporter-configuration)
-8. [Pipeline Definition](#8-pipeline-definition)
-9. [Deployment Patterns](#9-deployment-patterns)
-10. [Kubernetes Operator](#10-kubernetes-operator)
-11. [Fluent Bit vs OTel Collector](#11-fluent-bit-vs-otel-collector)
-12. [Production Best Practices](#13-production-best-practices)
-13. [Common Mistakes](#13-common-mistakes)
-14. [Monitoring the Collector](#14-monitoring-the-collector)
-15. [Scaling](#15-scaling)
-16. [Security](#16-security)
-17. [Cost](#17-cost)
-18. [Production Problem-Solving Mindset](#18-production-problem-solving-mindset)
-19. [Real-World Edge Cases](#19-real-world-edge-cases)
-20. [Decision Trees](#20-decision-trees)
-21. [Lessons from Big Tech / Public Incidents](#21-lessons-from-big-tech--public-incidents)
-22. [Socratic Questions for On-Call](#22-socratic-questions-for-on-call)
-23. [Improvement Experiments (30/60/90 Days)](#23-improvement-experiments-306090-days)
-24. [Production Review](#24-production-review)
-
----
 
 ## 1. Why OpenTelemetry?
 
@@ -107,12 +79,17 @@ graph LR
 | Tool | Strengths | Weaknesses | Best for |
 |------|-----------|------------|---------|
 | **OTel Collector** | Full signals, extensible, vendor-neutral | Complex configuration | Production AIOps (recommended) |
-| **Fluent Bit** | Extremely light (< 1MB RAM) | Logs only, basic processing | Edge / constrained resources |
+| **Fluent Bit** | Extremely light (< 1MB RAM); battle-tested log tail | Logs-first; weaker multi-signal / sampling | Edge / constrained nodes |
+| **Vector** | Strong transforms (VRL); good routing; multi-sink | Another agent to own; metrics/traces less “OTel-native” than Collector | Log-heavy pipelines, complex routing |
+| **Grafana Alloy** | Grafana-stack native; replaces Promtail paths; OTel-capable | Best if already Grafana-centric | Prometheus + Loki + Grafana shops |
 | **Fluentd** | Rich plugin ecosystem | Heavier, Ruby-based | Legacy systems |
 | **Prometheus (scrape)** | Native Prometheus support | Metrics only, pull-based | Prometheus-native environments |
-| **Datadog Agent** | Easy setup, full-featured | Vendor lock-in, expensive | Teams only using Datadog |
+| **Datadog / vendor agent** | Easy setup, full-featured | Vendor lock-in, expensive, parallel agents | Teams standardized on one vendor |
 
-**Decision**: Use OTel Collector for production AIOps. Use Fluent Bit as a light sidecar if Collector DaemonSet costs too much.
+**Decision**: Use **OTel Collector** as the AIOps gateway. Use **Fluent Bit / Vector / Alloy** at the edge when you need a thinner or stack-specific shipper — then forward to the Collector (or Kafka), not three parallel brains.
+
+> [!TIP]
+> **Do not confuse layers**: Fluent Bit / Vector / Alloy / OTel are **collect & light process**. Flink / Kafka Streams are **bus-side stream process** after Kafka ([06 §5.6](../06-data-plane/README.md)). Elasticsearch / Loki are **stores**. Comparing Fluent Bit to Flink is a category error.
 
 ---
 
@@ -783,39 +760,52 @@ metadata:
 
 ---
 
-## 11. Fluent Bit vs OTel Collector
+## 11. Fluent Bit vs OTel Collector (and Vector / Alloy)
 
 > [!NOTE]
 > **KEY IDEA**
-> Fluent Bit and OTel Collector are not rivals — they solve different problems. Fluent Bit excels at **log collection** with extremely low resources (<1MB RAM). OTel Collector is the choice when you need **multi-signal** processing (metrics + logs + traces) and advanced features like tail-based sampling.
+> Edge shippers are not rivals to each other in the abstract — they trade **RAM, signal coverage, and transform power**. Fluent Bit excels at **log collection** with extremely low resources. OTel Collector is the choice when you need **multi-signal** processing and advanced features like tail-based sampling. Vector and Grafana Alloy sit between “log router” and “OTel-compatible agent” depending on how you configure them.
 
-| Criterion | Fluent Bit | OTel Collector |
-|-----------|-----------|----------------|
-| **RAM** | ~1MB | 256MB+ |
-| **Signals** | Logs only | Metrics + Logs + Traces |
-| **Tail sampling** | ❌ | ✅ |
-| **Complex transforms** | Basic | Full AST (much stronger) |
-| **Multi-signal correlation** | ❌ | ✅ |
-| **Throughput** | ~500K events/s | ~200K spans/s |
-| **Production maturity** | Extremely high | High (CNCF graduated) |
+| Criterion | Fluent Bit | Vector | Grafana Alloy | OTel Collector |
+|-----------|------------|--------|---------------|----------------|
+| **RAM footprint** | ~1MB class | Higher than FB | Medium | 256MB+ typical gateway |
+| **Signals** | Logs-first | Logs + metrics (varies) | Metrics/logs/traces (Grafana + OTel paths) | Metrics + logs + traces |
+| **Tail sampling** | ❌ | ❌ / limited | Via OTel-style pipelines | ✅ |
+| **Transforms** | Basic filters | Strong (VRL) | Good (River / components) | Processors + OTTL |
+| **Best AIOps role** | Node log edge | Complex log fan-out | Grafana-stack edge | **Policy gateway** |
+| **Production maturity** | Extremely high | High | High (Grafana ecosystem) | High (CNCF graduated) |
 
 ### Decision Matrix
 
 ```
-Need traces with tail sampling?      → OTel Collector
-Logs only, constrained resources?    → Fluent Bit
-Full telemetry platform?             → OTel Collector
-Legacy infrastructure?               → Fluent Bit (simpler setup)
-Kubernetes-native?                   → OTel Operator + OTel Collector
+Need traces with tail sampling / org-wide policy?  → OTel Collector (gateway)
+Logs only, constrained resources?                 → Fluent Bit
+Complex log route/transform, multi-sink?          → Vector (or Collector)
+Already all-in Grafana (Prom/Loki/Tempo)?         → Alloy + OTel gateway optional
+Full telemetry platform for AIOps?                → OTel Collector
+Legacy Fluentd estate?                            → Fluent Bit edge → migrate to OTel
 ```
 
-### Hybrid Pattern (both)
+### Pros / cons (edge tools vs each other)
+
+| Tool | Pros | Cons |
+|------|------|------|
+| **Fluent Bit** | Tiny; proven DaemonSet; simple | Weak multi-signal story; limited deep policy |
+| **Vector** | Excellent routing/transforms; observability of the agent | Extra skill (VRL); can duplicate Collector if both grow brains |
+| **Alloy** | One agent for many Grafana receivers; modern Promtail replacement | Gravity toward Grafana backends |
+| **OTel Collector** | One policy plane; vendor-neutral export; sampling | Heavier; config complexity |
+
+### Hybrid Pattern (recommended)
 
 ```
-Fluent Bit (DaemonSet) → system/node logs → OTel Collector Gateway
-OTel Agent (DaemonSet) → application OTLP → OTel Collector Gateway
-OTel Collector Gateway → process all → storage backends
+Fluent Bit or Vector or Alloy (DaemonSet) → node/system logs
+OTel Agent / SDK → application OTLP
+        ↘
+          OTel Collector Gateway → Prometheus / Loki / Tempo / Kafka
 ```
+
+> [!WARNING]
+> Running **Datadog Agent + OTel + Fluent Bit + Vector** on every node “just in case” burns CPU and multiplies cardinality bugs. Pick **one edge log shipper + one OTel path**, then converge.
 
 ---
 

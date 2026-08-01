@@ -26,30 +26,6 @@ After this chapter, continue to [09 — Root Cause Analysis](../10-root-cause-an
 
 ---
 
-## Table of Contents
-
-1. [Why Alert Correlation?](#1-why-alert-correlation)
-2. [Correlation Architecture](#2-correlation-architecture)
-3. [Stage 1 — Deduplication](#3-stage-1--deduplication)
-4. [Stage 2 — Grouping](#4-stage-2--grouping)
-5. [Stage 3 — Topology-Aware Correlation](#5-stage-3--topology-aware-correlation)
-6. [Stage 4 — Causal Ordering](#6-stage-4--causal-ordering)
-7. [Stage 5 — Alert Enrichment](#7-stage-5--alert-enrichment)
-8. [Correlation Algorithms Deep Dive](#8-correlation-algorithms-deep-dive)
-9. [Service Dependency Graph](#9-service-dependency-graph)
-10. [Temporal Correlation](#10-temporal-correlation)
-11. [Semantic Similarity Correlation](#11-semantic-similarity-correlation)
-12. [Incident Formation Rules](#12-incident-formation-rules)
-13. [Production Configuration](#13-production-configuration)
-14. [Common Mistakes](#14-common-mistakes)
-15. [Monitoring the Correlation Engine](#15-monitoring-the-correlation-engine)
-16. [Scaling](#16-scaling)
-17. [Security](#17-security)
-18. [Cost](#18-cost)
-19. [Deep Thinking: Topology Stale, Time-Window, Cascade vs Multi-Failure, Storm UX](#19-deep-thinking-topology-stale-time-window-cascade-vs-multi-failure-storm-ux)
-20. [Production Review](#20-production-review)
-
----
 
 
 ## How to read this chapter (concept-first)
@@ -530,7 +506,7 @@ This is the most powerful correlation layer. It uses the **service dependency gr
 | **Idea** | If service A calls B and both alert within the correlation window, they likely share one incident; walk edges (and shared infra nodes: DB, Kafka, cache) to merge groups and estimate impact radius. |
 
 > [!WARNING]
-> Topology correlation is only as good as graph freshness. A **stale graph is worse than no graph** (false merge / inverted root). See [§19.1](#191-topology-stale-graph--worse-than-no-graph).
+> Topology correlation is only as good as graph freshness. A **stale graph is worse than no graph** (false merge / inverted root). See [§19.1](#191-topology-stale-graph-worse-than-no-graph).
 
 ### Inputs from the AIOps data plane
 

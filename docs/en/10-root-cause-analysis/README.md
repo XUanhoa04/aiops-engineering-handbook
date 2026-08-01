@@ -26,31 +26,6 @@ After this chapter, continue to [10 — LLM Agent](../11-llm-agent/README.md).
 
 ---
 
-## Table of Contents
-
-1. [Why Automated RCA?](#1-why-automated-rca)
-2. [RCA Architecture Overview](#2-rca-architecture-overview)
-3. [Signal Collection for RCA](#3-signal-collection-for-rca)
-4. [Topology-Based RCA](#4-topology-based-rca)
-5. [Causal Graph RCA](#5-causal-graph-rca)
-6. [Bayesian Network RCA](#6-bayesian-network-rca)
-7. [Graph Neural Network (GNN) RCA](#7-graph-neural-network-gnn-rca)
-8. [Log-Based RCA — Evidence Extraction](#8-log-based-rca--evidence-extraction)
-9. [Trace-Based RCA — Span Analysis](#9-trace-based-rca--span-analysis)
-10. [Change Correlation (Deployment-Driven RCA)](#10-change-correlation-deployment-driven-rca)
-11. [RCA Evidence Scoring and Ranking](#11-rca-evidence-scoring-and-ranking)
-12. [RCA Output Schema](#12-rca-output-schema)
-13. [Historical Pattern Matching (Case-Based RCA)](#13-historical-pattern-matching-case-based-rca)
-14. [Production Architecture](#14-production-architecture)
-15. [Common Mistakes](#15-common-mistakes)
-16. [Monitoring RCA Quality](#16-monitoring-rca-quality)
-17. [Scaling](#17-scaling)
-18. [Security](#18-security)
-19. [Cost](#19-cost)
-20. [Deep Thinking: Correlation≠Causation, Multi-root, Evidence Quality, Time Budget](#20-deep-thinking-correlationcausation-multi-root-evidence-quality-time-budget)
-21. [Production Review](#21-production-review)
-
----
 
 
 ## How to read this chapter (concept-first)
@@ -283,7 +258,7 @@ The simplest and most reliable RCA approach for well-monitored microservices sys
 | **Idea** | A strong root candidate is anomalous **and** has healthy callees (fault starts here) **and** affected callers (impact cascades out). Walk the graph; score leaves of the red subgraph. |
 
 > [!IMPORTANT]
-> Topology RCA finds **where in the mesh** the failure concentrates. It does **not** prove causation vs shared AZ/DNS confounders — see [§20.1](#201-correlation--causation--the-classic-rca-trap).
+> Topology RCA finds **where in the mesh** the failure concentrates. It does **not** prove causation vs shared AZ/DNS confounders — see [§20.1](#201-correlation-causation-the-classic-rca-trap).
 
 ### Inputs from the AIOps data plane
 
@@ -1236,7 +1211,7 @@ Most serious production incidents are **change-adjacent**. Temporal proximity of
 | **Idea** | Score changes in a pre-incident window by **time delta × service overlap × change type**, then **require** supporting evidence (new error signature, canary delta) before “blame deploy 100%”. |
 
 > [!WARNING]
-> **Confounders**: deploy + marketing spike at once. Rank **both** candidates and the interaction — see [§20.2](#202-confounding-deploy--traffic-spike-at-the-same-time).
+> **Confounders**: deploy + marketing spike at once. Rank **both** candidates and the interaction — see [§20.2](#202-confounding-deploy-traffic-spike-at-the-same-time).
 
 ### Inputs from the AIOps data plane
 

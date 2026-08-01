@@ -30,25 +30,6 @@ After this chapter, continue to [15 — Famous Incidents](../16-famous-incidents
 
 ---
 
-## Table of Contents
-
-1. [Different domain constraints](#1-different-domain-constraints)
-2. [E-commerce reliability patterns](#2-e-commerce-reliability-patterns)
-3. [Banking & core payment systems](#3-banking--core-payment-systems)
-4. [Fintech / payment processors](#4-fintech--payment-processors)
-5. [Observability design for transaction paths](#5-observability-design-for-transaction-paths)
-6. [Domain-specific anomaly detection](#6-domain-specific-anomaly-detection)
-7. [Alert correlation in checkout storms](#7-alert-correlation-in-checkout-storms)
-8. [Automated remediation: CAN and CANNOT](#8-automated-remediation-can-and-cannot)
-9. [Multi-region / active-active for money systems](#9-multi-region--active-active-for-money-systems)
-10. [Case study A: flash sale collapse](#10-case-study-a-flash-sale-collapse)
-11. [Case study B: bank batch job overruns morning open](#11-case-study-b-bank-batch-job-overruns-morning-open)
-12. [Case study C: card network degradation partial](#12-case-study-c-card-network-degradation-partial)
-13. [Cost of observability in regulated env](#13-cost-of-observability-in-regulated-env)
-14. [Production checklist + 90-day roadmap](#14-production-checklist--90-day-roadmap)
-15. [Socratic exercises](#15-socratic-exercises)
-
----
 
 
 ## How to read this chapter (concept-first)

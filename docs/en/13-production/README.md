@@ -27,26 +27,6 @@ After this chapter, continue to [13 — Big Tech AIOps](../14-bigtech-aiops/READ
 
 ---
 
-## Table of Contents
-
-1. [Platform Architecture Summary](#1-platform-architecture-summary)
-2. [High Availability Design](#2-high-availability-design)
-3. [Disaster Recovery](#3-disaster-recovery)
-4. [Chaos Engineering for AIOps](#4-chaos-engineering-for-aiops)
-5. [Performance Benchmarks](#5-performance-benchmarks)
-6. [Cost Governance](#6-cost-governance)
-7. [Security Hardening](#7-security-hardening)
-8. [Observability of the Observability Platform](#8-observability-of-the-observability-platform)
-9. [Runbook: Platform Recovery](#9-runbook-platform-recovery)
-10. [Capacity Planning](#10-capacity-planning)
-11. [Upgrade and Maintenance](#11-upgrade-and-maintenance)
-12. [Team Operations Model](#12-team-operations-model)
-13. [Maturity Progression Roadmap](#13-maturity-progression-roadmap)
-14. [Total Cost of Ownership](#14-total-cost-of-ownership)
-15. [Deep thinking: Dogfooding, DR control plane, Cost runaway, RACI, Game days, Scorecard](#15-deep-thinking-dogfooding-dr-control-plane-cost-runaway-raci-game-days-scorecard)
-16. [Final Production Review](#16-final-production-review)
-
----
 
 
 ## How to read this chapter (concept-first)

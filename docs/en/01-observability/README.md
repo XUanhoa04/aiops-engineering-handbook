@@ -24,36 +24,6 @@ After this chapter, continue to [02 — OpenTelemetry](../02-opentelemetry/READM
 
 ---
 
-## Table of Contents
-
-1. [The Three Pillars of Observability](#1-the-three-pillars-of-observability)
-2. [Metrics — Deep Dive](#2-metrics--deep-dive)
-3. [Logs — Deep Dive](#3-logs--deep-dive)
-4. [Traces — Deep Dive](#4-traces--deep-dive)
-5. [The Fourth Signal — Profiles](#5-the-fourth-signal--profiles)
-6. [Golden Signals vs RED vs USE](#6-golden-signals-vs-red-vs-use)
-7. [SLI, SLO, SLA, Error Budget](#7-sli-slo-sla-error-budget)
-8. [Observability Architecture](#8-observability-architecture)
-9. [Instrumentation Strategy](#9-instrumentation-strategy)
-10. [Correlation — Connecting the Three Pillars](#10-correlation--connecting-the-three-pillars)
-11. [Data Cardinality — The Silent Killer](#11-data-cardinality--the-silent-killer)
-12. [Observability Platform Design](#12-observability-platform-design)
-13. [Production Best Practices](#13-production-best-practices)
-14. [Common Mistakes](#14-common-mistakes)
-15. [Monitoring the Monitoring Stack](#15-monitoring-the-monitoring-stack)
-16. [Scaling Observability](#16-scaling-observability)
-17. [Security](#17-security)
-18. [Cost Management](#18-cost-management)
-19. [Production Problem-Solving Mindset](#19-production-problem-solving-mindset)
-20. [Real-World Edge Cases](#20-real-world-edge-cases)
-21. [Decision Trees](#21-decision-trees)
-22. [Lessons from Big Tech / Public Incidents](#22-lessons-from-big-tech--public-incidents)
-23. [Socratic Questions for On-Call](#23-socratic-questions-for-on-call)
-24. [Improvement Experiments (30/60/90 Days)](#24-improvement-experiments-306090-days)
-25. [Production Review](#25-production-review)
-26. [Improvement Roadmap](#26-improvement-roadmap)
-
----
 
 ## 1. The Three Pillars of Observability
 
@@ -357,7 +327,7 @@ k8s_node_name: ip-10-0-1-50
 }
 ```
 
-**Why `trace_id` in logs is mandatory**: This is the "red thread" connecting log → trace → span. Without `trace_id`, you cannot know which "error log" belongs to which "request in a trace." See [Section 10 — Correlation](#10-correlation--connecting-the-three-pillars).
+**Why `trace_id` in logs is mandatory**: This is the "red thread" connecting log → trace → span. Without `trace_id`, you cannot know which "error log" belongs to which "request in a trace." See [Section 10 — Correlation](#10-correlation-connecting-the-three-pillars).
 
 ### 3.3 Log Severity Levels
 

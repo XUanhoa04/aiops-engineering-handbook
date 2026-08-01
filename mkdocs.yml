@@ -13,6 +13,8 @@ site_dir: site
 use_directory_urls: true
 exclude_docs: |
   includes/
+  /README.md
+  /vi/13-bigtech-aiops/
 
 theme:
   name: material

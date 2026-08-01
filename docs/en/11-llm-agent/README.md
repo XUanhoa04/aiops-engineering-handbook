@@ -26,31 +26,6 @@ After this chapter, continue to [11 — Remediation](../12-remediation/README.md
 
 ---
 
-## Table of Contents
-
-1. [Why LLM for AIOps?](#1-why-llm-for-aiops)
-2. [Agent Architecture](#2-agent-architecture)
-3. [Retrieval-Augmented Generation (RAG)](#3-retrieval-augmented-generation-rag)
-4. [Tool Use — Agent Tools](#4-tool-use--agent-tools)
-5. [Agentic Loop Design](#5-agentic-loop-design)
-6. [Prompt Engineering for SRE](#6-prompt-engineering-for-sre)
-7. [Model Selection](#7-model-selection)
-8. [LangChain / LangGraph Implementation](#8-langchain--langgraph-implementation)
-9. [Safety Gates and Guardrails](#9-safety-gates-and-guardrails)
-10. [Output Formats](#10-output-formats)
-11. [Human-in-the-Loop Handoff](#11-human-in-the-loop-handoff)
-12. [Memory and Context Management](#12-memory-and-context-management)
-13. [Evaluation and Quality](#13-evaluation-and-quality)
-14. [Production Configuration](#14-production-configuration)
-15. [Common Mistakes](#15-common-mistakes)
-16. [Monitoring the Agent](#16-monitoring-the-agent)
-17. [Scaling](#17-scaling)
-18. [Security](#18-security)
-19. [Cost](#19-cost)
-20. [Deep Thinking: Hallucination, Injection, Sandbox, Calibration, Cost vs MTTR, AI SRE](#20-deep-thinking-hallucination-injection-sandbox-calibration-cost-vs-mttr-ai-sre)
-21. [Production Review](#21-production-review)
-
----
 
 
 ## How to read this chapter (concept-first)

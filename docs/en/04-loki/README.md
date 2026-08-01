@@ -22,34 +22,6 @@ After this chapter, continue to [05 — Tempo](../05-tempo/README.md).
 
 ---
 
-## Table of Contents
-
-1. [Why Loki?](#1-why-loki)
-2. [Loki vs ELK Stack](#2-loki-vs-elk-stack)
-3. [Internal Architecture](#3-internal-architecture)
-4. [Data Flow — Ingestion Path](#4-data-flow--ingestion-path)
-5. [Data Flow — Query Path](#5-data-flow--query-path)
-6. [LogQL Deep Dive](#6-logql-deep-dive)
-7. [Label Design](#7-label-design)
-8. [Ingestion Methods](#8-ingestion-methods)
-9. [Storage Backend](#9-storage-backend)
-10. [Deployment Modes](#10-deployment-modes)
-11. [Kubernetes Deployment](#11-kubernetes-deployment)
-12. [Production Configuration](#13-production-configuration)
-13. [Common Mistakes](#13-common-mistakes)
-14. [Monitoring Loki](#14-monitoring-loki)
-15. [Scaling](#15-scaling)
-16. [Security](#16-security)
-17. [Cost](#17-cost)
-18. [Production problem-solving mindset](#18-production-problem-solving-mindset)
-19. [Real-world edge cases](#19-real-world-edge-cases)
-20. [Decision trees](#20-decision-trees)
-21. [Lessons from Big Tech / public incidents](#21-lessons-from-big-tech--public-incidents)
-22. [Socratic questions for on-call](#22-socratic-questions-for-on-call)
-23. [Improvement experiments (30/60/90 days)](#23-improvement-experiments-306090-days)
-24. [Production Review](#24-production-review)
-
----
 
 ## 1. Why Loki?
 
@@ -102,6 +74,46 @@ Loki:          index(labels_only) + store(compressed_chunks) → cheap, label-ba
 - Teams already on Grafana + Prometheus → Loki (same label model, native integration)
 - Teams needing full-text search and complex analytics → Elasticsearch / OpenSearch
 - Teams optimizing cost at large scale → Loki (often 10–20× cheaper)
+
+### 2.1 Dual-path: Loki + OpenSearch/Elasticsearch for AIOps
+
+> [!NOTE]
+> **KEY IDEA**
+> Loki and Elasticsearch are both **log stores**, but they optimize opposite axes: **$/GB + label discipline** vs **full-text + flexible aggregation**. Many production AIOps platforms run **both** — not because they love cost, but because one tool cannot win every query shape.
+
+| Path | Store | Write what | Read for |
+|------|-------|------------|----------|
+| **Hot ops / AIOps default** | Loki | High-volume app & infra logs, strict labels | On-call LogQL, label→trace, cheap retention |
+| **Search / IR / compliance niche** | OpenSearch / Elasticsearch | Audit, security, selected app logs, tickets text | Full-text, complex boolean, long legal search |
+| **Analytics / features (optional)** | ClickHouse or lake (Parquet) | Parsed fields, aggregates | Heavy aggregate, training export |
+
+**When dual-write is justified**
+
+- Security / IR must grep arbitrary strings across 90+ days
+- Compliance (PCI, SOC2 evidence) needs query patterns Loki labels cannot express cheaply
+- LLM investigation benefits from a **small** full-text index of incident-related logs, not 100% of debug volume
+
+**When dual-write is waste**
+
+- Same 100% volume to ES “just in case” → classic cost bomb
+- Using ES as the **metric** store or sole AIOps feature store
+- No owner for index ILM, shard sizing, or field mapping explosions
+
+```text
+Recommended AIOps pattern:
+  All logs → Fluent Bit / OTel → Loki (default)
+  Subset (audit, auth, payment, security) → OpenSearch
+  Parsed structured fields → Kafka → Flink/features (not ES as stream processor)
+```
+
+| | Loki | Elasticsearch / OpenSearch |
+|--|------|----------------------------|
+| **Pros for AIOps** | Cheap hot path; Prom-like labels; native Grafana/Tempo | Fast arbitrary search; mature IR tooling |
+| **Cons for AIOps** | Weak “google my log blob”; heavy content scan cost | Index RAM; mapping drift; easy cardinality of fields |
+| **Prefer when** | SLO/debug by service/ns/level | Forensics, full-text RCA, legal hold search |
+
+> [!WARNING]
+> **Do not** put Flink or Fluent Bit in the same comparison bucket as Elasticsearch. Shippers collect; Flink transforms on the bus; ES/Loki **store and query**. See [02 — agents](../02-opentelemetry/README.md) and [06 — stream processors](../06-data-plane/README.md).
 
 ---
 
@@ -416,13 +428,13 @@ labels:
   # Kubernetes metadata (always include)
   namespace: production          # ~10 distinct values
   cluster: prod-us-east-1        # ~5 distinct values
-  
+
   # Service identity
   service: order-service         # ~50-200 distinct values
-  
+
   # Log level (use sparingly — creates a separate stream per level)
   level: ERROR                   # INFO, WARN, ERROR, CRITICAL
-  
+
   # Geography
   region: us-east-1              # ~5 distinct values
 
@@ -440,7 +452,7 @@ bad_labels:
   request_id: "req-abc123"      # Unique per request
   pod: "order-svc-abc123-xyz"   # Changes constantly on pod restart
   timestamp: "2024-01-15"       # Unbounded growth
-  
+
 # These belong in the LOG BODY (JSON fields), not labels.
 # Query them with: | json | trace_id = "4bf92f35"
 ```
@@ -462,22 +474,22 @@ loki.process "add_labels" {
       region  = "us-east-1",
     }
   }
-  
+
   stage.kubernetes {}   // Automatically add labels: namespace, pod, container, node
-  
+
   // Parse JSON log body and extract level field
   stage.json {
     expressions = {
       level = "level",
     }
   }
-  
+
   stage.labels {
     values = {
       level = "",   // Promote extracted field to label
     }
   }
-  
+
   // Drop DEBUG logs before sending to Loki (to save cost)
   stage.drop {
     expression  = ".*"
@@ -489,7 +501,7 @@ loki.process "add_labels" {
       }
     }
   }
-  
+
   forward_to = [loki.write.default.receiver]
 }
 
@@ -557,11 +569,11 @@ storage_config:
     s3: s3://us-east-1/loki-chunks-prod
     region: us-east-1
     # Use IAM role (IRSA) - never raw static credentials
-    
+
   tsdb_shipper:
     active_index_directory: /loki/tsdb-index-active
     cache_location: /loki/tsdb-cache
-    
+
 schema_config:
   configs:
     - from: 2024-01-01
@@ -590,7 +602,7 @@ chunk_store_config:
     enable_fifocache: true
     fifocache:
       max_size_bytes: 500MB
-      
+
 ingester:
   chunk_encoding: zstd    # Best compression with acceptable speed
   chunk_target_size: 1572864  # 1.5MB target size per chunk (tunable)
@@ -657,12 +669,12 @@ helm install loki grafana/loki \
 loki:
   # Simple scalable mode (separate read/write/backend)
   deployment_mode: SimpleScalable
-  
+
   auth_enabled: true    # Enable multi-tenancy
-  
+
   commonConfig:
     replication_factor: 3
-    
+
   storage:
     type: s3
     s3:
@@ -672,7 +684,7 @@ loki:
         ruler: loki-ruler-prod
         admin: loki-admin-prod
       # Authenticate with IRSA
-      
+
   limits_config:
     # Global default limits (overridable per tenant)
     retention_period: 744h         # 31-day retention
@@ -682,12 +694,12 @@ loki:
     max_line_size: 65536           # Max log line 64KB
     max_label_names_per_series: 30 # Max labels per stream
     max_label_value_length: 2048
-    
+
     # Query limits
     max_query_series: 5000
     max_query_lookback: 0          # No lookback limit (follow retention)
     max_entries_limit_per_query: 50000
-    
+
   schemaConfig:
     configs:
       - from: "2024-01-01"
@@ -697,16 +709,16 @@ loki:
         index:
           prefix: "loki_index_"
           period: "24h"
-          
+
   structuredConfig:
     ingester:
       chunk_encoding: zstd
       chunk_target_size: 1572864
       chunk_idle_period: 30m
-      
+
     query_scheduler:
       max_outstanding_requests_per_tenant: 2048
-      
+
     frontend:
       compress_responses: true
       max_outstanding_per_tenant: 2048
@@ -725,7 +737,7 @@ write:
     enabled: true
     size: 10Gi    # WAL storage
 
-# Read path  
+# Read path
 read:
   replicas: 2
   resources:
@@ -746,7 +758,7 @@ backend:
 # Do not deploy collection agent here
 grafana-agent:
   enabled: false    # Deploy separately as DaemonSet
-  
+
 minio:
   enabled: false    # Use AWS S3 directly
 ```
@@ -771,12 +783,12 @@ overrides:
     ingestion_rate_mb: 100
     max_streams_per_user: 200000
     retention_period: 720h    # 30-day retention
-    
+
   production_team_b:
     ingestion_rate_mb: 20
     max_streams_per_user: 50000
     retention_period: 168h    # 7-day retention
-    
+
   development:
     ingestion_rate_mb: 5
     retention_period: 48h     # 2-day retention only
@@ -792,15 +804,15 @@ ruler:
     s3:
       buckets_name: loki-ruler-prod
       region: us-east-1
-      
+
   rule_path: /tmp/loki-rules
   ring:
     kvstore:
       store: memberlist
-      
+
   enable_api: true
   enable_alertmanager_v2: true
-  
+
   alertmanager_url: http://alertmanager.observability.svc.cluster.local:9093
 
 # Rule definition file (stored in Loki ruler storage)

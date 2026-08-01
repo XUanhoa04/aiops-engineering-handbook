@@ -31,31 +31,6 @@ After this chapter, continue to [01 — Observability](01-observability/README.m
 
 ---
 
-## Table of Contents
-
-1. [What Is AIOps?](#1-what-is-aiops)
-2. [The Problem AIOps Solves](#2-the-problem-aiops-solves)
-3. [Mental Models: OODA & Problem Framing](#3-mental-models-ooda--problem-framing)
-4. [AIOps vs AI SRE (Agentic)](#4-aiops-vs-ai-sre-agentic)
-5. [Edge Cases Early: Partial & Metastable Failures](#5-edge-cases-early-partial--metastable-failures)
-6. [AIOps Maturity Model](#6-aiops-maturity-model)
-7. [12-Month Maturity Journey](#7-12-month-maturity-journey)
-8. [ROI and Business Case](#8-roi-and-business-case)
-9. [Org Design & Ownership (RACI)](#9-org-design--ownership-raci)
-10. [Architecture Philosophy](#10-architecture-philosophy)
-11. [The AIOps Pipeline](#11-the-aiops-pipeline)
-12. [Data Flywheel](#12-data-flywheel)
-13. [When AIOps Fails](#13-when-aiops-fails)
-14. [Building vs Buying](#14-building-vs-buying)
-15. [Common Mistakes & Anti-Patterns](#15-common-mistakes--anti-patterns)
-16. [Production Review](#16-production-review)
-17. [Improvement Roadmap](#17-improvement-roadmap)
-18. [Seed for the Future: Junior → Principal](#18-seed-for-the-future-junior--principal)
-19. [Summary](#summary)
-20. [Chapter Score](#chapter-score)
-21. [References & Public Reading List](#references--public-reading-list)
-
----
 
 ## 1. What Is AIOps?
 

@@ -22,34 +22,6 @@ After this chapter, continue to [06 — Telemetry Data Plane](../06-data-plane/R
 
 ---
 
-## Table of Contents
-
-1. [Why Tempo?](#1-why-tempo)
-2. [Tempo vs Jaeger vs AWS X-Ray](#2-tempo-vs-jaeger-vs-aws-x-ray)
-3. [Internal Architecture](#3-internal-architecture)
-4. [Data Flow — Write Path](#4-data-flow--write-path)
-5. [Data Flow — Read Path](#5-data-flow--read-path)
-6. [Trace Storage Format](#6-trace-storage-format)
-7. [TraceQL Query Language](#7-traceql-query-language)
-8. [Metrics from Traces (SpanMetrics)](#8-metrics-from-traces-spanmetrics)
-9. [Deployment Modes](#9-deployment-modes)
-10. [Production Configuration](#10-production-configuration)
-11. [Grafana Integration](#11-grafana-integration)
-12. [Trace vs Log vs Metric for RCA](#12-trace-vs-log-vs-metric-for-rca)
-13. [Sampling Paradox — Head vs Tail Based](#13-sampling-paradox--head-vs-tail-based)
-14. [Cost vs Coverage Decision Tree](#14-cost-vs-coverage-decision-tree)
-15. [Edge Cases: Cardinality, PII, Multi-tenant](#15-edge-cases-cardinality-pii-multi-tenant)
-16. [Trace-based SLI/SLO Patterns](#16-trace-based-slislo-patterns)
-17. [Tempo in the AIOps Pipeline](#17-tempo-in-the-aiops-pipeline)
-18. [Case Study: Timeout Cascade](#18-case-study-timeout-cascade)
-19. [Common Mistakes](#19-common-mistakes)
-20. [Monitoring Tempo](#20-monitoring-tempo)
-21. [Scaling](#21-scaling)
-22. [Security](#22-security)
-23. [Cost](#23-cost)
-24. [Production Review](#24-production-review)
-
----
 
 ## 1. Why Tempo?
 

@@ -34,25 +34,6 @@ After this chapter, return to [12 — Production](../13-production/README.md) to
 
 ---
 
-## Table of Contents
-
-1. [How to read a postmortem as an engineer](#1-how-to-read-a-postmortem-as-an-engineer)
-2. [AWS S3 2017 (us-east-1)](#2-aws-s3-2017-us-east-1)
-3. [AWS DynamoDB / DNS automation (US-EAST-1, Oct 2025)](#3-aws-dynamodb--dns-automation-us-east-1-oct-2025)
-4. [Meta / Facebook 4 Oct 2021](#4-meta--facebook-4-oct-2021)
-5. [Cloudflare major outages (2019 regex, 2025 bot management config)](#5-cloudflare-major-outages-2019-regex-2025-bot-management-config)
-6. [Google SRE classic lessons](#6-google-sre-classic-lessons)
-7. [Kubernetes / etcd / control plane war stories](#7-kubernetes--etcd--control-plane-war-stories)
-8. [GitHub, Slack, Discord, Fastly-class CDN incidents](#8-github-slack-discord-fastly-class-cdn-incidents)
-9. [Taxonomy of failure modes for AIOps design](#9-taxonomy-of-failure-modes-for-aiops-design)
-10. [Mapping incidents → handbook pipeline stages](#10-mapping-incidents--handbook-pipeline-stages)
-11. [Building a personal “incident library” for your org](#11-building-a-personal-incident-library-for-your-org)
-12. [Game days & tabletop exercises](#12-game-days--tabletop-exercises-derived-from-famous-incidents)
-13. [Checklist: design reviews “what would S3-2017 look like here?”](#13-checklist-design-reviews-that-ask-what-would-s3-2017-look-like-here)
-14. [90-day learning program for on-call](#14-90-day-learning-program-for-on-call)
-15. [Socratic scenarios](#15-socratic-scenarios)
-
----
 
 
 ## How to read this chapter (concept-first)

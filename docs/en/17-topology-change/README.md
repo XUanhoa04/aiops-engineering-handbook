@@ -48,41 +48,6 @@ Continue to [08 — Anomaly Detection](../08-anomaly-detection/README.md), then 
 
 ---
 
-## Table of Contents
-
-1. [Why a Topology & Change Data Plane](#1-why-a-topology--change-data-plane)
-2. [Mental Model — Two Products, One Plane](#2-mental-model--two-products-one-plane)
-3. [Decision Tree — When to Build a Topology Service vs Tags-Only](#3-decision-tree--when-to-build-a-topology-service-vs-tags-only)
-4. [Topology Model — Nodes, Edges, Layers, Identity](#4-topology-model--nodes-edges-layers-identity)
-5. [Topology Sources of Truth](#5-topology-sources-of-truth)
-6. [Graph Construction, Confidence & Versioning](#6-graph-construction-confidence--versioning)
-7. [Change Event Taxonomy](#7-change-event-taxonomy)
-8. [Change Event Canonical Schema](#8-change-event-canonical-schema)
-9. [Change Sources — CI/CD, Config, Flags, Infra, Ops Tools](#9-change-sources--cicd-config-flags-infra-ops-tools)
-10. [Freeze Windows & Change Calendar](#10-freeze-windows--change-calendar)
-11. [Storage Architecture](#11-storage-architecture)
-12. [Streaming Contracts & Kafka Topics](#12-streaming-contracts--kafka-topics)
-13. [Integrations Across the AIOps Pipeline](#13-integrations-across-the-aiops-pipeline)
-14. [Query & API Surface](#14-query--api-surface)
-15. [Stale Graph Danger — Health, SLOs, Degradation](#15-stale-graph-danger--health-slos-degradation)
-16. [Blast Radius, Critical Paths & Remediation Safety](#16-blast-radius-critical-paths--remediation-safety)
-17. [Multi-Cluster, Multi-Region & Shared Fate](#17-multi-cluster-multi-region--shared-fate)
-18. [Edge Cases & Failure Modes](#18-edge-cases--failure-modes)
-19. [Maturity Model (L0–L4)](#19-maturity-model-l0l4)
-20. [Reference Architecture](#20-reference-architecture)
-21. [Monitoring the Topology & Change Plane](#21-monitoring-the-topology--change-plane)
-22. [Cost Model](#22-cost-model)
-23. [Security, Tenancy & Compliance](#23-security-tenancy--compliance)
-24. [Common Mistakes](#24-common-mistakes)
-25. [War Stories](#25-war-stories)
-26. [Production Checklist](#26-production-checklist)
-27. [90-Day Implementation Plan](#27-90-day-implementation-plan)
-28. [Socratic Scenarios](#28-socratic-scenarios)
-29. [Production Review](#29-production-review)
-30. [Summary](#30-summary)
-31. [References](#31-references)
-
----
 
 
 ## How to read this chapter (concept-first)

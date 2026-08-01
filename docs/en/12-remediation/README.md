@@ -23,37 +23,6 @@ After this chapter, continue to [12 — Production Operations](../13-production/
 
 ---
 
-## Table of Contents
-
-1. [Why Automated Remediation?](#1-why-automated-remediation)
-2. [Remediation Architecture](#2-remediation-architecture)
-3. [Remediation Action Catalog](#3-remediation-action-catalog)
-4. [Kubernetes-Based Remediation](#4-kubernetes-based-remediation)
-5. [AWS SSM Automation](#5-aws-ssm-automation)
-6. [Safety Framework](#6-safety-framework)
-7. [Blast Radius Calculation](#7-blast-radius-calculation)
-8. [Rollback Design](#8-rollback-design)
-9. [Canary-Based Remediation](#9-canary-based-remediation)
-10. [GitOps Remediation](#10-gitops-remediation)
-11. [Verification Pipeline](#11-verification-pipeline)
-12. [Audit Logging](#12-audit-logging)
-13. [Production Configuration](#13-production-configuration)
-14. [Common Mistakes](#14-common-mistakes)
-15. [Monitoring Remediation](#15-monitoring-remediation)
-16. [Scaling](#16-scaling)
-17. [Security](#17-security)
-18. [Cost](#18-cost)
-19. [Risk Decision Matrix](#19-risk-decision-matrix)
-20. [Circuit Breakers, Rate Limits & Dual-Control](#20-circuit-breakers-rate-limits--dual-control)
-21. [Runbook-as-Code vs LLM Freeform](#21-runbook-as-code-vs-llm-freeform)
-22. [Human Approval UX (On-Call 3am)](#22-human-approval-ux-on-call-3am)
-23. [Edge Cases: Retry Storms & Wrong RCA](#23-edge-cases-retry-storms--wrong-rca)
-24. [Chaos Testing of Remediation](#24-chaos-testing-of-remediation)
-25. [Case Studies — Famous Incidents](#25-case-studies--famous-incidents)
-26. [Production Checklist (40+)](#26-production-checklist-40)
-27. [Production Review](#27-production-review)
-
----
 
 
 ## How to read this chapter (concept-first)
@@ -251,7 +220,7 @@ These actions are safe, reversible, and low risk:
 
 > [!IMPORTANT]
 > **Only auto scale UP; scale DOWN needs a human**
-> Scaling down when traffic “goes quiet” after a spike often creates a capacity cliff when traffic returns — classic pattern (see [§23](#23-edge-cases-retry-storms--wrong-rca) and S3-style capacity-removal lessons). Tier 1 does **not** include scale down.
+> Scaling down when traffic “goes quiet” after a spike often creates a capacity cliff when traffic returns — classic pattern (see [§23](#23-edge-cases-retry-storms-wrong-rca) and S3-style capacity-removal lessons). Tier 1 does **not** include scale down.
 
 > [!TIP]
 > **Map tier → executor**
@@ -880,7 +849,7 @@ class SafetyFramework:
 
 > [!NOTE]
 > **KEY IDEA — Safety is composition, not a single if**
-> Namespace deny-list, confidence floor, rate limit, whitelist tier, pre-health check are **AND**. One check fails → fail-closed. Extensions: change-freeze calendar, dual-control, remediation circuit breaker, service advisory lock — see [§20](#20-circuit-breakers-rate-limits--dual-control).
+> Namespace deny-list, confidence floor, rate limit, whitelist tier, pre-health check are **AND**. One check fails → fail-closed. Extensions: change-freeze calendar, dual-control, remediation circuit breaker, service advisory lock — see [§20](#20-circuit-breakers-rate-limits-dual-control).
 
 > [!WARNING]
 > **LLM confidence is not a physical probability**

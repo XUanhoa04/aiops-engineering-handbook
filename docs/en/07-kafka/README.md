@@ -25,39 +25,6 @@ After this chapter, continue to [08 — Anomaly Detection](../08-anomaly-detecti
 
 ---
 
-## Table of Contents
-
-1. [Why Event Streaming for AIOps?](#1-why-event-streaming-for-aiops)
-2. [Kafka Architecture Deep Dive](#2-kafka-architecture-deep-dive)
-3. [Topics and Partitions](#3-topics-and-partitions)
-4. [Producers — Configuration and Guarantees](#4-producers--configuration-and-guarantees)
-5. [Consumers and Consumer Groups](#5-consumers-and-consumer-groups)
-6. [Offset Management](#6-offset-management)
-7. [Replication and Durability](#7-replication-and-durability)
-8. [Kafka Topic Design for AIOps](#8-kafka-topic-design-for-aiops)
-9. [Message Schema and Serialization](#9-message-schema-and-serialization)
-10. [Dead Letter Queue Pattern](#10-dead-letter-queue-pattern)
-11. [AWS MSK — Managed Kafka](#11-aws-msk--managed-kafka)
-12. [Kafka vs Kinesis](#12-kafka-vs-kinesis)
-13. [Kafka vs Redis Streams](#13-kafka-vs-redis-streams)
-14. [Production Configuration](#14-production-configuration)
-15. [Monitoring Kafka](#15-monitoring-kafka)
-16. [Scaling](#16-scaling)
-17. [Security](#17-security)
-18. [Cost Model — Retention × Throughput × Replication](#18-cost-model--retention--throughput--replication)
-19. [Mental Model: Backpressure & Lag as Signal vs Incident](#19-mental-model-backpressure--lag-as-signal-vs-incident)
-20. [Exactly-Once Myths in AIOps Pipeline](#20-exactly-once-myths-in-aiops-pipeline)
-21. [Poison Messages & Schema Evolution](#21-poison-messages--schema-evolution)
-22. [Hot Partitions from High-Cardinality Keys](#22-hot-partitions-from-high-cardinality-keys)
-23. [Multi-Consumer Fan-out: AD + Correlation + Audit](#23-multi-consumer-fan-out-ad--correlation--audit)
-24. [Failure Mode: Kafka Down → AIOps Blind & Bypass](#24-failure-mode-kafka-down--aiops-blind--bypass)
-25. [MSK vs Self-Managed for Regulated Industries](#25-msk-vs-self-managed-for-regulated-industries)
-26. [War Stories](#26-war-stories)
-27. [Socratic Questions](#27-socratic-questions)
-28. [Production Review](#28-production-review)
-29. [Summary](#29-summary)
-
----
 
 ## 1. Why Event Streaming for AIOps?
 
@@ -317,18 +284,18 @@ kafka-configs.sh --alter \
 # Producer config for EOS
 producer_config = {
     "bootstrap.servers": "kafka-1:9092,kafka-2:9092,kafka-3:9092",
-    
+
     # Idempotent producer: enables dedup on retry
     "enable.idempotence": True,
-    
+
     # Required for idempotent config:
     "acks": "all",
     "retries": 2147483647,            # Max retries
     "max.in.flight.requests.per.connection": 5,  # Must be ≤5 for idempotent
-    
+
     # Transactional ID (for exactly-once consume-produce)
     "transactional.id": "aiops-anomaly-detector-0",  # Unique per producer instance
-    
+
     # Performance tuning
     "batch.size": 65536,              # 64KB batches
     "linger.ms": 10,                  # Wait up to 10ms to fill a batch
@@ -358,7 +325,7 @@ except Exception as e:
 ```
 
 > [!WARNING]
-> **Myth about to break**: Kafka EOS does **not** make the entire AIOps pipeline exactly-once end-to-end. EOS only covers **Kafka read → process → Kafka write** inside a transactional boundary. Side effects (Prometheus API, Redis, LLM, PagerDuty) remain **at-least-once**. See [§20 Exactly-Once Myths](#20-exactly-once-myths-in-aiops-pipeline).
+> **Myth about to break**: Kafka EOS does **not** make the entire AIOps pipeline exactly-once end-to-end. EOS only covers **Kafka read → process → Kafka write** inside a transactional boundary. Side effects (Prometheus API, Redis, LLM, PagerDuty) remain **at-least-once**. See [§21 Exactly-Once Myths](#21-exactly-once-myths-in-aiops-pipeline).
 
 ### Producer Compression
 
@@ -373,7 +340,7 @@ except Exception as e:
 **Recommendation**: Use `zstd` for AIOps telemetry topics (high ratio, medium CPU). Use `snappy` for alert events (latency matters more than compression ratio).
 
 > [!TIP]
-> **Why compression matters for cost?** Disk retention = raw_bytes × compression_ratio × RF. Switching snappy→zstd on telemetry can cut 30–50% storage → 7-day retention becomes clearly cheaper (see [§18 Cost Model](#18-cost-model--retention--throughput--replication)).
+> **Why compression matters for cost?** Disk retention = raw_bytes × compression_ratio × RF. Switching snappy→zstd on telemetry can cut 30–50% storage → 7-day retention becomes clearly cheaper (see [§19 Cost Model](#19-cost-model-retention-throughput-replication)).
 
 ---
 
@@ -423,29 +390,29 @@ sequenceDiagram
 consumer_config = {
     "bootstrap.servers": "kafka-1:9092,kafka-2:9092,kafka-3:9092",
     "group.id": "anomaly-detector-group",
-    
+
     # Start from latest if no committed offset
     "auto.offset.reset": "latest",     # or "earliest" for replay
-    
+
     # Disable auto commit! Commit manually after processing
     "enable.auto.commit": False,
-    
+
     # Heartbeat frequency to the broker
     "heartbeat.interval.ms": 3000,
-    
+
     # Max time between poll() calls before the consumer is considered dead
     # Must be larger than the processing time of one batch
     "max.poll.interval.ms": 300000,    # 5 minutes
-    
+
     # Max records returned per poll()
     "max.poll.records": 500,
-    
+
     # Minimum data to receive (wait until this much data before returning)
     "fetch.min.bytes": 1024,
-    
+
     # Max wait if fetch.min.bytes is not satisfied
     "fetch.max.wait.ms": 500,
-    
+
     # Security
     "security.protocol": "SASL_SSL",
     "sasl.mechanism": "SCRAM-SHA-512",
@@ -463,27 +430,27 @@ consumer.subscribe(["aiops-metrics"])
 try:
     while True:
         msgs = consumer.poll(timeout=1.0)  # Wait up to 1s for messages
-        
+
         if msgs is None:
             continue
         if msgs.error():
             if msgs.error().code() == KafkaError._PARTITION_EOF:
                 continue  # Reached end of partition
             raise KafkaError(msgs.error())
-        
+
         # Process message
         try:
             event = json.loads(msgs.value())
             process_anomaly(event)
-            
+
             # Manual commit AFTER successful processing (at-least-once)
             consumer.commit(asynchronous=False)
-            
+
         except Exception as e:
             # Send to DLQ if processing fails
             send_to_dlq(msgs, str(e))
             consumer.commit(asynchronous=False)  # Still commit to continue to next messages
-            
+
 finally:
     consumer.close()
 ```
@@ -505,7 +472,7 @@ High lag (>10K messages) signals:
 ```
 
 > [!NOTE]
-> Lag is **not always an incident**. Cyclic deploy lag, overnight lag when retrain jobs run, short lag after rebalance — can be a **normal signal**. Unbounded linear lag growth, lag on the critical path (anomalies → correlation) — **is an incident**. Details: [§19 Mental Model](#19-mental-model-backpressure--lag-as-signal-vs-incident).
+> Lag is **not always an incident**. Cyclic deploy lag, overnight lag when retrain jobs run, short lag after rebalance — can be a **normal signal**. Unbounded linear lag growth, lag on the critical path (anomalies → correlation) — **is an incident**. Details: [§20 Mental Model](#20-mental-model-backpressure-lag-as-signal-vs-incident).
 
 ---
 
@@ -604,7 +571,7 @@ If all in-sync replicas fail, Kafka must choose:
 For AIOps alert/incident data: always use `false`. Data loss in the AIOps pipeline is worse than temporary service interruption.
 
 > [!IMPORTANT]
-> **Availability trade-off**: With `unclean.leader.election=false` and ISR shrinks to 0, the topic **stops serving** that partition. AIOps is temporarily "blind" on that partition — but does not **self-heal with wrong data**. Combine with [§24 Bypass design](#24-failure-mode-kafka-down--aiops-blind--bypass): Alertmanager → PagerDuty still works when Kafka is down.
+> **Availability trade-off**: With `unclean.leader.election=false` and ISR shrinks to 0, the topic **stops serving** that partition. AIOps is temporarily "blind" on that partition — but does not **self-heal with wrong data**. Combine with [§25 Bypass design](#25-failure-mode-kafka-down-aiops-blind-bypass): Alertmanager → PagerDuty still works when Kafka is down.
 
 ---
 
@@ -755,7 +722,7 @@ spec:
 | **Parquet** | N/A (file format, not for streaming) | Smallest | — | Batch/offline processing |
 
 > [!WARNING]
-> **Schema evolution breaks training**: Adding a required field without default; changing `anomaly_score` type float→string; renaming `service_name`→`service` — old consumers fail, DLQ fills, or **worse**: silent coercion of wrong values → training set gets dirty labels. Always use `BACKWARD` compatibility + default values. Details [§21](#21-poison-messages--schema-evolution).
+> **Schema evolution breaks training**: Adding a required field without default; changing `anomaly_score` type float→string; renaming `service_name`→`service` — old consumers fail, DLQ fills, or **worse**: silent coercion of wrong values → training set gets dirty labels. Always use `BACKWARD` compatibility + default values. Details [§22](#22-poison-messages-schema-evolution).
 
 ---
 
@@ -784,12 +751,12 @@ def process_with_dlq(consumer, producer, dlq_topic):
     msg = consumer.poll(1.0)
     if msg is None:
         return
-    
+
     try:
         event = AnomalyEvent.from_bytes(msg.value())
         process_anomaly(event)
         consumer.commit(asynchronous=False)
-        
+
     except (ValueError, KeyError) as e:
         # Parse/schema error — send to DLQ immediately (no retry)
         send_to_dlq(
@@ -801,11 +768,11 @@ def process_with_dlq(consumer, producer, dlq_topic):
             retry_count=0,
         )
         consumer.commit(asynchronous=False)
-        
+
     except TemporaryError as e:
         # Transient error — check retry count
         retry_count = int(msg.headers().get("retry_count", [b"0"])[1])
-        
+
         if retry_count >= 3:
             # Exceeded retries → send to DLQ
             send_to_dlq(producer, dlq_topic, msg, str(e), "MAX_RETRIES", retry_count)
@@ -871,7 +838,7 @@ Amazon MSK (Managed Streaming for Apache Kafka) reduces Kafka operational burden
 **Recommendation**: small/mid team → **MSK**; large team + Kafka experts → **self-hosted**; burst load → **MSK Serverless**.
 
 > [!TIP]
-> Regulated industries (finance/healthcare/gov): see also [§25 MSK vs Self-Managed for Regulated Industries](#25-msk-vs-self-managed-for-regulated-industries) — the decision is not only TCO but also audit, data residency, and change control.
+> Regulated industries (finance/healthcare/gov): see also [§26 MSK vs Self-Managed for Regulated Industries](#26-msk-vs-self-managed-for-regulated-industries) — the decision is not only TCO but also audit, data residency, and change control.
 
 ### MSK Terraform
 
@@ -1035,7 +1002,60 @@ Redis Streams is a lighter alternative for small-scale AIOps systems.
 
 ---
 
-## 14. Production Configuration
+## 14. Processing on Kafka — Flink, Kafka Streams, and Consumer Services
+
+> [!NOTE]
+> **KEY IDEA**
+> Kafka stores and fans out events. **Processing** (normalize heavy maps, topology join, feature windows, sessionization) happens in *consumers of the log*. In industry, **Kafka + Apache Flink** is the most common *heavy* pairing — Flink’s Kafka connector, event-time model, and checkpointed state match multi-stage AIOps data planes. That does **not** mean every AIOps deployment must run Flink on day one.
+
+### 14.1 Why “Kafka goes with Flink” is usually true (at scale)
+
+| Fact | Implication |
+|------|-------------|
+| Flink treats Kafka as a durable, replayable source of truth | Recompute features / fix a bad enrich job from offsets + savepoints |
+| AIOps needs **event-time** (scrape delay, batch export, region lag) | Watermarks > naive `now()` windows in a Python loop |
+| Enrichment joins are **stateful** (service → owner, deploy version) | RocksDB keyed state beats ad-hoc Redis maps without recovery story |
+| Multiple sinks (canonical topic, online features, lake) | One Flink job graph can fan out with consistent processing time |
+
+Managed options (Amazon Managed Service for Apache Flink, Confluent, Ververica, etc.) reduce ops — the **mental model stays the same**: log on Kafka, state + windows on Flink.
+
+### 14.2 When Kafka does *not* need Flink
+
+| Workload | Prefer | Why |
+|----------|--------|-----|
+| Rename, drop, sample, unit convert | **OTel Collector** | Cheaper, edge-local, no cluster |
+| Model score, simple threshold AD | **Consumer service** (`group.id` per model) | Language of the model; lower ops |
+| Light JVM enrich / route | **Kafka Streams** | No Flink JM/TM; deploy with the service |
+| Nightly training tables / backfill | **Spark / warehouse** | Throughput & SQL over sub-second latency |
+| Team &lt; ~5 eng, &lt;10K events/s | Stay simple | Flink platform tax dominates value |
+
+Deep comparison (pros/cons, maturity ladder): [06 — Data plane §5.6](../06-data-plane/README.md).
+
+### 14.3 Reference topology
+
+```text
+Producers (Collector, Alertmanager, CD webhooks)
+    → Kafka topics (raw / canonical / change)
+        → Flink (or Streams): enrich + feature windows
+            → Kafka topics (features, enriched events)
+                → Consumer groups: AD · correlation · RCA · audit
+        → Spark / ELT: cold path training (optional, from Kafka or S3)
+```
+
+### 14.4 Contract rules (whatever engine you pick)
+
+1. **Schemas live on topics**, not inside Flink job code only — Schema Registry + version.
+2. Each processor class gets a **stable `group.id`** (or Flink UID) — never share with AD scorers.
+3. **Lag is a product signal**: Flink checkpoint/commit lag high → features stale → suppress or degrade AD ([§20 — Backpressure & lag](#20-mental-model-backpressure-lag-as-signal-vs-incident)).
+4. Prefer **at-least-once + idempotent sinks** for AIOps features unless you truly need Kafka transactions end-to-end.
+5. **Fail open on enrich**: missing topology → `unknown` + quality flag, do not block the bus.
+
+> [!TIP]
+> **One-line rule**: Use Kafka always for multi-consumer AIOps transport. Add Flink when you outgrow “stateless consumers + Redis.” Do not add Flink to feel enterprise.
+
+---
+
+## 15. Production Configuration
 
 > [!NOTE]
 > **KEY IDEA**
@@ -1086,7 +1106,7 @@ transaction.max.timeout.ms=900000     # 15 minute max transaction
 
 ---
 
-## 15. Monitoring Kafka
+## 16. Monitoring Kafka
 
 > [!NOTE]
 > **KEY IDEA**
@@ -1163,7 +1183,7 @@ kafka_log_log_logendoffset                             # Latest offset
 
 - alert: KafkaDiskUsageHigh
   expr: |
-    (1 - node_filesystem_avail_bytes{mountpoint="/data"} 
+    (1 - node_filesystem_avail_bytes{mountpoint="/data"}
       / node_filesystem_size_bytes{mountpoint="/data"}) > 0.75
   for: 15m
   labels:
@@ -1187,7 +1207,7 @@ Key panels to include:
 
 ---
 
-## 16. Scaling
+## 17. Scaling
 
 ### Horizontal Scaling
 
@@ -1222,11 +1242,11 @@ kafka-reassign-partitions.sh \
 > **Why throttle reassignment?** Moving partitions = disk + network copy. Full-speed moves during peak hours can raise produce p99 and consumer lag → AIOps "reacts slowly" exactly when traffic is high. Use `kafka-reassign-partitions` throttle / Cruise Control; schedule off-peak.
 
 > [!WARNING]
-> Scaling consumers **does not help** if you have a hot partition: 1 key owns 80% of traffic → 1 partition → max 1 consumer. Scaling the group only redistributes **cold** partitions. See [§22 Hot Partitions](#22-hot-partitions-from-high-cardinality-keys).
+> Scaling consumers **does not help** if you have a hot partition: 1 key owns 80% of traffic → 1 partition → max 1 consumer. Scaling the group only redistributes **cold** partitions. See [§23 Hot Partitions](#23-hot-partitions-from-high-cardinality-keys).
 
 ---
 
-## 17. Security
+## 18. Security
 
 > [!NOTE]
 > **KEY IDEA**
@@ -1281,7 +1301,7 @@ ssl.client.auth=required    # mTLS
 
 ---
 
-## 18. Cost Model — Retention × Throughput × Replication
+## 19. Cost Model — Retention × Throughput × Replication
 
 > [!NOTE]
 > **KEY IDEA**
@@ -1329,7 +1349,7 @@ Every retention, RF, compression, and partition decision **multiplies** storage.
 
 ---
 
-## 19. Mental Model: Backpressure & Lag as Signal vs Incident
+## 20. Mental Model: Backpressure & Lag as Signal vs Incident
 
 > [!NOTE]
 > **KEY IDEA**
@@ -1391,7 +1411,7 @@ flowchart TD
 
 ---
 
-## 20. Exactly-Once Myths in AIOps Pipeline
+## 21. Exactly-Once Myths in AIOps Pipeline
 
 > [!WARNING]
 > **Myth #1**: "Enable `enable.idempotence=true` + transactions = AIOps exactly-once."
@@ -1452,7 +1472,7 @@ Do **not** use transactions as a charm against Kubernetes API remediation.
 
 ---
 
-## 21. Poison Messages & Schema Evolution
+## 22. Poison Messages & Schema Evolution
 
 > [!NOTE]
 > **KEY IDEA**
@@ -1499,7 +1519,7 @@ Forbidden / extreme care:
 
 ---
 
-## 22. Hot Partitions from High-Cardinality Keys
+## 23. Hot Partitions from High-Cardinality Keys
 
 > [!NOTE]
 > **KEY IDEA**
@@ -1557,7 +1577,7 @@ kafka-log-dirs.sh --describe --bootstrap-server kafka-1:9092 \
 
 ---
 
-## 23. Multi-Consumer Fan-out: AD + Correlation + Audit
+## 24. Multi-Consumer Fan-out: AD + Correlation + Audit
 
 > [!NOTE]
 > **KEY IDEA**
@@ -1602,11 +1622,11 @@ graph TD
 Each extra consumer group adds fetch load on the broker (nearly multiplying reads). 5 groups on high-ingress raw-metrics is more expensive than 5 groups on anomalies (small volume). **Strong fan-out on processed events; careful fan-out on high-volume raw.**
 
 > [!TIP]
-> **Audit trail for remediation**: group `remediation-audit` on `aiops-remediation-triggers` + `results` builds an immutable story of "who/what triggered which action when" — critical for post-incident and regulated environments ([§25](#25-msk-vs-self-managed-for-regulated-industries), [15 — Famous Incidents](../16-famous-incidents/README.md)).
+> **Audit trail for remediation**: group `remediation-audit` on `aiops-remediation-triggers` + `results` builds an immutable story of "who/what triggered which action when" — critical for post-incident and regulated environments ([§26](#26-msk-vs-self-managed-for-regulated-industries), [15 — Famous Incidents](../16-famous-incidents/README.md)).
 
 ---
 
-## 24. Failure Mode: Kafka Down → AIOps Blind & Bypass
+## 25. Failure Mode: Kafka Down → AIOps Blind & Bypass
 
 > [!WARNING]
 > **When Kafka dies, intelligent AIOps dies with it** — anomaly, correlation, RCA, and auto-remediation all starve. If **all** alerting depends on Kafka, you go blind exactly when you need eyes most. This is an architecture failure mode, not "ops will fix the broker quickly".
@@ -1661,10 +1681,10 @@ flowchart TB
 
 ### Minimum runbook when Kafka is down
 
-1. Classify: broker / network / ACL / disk full  
-2. Verify bypass Alertmanager → PagerDuty still fires critical SLOs  
-3. **Disable auto-remediation** (feature flag)  
-4. Do not manually delete log segments; communicate "AIOps degraded"  
+1. Classify: broker / network / ACL / disk full
+2. Verify bypass Alertmanager → PagerDuty still fires critical SLOs
+3. **Disable auto-remediation** (feature flag)
+4. Do not manually delete log segments; communicate "AIOps degraded"
 5. Recovery: lag drain + DLQ review; postmortem ([15](../16-famous-incidents/README.md))
 
 > [!TIP]
@@ -1672,7 +1692,7 @@ flowchart TB
 
 ---
 
-## 25. MSK vs Self-Managed for Regulated Industries
+## 26. MSK vs Self-Managed for Regulated Industries
 
 > [!NOTE]
 > **KEY IDEA**
@@ -1699,34 +1719,34 @@ Regulated + strict data sovereignty (on-prem / dedicated):
 
 Mandatory remediation audit:
   → Whether MSK or self: compact topic aiops-incidents + WORM storage copy
-  → Audit consumer group must not share the realtime path (§23)
+  → Audit consumer group must not share the realtime path (§24)
 ```
 
 > [!IMPORTANT]
 > **Trade-off**: Self-managed for "absolute control" often **loses** audit readiness if the team lacks mature patch/backup/DR process. Auditors ask for 12 months of patch evidence — MSK CloudTrail answers faster than an internal wiki. Choose self-managed only when you have a real Kafka platform team, not for a "feeling of control".
 
 > [!TIP]
-> Combine with [§18 Cost](#18-cost-model--retention--throughput--replication): regulated often requires longer retention (90d–1y) for alert/remediation topics → storage cost rises; budget before signing the architecture.
+> Combine with [§19 Cost](#19-cost-model-retention-throughput-replication): regulated often requires longer retention (90d–1y) for alert/remediation topics → storage cost rises; budget before signing the architecture.
 
 ---
 
-## 26. War Stories
+## 27. War Stories
 
 > [!NOTE]
 > The stories below are **pattern composites** from public postmortems and generic operations experience — not secrets of a specific company. Goal: recognize failure modes before you hit them.
 
 | # | Name | Short story | Root cause | Lesson |
 |---|------|-------------|------------|--------|
-| 1 | Green lag, red customers | AD slow, lag 800K < 1M threshold → 35 min detection delay; customers report before monitoring | Alert on message count, not lag_time / path | [§19](#19-mental-model-backpressure--lag-as-signal-vs-incident) |
-| 2 | "Exactly-once" double restart | Rebalance between K8s restart and offset commit → service restarted twice | Non-idempotent side effect | [§20](#20-exactly-once-myths-in-aiops-pipeline) |
-| 3 | Schema "just one field" | Required field without default → correlator crash; training on data gap | Breaking schema + swallowed errors | [§21](#21-poison-messages--schema-evolution) |
-| 4 | Black Friday hot key | checkout = 60% volume → 1 partition maxed; scaling pods useless | Hot partition | [§22](#22-hot-partitions-from-high-cardinality-keys) |
-| 5 | Kafka down, all quiet | MSK network 18 minutes; Prometheus rules already disabled → no page | AIOps as sole path, no bypass | [§24](#24-failure-mode-kafka-down--aiops-blind--bypass), [15](../16-famous-incidents/README.md) |
-| 6 | Shared group "to save money" | Correlation + SIEM share group → only one side gets each partition | Fan-out confused with compete | [§23](#23-multi-consumer-fan-out-ad--correlation--audit) |
+| 1 | Green lag, red customers | AD slow, lag 800K < 1M threshold → 35 min detection delay; customers report before monitoring | Alert on message count, not lag_time / path | [§20](#20-mental-model-backpressure-lag-as-signal-vs-incident) |
+| 2 | "Exactly-once" double restart | Rebalance between K8s restart and offset commit → service restarted twice | Non-idempotent side effect | [§21](#21-exactly-once-myths-in-aiops-pipeline) |
+| 3 | Schema "just one field" | Required field without default → correlator crash; training on data gap | Breaking schema + swallowed errors | [§22](#22-poison-messages-schema-evolution) |
+| 4 | Black Friday hot key | checkout = 60% volume → 1 partition maxed; scaling pods useless | Hot partition | [§23](#23-hot-partitions-from-high-cardinality-keys) |
+| 5 | Kafka down, all quiet | MSK network 18 minutes; Prometheus rules already disabled → no page | AIOps as sole path, no bypass | [§25](#25-failure-mode-kafka-down-aiops-blind-bypass), [15](../16-famous-incidents/README.md) |
+| 6 | Shared group "to save money" | Correlation + SIEM share group → only one side gets each partition | Fan-out confused with compete | [§24](#24-multi-consumer-fan-out-ad-correlation-audit) |
 
 ---
 
-## 27. Socratic Questions
+## 28. Socratic Questions
 
 Use these questions to review your team's Kafka/AIOps design — before merging Terraform or shipping a new consumer.
 
@@ -1748,7 +1768,7 @@ Use these questions to review your team's Kafka/AIOps design — before merging 
 
 ---
 
-## 28. Production Review
+## 29. Production Review
 
 ### Principal Engineer Assessment
 
@@ -1758,10 +1778,10 @@ Use these questions to review your team's Kafka/AIOps design — before merging 
 2. **Trace messages >1MB**: Raise `message.max.bytes` (e.g. 5MB) for raw-traces topics.
 3. **Blue-green same group.id**: Two AD versions will compete for partitions — version the group (`anomaly-detector-v2-group`).
 4. **Missing Kafka Connect → S3**: Long-term offline training should not depend only on Kafka retention.
-5. **Schema evolution without defaults**: Require `BACKWARD` + new fields with `default` ([§21](#21-poison-messages--schema-evolution)).
-6. **Sole-path AIOps**: Prometheus→Alertmanager bypass not chaos-tested = P0 ([§24](#24-failure-mode-kafka-down--aiops-blind--bypass)).
-7. **Lag alerts missing lag_time / path severity**: Fatigue or missed incidents ([§19](#19-mental-model-backpressure--lag-as-signal-vs-incident)).
-8. **Non-idempotent remediation side effects**: EOS producer does not save double K8s/LLM calls ([§20](#20-exactly-once-myths-in-aiops-pipeline)).
+5. **Schema evolution without defaults**: Require `BACKWARD` + new fields with `default` ([§22](#22-poison-messages-schema-evolution)).
+6. **Sole-path AIOps**: Prometheus→Alertmanager bypass not chaos-tested = P0 ([§25](#25-failure-mode-kafka-down-aiops-blind-bypass)).
+7. **Lag alerts missing lag_time / path severity**: Fatigue or missed incidents ([§20](#20-mental-model-backpressure-lag-as-signal-vs-incident)).
+8. **Non-idempotent remediation side effects**: EOS producer does not save double K8s/LLM calls ([§21](#21-exactly-once-myths-in-aiops-pipeline)).
 
 ### Chapter Scores
 
@@ -1775,7 +1795,7 @@ Use these questions to review your team's Kafka/AIOps design — before merging 
 
 ---
 
-## 29. Summary
+## 30. Summary
 
 | Concept | Core takeaway |
 |---------|---------------|

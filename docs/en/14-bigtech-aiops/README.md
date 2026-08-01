@@ -25,24 +25,6 @@ After this chapter, continue to [14 — E-commerce & Banking](../15-ecommerce-ba
 
 ---
 
-## Table of Contents
-
-1. [Why learn from Big Tech (and why NOT to copy blindly)](#1-why-learn-from-big-tech-and-why-not-to-copy-blindly)
-2. [Google — SRE, Error Budget, IMAG, AI SRE agentic](#2-google--sre-error-budget-imag-ai-sre-agentic)
-3. [Netflix — Chaos Engineering, Simian Army, resilience-first](#3-netflix--chaos-engineering-simian-army-resilience-first)
-4. [Amazon / AWS — Correction of Error & operational tools as hazard](#4-amazon--aws--correction-of-error--operational-tools-as-hazard)
-5. [Meta / Facebook — BGP 2021 and the control-plane failure class](#5-meta--facebook--bgp-2021-and-the-control-plane-failure-class)
-6. [Uber — Michelangelo: ML platform lessons for AIOps](#6-uber--michelangelo-ml-platform-lessons-for-aiops)
-7. [LinkedIn, Microsoft, Spotify — observability & ownership at scale](#7-linkedin-microsoft-spotify--observability--ownership-at-scale)
-8. [Cross-comparison: common patterns](#8-cross-comparison-common-patterns)
-9. [Decision framework: org 10 / 100 / 1000 eng](#9-decision-framework-org-10--100--1000-eng)
-10. [Edge cases when importing Big Tech patterns](#10-edge-cases-when-importing-big-tech-patterns)
-11. [Case study: AIOps for a 50-eng fintech](#11-case-study-aiops-for-a-50-eng-fintech)
-12. [Production Review Checklist](#13-production-review-checklist)
-13. [90-day Improvement Roadmap](#13-90-day-improvement-roadmap)
-14. [Socratic questions / thinking exercises](#14-socratic-questions--thinking-exercises)
-
----
 
 
 ## How to read this chapter (concept-first)

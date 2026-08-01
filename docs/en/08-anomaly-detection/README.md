@@ -26,36 +26,6 @@ After this chapter, continue to [09 — Alert Correlation](../09-alert-correlati
 
 ---
 
-## Table of Contents
-
-1. [Anomaly Detection Overview](#1-anomaly-detection-overview)
-2. [The Detection Pipeline](#2-the-detection-pipeline)
-3. [EWMA — Exponentially Weighted Moving Average](#3-ewma--exponentially-weighted-moving-average)
-4. [Z-Score and Modified Z-Score](#4-z-score-and-modified-z-score)
-5. [STL Decomposition](#5-stl-decomposition)
-6. [Seasonal Hybrid ESD (SHESD)](#6-seasonal-hybrid-esd-shesd)
-7. [Isolation Forest](#7-isolation-forest)
-8. [DBSCAN — Density-Based Clustering](#8-dbscan--density-based-clustering)
-9. [Local Outlier Factor (LOF)](#9-local-outlier-factor-lof)
-10. [One-Class SVM](#10-one-class-svm)
-11. [LSTM for Time-Series Anomaly Detection](#11-lstm-for-time-series-anomaly-detection)
-12. [Transformer-Based Detection](#12-transformer-based-detection)
-13. [Log Anomaly Detection — Drain Algorithm](#13-log-anomaly-detection--drain-algorithm)
-14. [Log Anomaly Detection — DeepLog](#14-log-anomaly-detection--deeplog)
-15. [Algorithm Selection Guide](#15-algorithm-selection-guide)
-16. [Feature Engineering](#16-feature-engineering)
-17. [Production Architecture](#17-production-architecture)
-18. [Model Training and Retraining Pipeline](#18-model-training-and-retraining-pipeline)
-19. [False Positive Management](#19-false-positive-management)
-20. [Common Mistakes](#20-common-mistakes)
-21. [Monitoring the Detection System](#21-monitoring-the-detection-system)
-22. [Scaling](#22-scaling)
-23. [Security](#23-security)
-24. [Cost](#24-cost)
-25. [Deep Thinking: Drift, Ensemble, Feedback Loop & When NOT to Use ML](#25-deep-thinking-drift-ensemble-feedback-loop--when-not-to-use-ml)
-26. [Production Review](#26-production-review)
-
----
 
 
 ## How to read this chapter (concept-first)

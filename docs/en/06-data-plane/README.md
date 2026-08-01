@@ -43,39 +43,6 @@ After this chapter, continue to [07 — Kafka / Kinesis](../07-kafka/README.md) 
 
 ---
 
-## Table of Contents
-
-1. [Why a Telemetry Data Plane — After Collection](#1-why-a-telemetry-data-plane--after-collection)
-2. [Mental Model: Planes, Stages, Contracts](#2-mental-model-planes-stages-contracts)
-3. [Decision Tree — When Do You Need This Layer?](#3-decision-tree--when-do-you-need-this-layer)
-4. [Canonical Schemas](#4-canonical-schemas)
-5. [Normalization](#5-normalization)
-6. [Enrichment](#6-enrichment)
-7. [Validation & Quality Gates](#7-validation--quality-gates)
-8. [WHERE Data Lives — Multi-Tier Storage](#8-where-data-lives--multi-tier-storage)
-9. [HOW LONG — Retention Matrix](#9-how-long--retention-matrix)
-10. [WHAT Happens Later — Query, Detect, Train, Audit, Delete](#10-what-happens-later--query-detect-train-audit-delete)
-11. [Feature Store — Online vs Offline](#11-feature-store--online-vs-offline)
-12. [Train–Serve Skew](#12-trainserve-skew)
-13. [Data Lifecycle & Late Arrivals](#13-data-lifecycle--late-arrivals)
-14. [PII, Privacy & Compliance](#14-pii-privacy--compliance)
-15. [Cost Model of the Data Plane](#15-cost-model-of-the-data-plane)
-16. [Maturity Model (L0–L4)](#16-maturity-model-l0l4)
-17. [Reference Architecture](#17-reference-architecture)
-18. [Edge Cases & Failure Modes](#18-edge-cases--failure-modes)
-19. [Honest List — Remaining Pipeline Gaps](#19-honest-list--remaining-pipeline-gaps)
-20. [Common Mistakes](#20-common-mistakes)
-21. [Monitoring the Data Plane](#21-monitoring-the-data-plane)
-22. [Scaling](#22-scaling)
-23. [Security](#23-security)
-24. [Production Checklist](#24-production-checklist)
-25. [War Stories](#25-war-stories)
-26. [Socratic Questions](#26-socratic-questions)
-27. [Production Review](#27-production-review)
-28. [Summary](#28-summary)
-29. [References](#29-references)
-
----
 
 ## 1. Why a Telemetry Data Plane — After Collection
 
@@ -150,9 +117,9 @@ flowchart LR
 14–16 Case studies
 ```
 
-Collection answers: *Can we see the system?*  
-Data plane answers: *Can we trust, join, retain, and feature the data for machines and humans?*  
-Kafka answers: *Can many consumers get the same events with replay?*  
+Collection answers: *Can we see the system?*
+Data plane answers: *Can we trust, join, retain, and feature the data for machines and humans?*
+Kafka answers: *Can many consumers get the same events with replay?*
 Intelligence answers: *What is wrong, why, and what to do?*
 
 > [!IMPORTANT]
@@ -499,6 +466,124 @@ Drain or similar parsers should run **after** field normalize so templates are s
 > [!TIP]
 > Version the mapping table (`identity-map@v12`). When AD FPR jumps after a rename, you can bisect maps, not guess.
 
+### 5.6 Stream processing engines — Flink, Kafka Streams, Spark, consumer services
+
+> [!NOTE]
+> **KEY IDEA**
+> Kafka is the **log / bus**. It does **not** normalize, join topology, window features, or maintain long-lived state by itself. Something must **read the bus, transform, and write** canonical topics / feature stores. That “something” is usually a stream processor. **Kafka + Flink is a very common production pairing** — but it is a *maturity and workload* choice, not a law of nature.
+
+#### Does Kafka “go with” Flink?
+
+**Often yes at mid/large scale** — for good engineering reasons, not fashion:
+
+| Why teams pair Kafka + Flink | What that buys AIOps |
+|------------------------------|----------------------|
+| First-class Kafka source/sink (offsets, EOS patterns, consumer groups) | Reliable ingest of telemetry / anomaly / change topics |
+| Event-time + watermarks + late data | Correct windows when scrape/export is delayed ([§13](#13-data-lifecycle-late-arrivals)) |
+| Large keyed state (RocksDB) + checkpoint/savepoint | Topology join caches, sliding features, sessionization |
+| Horizontal scale of operators | High-cardinality series without one mega-Python pod |
+| Savepoint → reprocess from Kafka offsets | Retrain / recompute features after bugfix |
+
+**Often no (yet)** — when the job is still:
+
+- Light rename / drop / unit convert → **OTel Collector** is enough
+- Stateless map + simple group → **Kafka consumer service** (Python/Go) is enough
+- Same JVM ecosystem, moderate state, want “Kafka-native” ops → **Kafka Streams**
+- Heavy multi-day batch joins / training tables → **Spark** (batch or Structured Streaming) on the lake
+
+```text
+Wrong question:  "Is Flink better than Kafka?"
+Right question:  "What transforms need state, event-time, and fan-out after the log?"
+```
+
+```mermaid
+flowchart LR
+    subgraph Edge["Edge / collect"]
+        FB[Fluent Bit / Alloy]
+        OTEL[OTel Collector]
+    end
+    subgraph Bus["Transport — Ch.07"]
+        K[(Kafka / MSK)]
+    end
+    subgraph Proc["Process — this section"]
+        CS[Consumer service]
+        KS[Kafka Streams]
+        FL[Apache Flink]
+        SP[Spark / batch]
+    end
+    subgraph Out["Outputs"]
+        CT[Canonical topics]
+        FS[Feature store]
+        HOT[Hot stores]
+    end
+
+    FB --> OTEL --> K
+    OTEL --> K
+    K --> CS & KS & FL
+    K --> SP
+    CS & KS & FL --> CT & FS
+    SP --> FS
+    CT --> HOT
+
+    style FL fill:#dcfce7,color:#1e293b
+    style K fill:#e0f2fe,color:#1e293b
+```
+
+#### Comparison matrix (same stage: *process the bus*)
+
+| Dimension | Consumer service (Python/Go) | Kafka Streams | Apache Flink | Spark (batch / SS) |
+|-----------|------------------------------|---------------|--------------|--------------------|
+| **Ops surface** | Low (app + consumer group) | Medium (app; Kafka-coupled) | High (JM/TM, checkpoints, RocksDB) | High (cluster / job server) |
+| **State & windows** | DIY / Redis | Local state stores | Excellent (event-time, timers) | Excellent offline; streaming lag-prone if misused |
+| **Latency** | ms–seconds | ms–low seconds | seconds typical for AIOps jobs | minutes (batch) / higher for streaming |
+| **Kafka fit** | Native consumer | **Deepest** Kafka integration | Excellent connectors + EOS patterns | Kafka source/sink; often lake-centric |
+| **Language / team** | Any | JVM | JVM (+ PyFlink) | JVM / Python / SQL |
+| **AIOps sweet spot** | AD scorer, simple enrich, LLM tools | Identity map, light join, routing | Feature windows, topology join, multi-stream | Offline training tables, backfill |
+| **When it hurts** | Hidden state in Redis; no watermark discipline | Complex CEP / multi-hour windows | Overkill for 3 field renames | Using micro-batch as fake real-time AD |
+
+#### Pros / cons in AIOps terms
+
+| Engine | Pros | Cons |
+|--------|------|------|
+| **Flink** | Event-time correctness; savepoints; scales joins & features; industry default next to Kafka for heavy stream ETL | Cluster cost; skill scarcity; easy to build an unowned platform |
+| **Kafka Streams** | No separate cluster; same deploy as services; strong exactly-once *within Kafka* story | JVM-centric; weaker for huge cross-topic CEP vs Flink; ops still on you |
+| **Consumer service** | Fast to ship Ch.08 detectors; language flexibility | Every team reinvents windowing; train–serve skew risk |
+| **Spark** | Best for *offline* feature / training export; SQL familiarity | Wrong default for low-latency online features |
+
+#### Decision tree
+
+```text
+Need multi-day training tables / heavy backfill only?
+  → Spark (or warehouse ELT) on cold/lake path — not Flink for that alone
+
+Need online features, event-time windows, multi-stream join (metrics ⊕ deploy ⊕ topology)?
+  → Flink (or managed Flink: Kinesis Data Analytics / MSF, Ververica, etc.)
+
+Need light enrich + route, team is JVM, want no Flink cluster?
+  → Kafka Streams
+
+Need model scoring / custom AD with little join logic?
+  → Consumer service in the language of the model (idempotent, own group.id)
+
+Only rename / unit / drop / sample?
+  → Stay in OTel Collector — do NOT stand up Flink
+```
+
+#### Recommended default path (maturity)
+
+| Maturity | Process layer |
+|----------|----------------|
+| **L0–L1** | Collector + a few consumer services |
+| **L2** | Collector + Kafka Streams *or* one Flink job for identity/enrich |
+| **L3+** | **Kafka + Flink** (or managed equivalent) for feature materialization + complex enrich; consumers for model serve |
+| **Always** | Kafka remains the contract log; processors are **replaceable** behind topic schemas |
+
+> [!WARNING]
+> **Anti-pattern**: “We have Kafka, so we must run Flink.” Flink without clear ownership, SLOs on checkpoint lag, and schema contracts becomes a second unreliable control plane. Prefer **one well-owned Flink domain** (features + enrich) over five half-owned jobs.
+
+> [!TIP]
+> **Hybrid that works in production**: OTel (edge normalize) → Kafka raw/canonical → **Flink** (enrich + feature windows) → Kafka feature/canonical topics → **Python consumers** (AD / correlation). Spark only on S3/Parquet for retrain. See also [07 — Kafka](../07-kafka/README.md).
+
 ---
 
 ## 6. Enrichment
@@ -533,11 +618,11 @@ flowchart TD
 
 ### 6.3 Rules of safe enrich
 
-1. **Never block ingest** on external HTTP without timeout + default  
-2. **Cache with TTL** shorter than SoT SLA × 2  
-3. **Stamp enrichment version** (`enrichment_build=2026.07.22.1`)  
-4. **Prefer keys that survive restarts** (`service_id`, not pod IP)  
-5. **Separate PII enrich** (customer name) from operational enrich — different data_class  
+1. **Never block ingest** on external HTTP without timeout + default
+2. **Cache with TTL** shorter than SoT SLA × 2
+3. **Stamp enrichment version** (`enrichment_build=2026.07.22.1`)
+4. **Prefer keys that survive restarts** (`service_id`, not pod IP)
+5. **Separate PII enrich** (customer name) from operational enrich — different data_class
 6. **Topology edges need confidence** (`edge_source=mesh|inferred|cmdb`)
 
 ### 6.4 Change enrichment (highest ROI)
@@ -675,7 +760,7 @@ flowchart TB
 
 ```
 Write path:
-  Collectors → normalize/enrich/validate → 
+  Collectors → normalize/enrich/validate →
     (a) pillar stores (Prom/Loki/Tempo)
     (b) Kafka raw/canonical topics
     (c) feature materializers → online/offline
@@ -800,10 +885,10 @@ sequenceDiagram
 
 ### 10.4 Delete / GC workers
 
-- Enforce TTL per class  
-- Compact Kafka → S3 then drop  
-- GC orphan features when model versions retire  
-- Emit audit log of delete batches  
+- Enforce TTL per class
+- Compact Kafka → S3 then drop
+- GC orphan features when model versions retire
+- Emit audit log of delete batches
 
 ---
 
@@ -940,10 +1025,10 @@ parity_job:
 
 ### 12.3 Hard rules
 
-1. Model artifact **must** record `feature_view_version`  
-2. Online materializer **must** refuse unknown versions (or dual-write)  
-3. Training **must** use offline store only — not ad-hoc Grafana CSV  
-4. Shadow deploy: score both old/new feature versions before cutover  
+1. Model artifact **must** record `feature_view_version`
+2. Online materializer **must** refuse unknown versions (or dual-write)
+3. Training **must** use offline store only — not ad-hoc Grafana CSV
+4. Shadow deploy: score both old/new feature versions before cutover
 
 ```mermaid
 flowchart TD
@@ -1051,13 +1136,13 @@ stateDiagram-v2
 
 ### 14.2 Controls
 
-1. **Allowlist attributes** at Collector (deny by default for custom keys)  
-2. **Redact processors** before store and before Kafka topics used by ML  
-3. **data_class** on every record; ACL by class  
-4. **Separate topics/buckets** for restricted data  
-5. **Tokenization** for join keys when needed (HMAC with keyed secret)  
-6. **Retention shorter** for PII-bearing classes  
-7. **Access audit** on Explore / warehouse queries  
+1. **Allowlist attributes** at Collector (deny by default for custom keys)
+2. **Redact processors** before store and before Kafka topics used by ML
+3. **data_class** on every record; ACL by class
+4. **Separate topics/buckets** for restricted data
+5. **Tokenization** for join keys when needed (HMAC with keyed secret)
+6. **Retention shorter** for PII-bearing classes
+7. **Access audit** on Explore / warehouse queries
 8. **LLM path**: only redacted bundles ([11](../11-llm-agent/README.md))
 
 ### 14.3 Decision tree — store or drop
@@ -1316,23 +1401,23 @@ Phase 4: stop legacy fields
 
 ### 19.2 Structural open problems (industry)
 
-1. **Cross-company identity** for SaaS dependencies you do not instrument  
-2. **True real-time PIT features** at extreme cardinality without huge $  
-3. **Semantic OTel convergence** still uneven across languages/agents  
-4. **Privacy-preserving training** on production telemetry at scale  
-5. **Explainability** of enriched features to auditors without drowning them  
+1. **Cross-company identity** for SaaS dependencies you do not instrument
+2. **True real-time PIT features** at extreme cardinality without huge $
+3. **Semantic OTel convergence** still uneven across languages/agents
+4. **Privacy-preserving training** on production telemetry at scale
+5. **Explainability** of enriched features to auditors without drowning them
 
 ### 19.3 Gaps **inside** a typical data plane build (checklist debt)
 
-- [ ] No automated **map canary**  
-- [ ] No **parity job** online/offline  
-- [ ] Topology without **confidence**  
-- [ ] Retention matrix not enforced in Terraform  
-- [ ] DLQ without **owner + burn-down SLO**  
-- [ ] Evidence bundles unbounded → LLM cost blowups  
-- [ ] Training still from **Grafana CSV**  
-- [ ] No **data inventory** for delete/erasure  
-- [ ] Multi-region **enrichment split-brain** untested  
+- [ ] No automated **map canary**
+- [ ] No **parity job** online/offline
+- [ ] Topology without **confidence**
+- [ ] Retention matrix not enforced in Terraform
+- [ ] DLQ without **owner + burn-down SLO**
+- [ ] Evidence bundles unbounded → LLM cost blowups
+- [ ] Training still from **Grafana CSV**
+- [ ] No **data inventory** for delete/erasure
+- [ ] Multi-region **enrichment split-brain** untested
 - [ ] Feature ownership unclear (platform vs app teams)
 
 > [!TIP]
@@ -1400,18 +1485,18 @@ sum(rate(dataplane_records_out_total[5m]))
 
 ### 21.3 Dashboards
 
-1. **Pipeline funnel** — in → normalize → enrich → validate → store → features  
-2. **Quality** — DLQ top offenders by service/source  
-3. **Retention & cost** — GB by class, projected $  
-4. **Feature health** — online hit rate, parity, TTL expiry  
-5. **Privacy** — redact counts, blocked attributes  
+1. **Pipeline funnel** — in → normalize → enrich → validate → store → features
+2. **Quality** — DLQ top offenders by service/source
+3. **Retention & cost** — GB by class, projected $
+4. **Feature health** — online hit rate, parity, TTL expiry
+5. **Privacy** — redact counts, blocked attributes
 
 ### 21.4 Synthetic probes
 
-- Emit known synthetic metrics/logs/traces with deliberate aliases → expect canonical service  
-- Emit PII-like string → expect redaction  
-- Stop enrich source → expect unknown + alert, not hang  
-- Late event → expect late path, not drop without metric  
+- Emit known synthetic metrics/logs/traces with deliberate aliases → expect canonical service
+- Emit PII-like string → expect redaction
+- Stop enrich source → expect unknown + alert, not hang
+- Late event → expect late path, not drop without metric
 
 ---
 
@@ -1432,10 +1517,10 @@ sum(rate(dataplane_records_out_total[5m]))
 
 ### 22.2 Multi-tenant isolation
 
-- Per-tenant quotas on series and log GB  
-- Separate Kafka topics or partition keys with fairness  
-- Noisy neighbor dashboards  
-- Priority lanes for `tier=critical` services  
+- Per-tenant quotas on series and log GB
+- Separate Kafka topics or partition keys with fairness
+- Noisy neighbor dashboards
+- Priority lanes for `tier=critical` services
 
 ### 22.3 Backpressure
 
@@ -1470,39 +1555,39 @@ If materializer lag > threshold:
 
 ### 24.1 Before calling the data plane “production”
 
-- [ ] Identity map covers ≥95% of prod traffic sources  
-- [ ] Schema registry + version on all canonical streams  
-- [ ] DLQ with owner, alert, and weekly burn-down  
-- [ ] Deploy/change events enrich critical services  
-- [ ] Retention matrix approved by security + finance  
-- [ ] Hot / warm / cold paths documented with delete semantics  
-- [ ] Online/offline feature defs for every AD feature  
-- [ ] Parity tests in CI + hourly prod job  
-- [ ] PII allowlist/deny + redaction verified by probe  
-- [ ] Data SLOs on dashboard + paging  
-- [ ] Cost showback at least monthly  
-- [ ] Runbook: enrich down, schema spike, lake write fail  
-- [ ] Chaos: kill topology source; ingest continues  
-- [ ] Inventory of all data copies for erasure  
+- [ ] Identity map covers ≥95% of prod traffic sources
+- [ ] Schema registry + version on all canonical streams
+- [ ] DLQ with owner, alert, and weekly burn-down
+- [ ] Deploy/change events enrich critical services
+- [ ] Retention matrix approved by security + finance
+- [ ] Hot / warm / cold paths documented with delete semantics
+- [ ] Online/offline feature defs for every AD feature
+- [ ] Parity tests in CI + hourly prod job
+- [ ] PII allowlist/deny + redaction verified by probe
+- [ ] Data SLOs on dashboard + paging
+- [ ] Cost showback at least monthly
+- [ ] Runbook: enrich down, schema spike, lake write fail
+- [ ] Chaos: kill topology source; ingest continues
+- [ ] Inventory of all data copies for erasure
 
 ### 24.2 Per new signal onboarding
 
-1. Name owner + data_class + retention class  
-2. Provide mapping to `service_id`  
-3. Contract test fixtures  
-4. Cardinality estimate  
-5. Feature impact (new view?)  
-6. Privacy review if user-adjacent  
-7. Canary 1% → 100%  
+1. Name owner + data_class + retention class
+2. Provide mapping to `service_id`
+3. Contract test fixtures
+4. Cardinality estimate
+5. Feature impact (new view?)
+6. Privacy review if user-adjacent
+7. Canary 1% → 100%
 
 ### 24.3 Per feature launch
 
-1. Spec window, grain, dtype, range  
-2. Offline backfill plan  
-3. Parity thresholds  
-4. Model version pin  
-5. Rollback plan (feature flag)  
-6. Cost delta (keys × TTL)  
+1. Spec window, grain, dtype, range
+2. Offline backfill plan
+3. Parity thresholds
+4. Model version pin
+5. Rollback plan (feature flag)
+6. Cost delta (keys × TTL)
 
 ---
 
@@ -1528,18 +1613,18 @@ If materializer lag > threshold:
 
 Use in design review before approving the next storage PO.
 
-1. What is the **canonical `service_id`** for your top 20 revenue services — and who owns the map?  
-2. If CMDB is 6 hours stale, what does correlation do?  
-3. Point to the **retention matrix** row for remediation audit events. Is it WORM?  
-4. Name one feature used in prod AD. Is the **same code** used offline?  
-5. Event time vs ingest time: which does your watermark use?  
-6. Where do **late** metrics go after 45 minutes?  
-7. What is your **data_class** for checkout logs with emails?  
-8. If online Redis dies, do you page? What degrades?  
-9. How many **copies** of last week’s metrics exist (including notebooks)?  
-10. Which pipeline gap in §19 are you pretending is closed?  
-11. After [07 Kafka](../07-kafka/README.md) is down, what still works from this plane?  
-12. For [08 AD](../08-anomaly-detection/README.md), is gap≠zero enforced?  
+1. What is the **canonical `service_id`** for your top 20 revenue services — and who owns the map?
+2. If CMDB is 6 hours stale, what does correlation do?
+3. Point to the **retention matrix** row for remediation audit events. Is it WORM?
+4. Name one feature used in prod AD. Is the **same code** used offline?
+5. Event time vs ingest time: which does your watermark use?
+6. Where do **late** metrics go after 45 minutes?
+7. What is your **data_class** for checkout logs with emails?
+8. If online Redis dies, do you page? What degrades?
+9. How many **copies** of last week’s metrics exist (including notebooks)?
+10. Which pipeline gap in §19 are you pretending is closed?
+11. After [07 Kafka](../07-kafka/README.md) is down, what still works from this plane?
+12. For [08 AD](../08-anomaly-detection/README.md), is gap≠zero enforced?
 
 > [!TIP]
 > Two consecutive vague answers on identity or feature parity → do not approve new ML models yet.
@@ -1552,15 +1637,15 @@ Use in design review before approving the next storage PO.
 
 **Critical issues to close in most “we collect everything” orgs:**
 
-1. **Identity is tribal knowledge** — encode maps + CI.  
-2. **No data SLOs** — only app SLOs; poison is invisible.  
-3. **Feature logic duplicated** — schedule a store before the fifth detector.  
-4. **Retention by vendor default** — rewrite with matrix + Terraform.  
-5. **Enrich on critical path** — move to cache fail-open.  
-6. **Training from dashboards** — mandatory offline path.  
-7. **PII via span attributes** — allowlist enforcement.  
-8. **Kafka as cold store** — export lake; shorten topics.  
-9. **Parity untested** — treat as release gate.  
+1. **Identity is tribal knowledge** — encode maps + CI.
+2. **No data SLOs** — only app SLOs; poison is invisible.
+3. **Feature logic duplicated** — schedule a store before the fifth detector.
+4. **Retention by vendor default** — rewrite with matrix + Terraform.
+5. **Enrich on critical path** — move to cache fail-open.
+6. **Training from dashboards** — mandatory offline path.
+7. **PII via span attributes** — allowlist enforcement.
+8. **Kafka as cold store** — export lake; shorten topics.
+9. **Parity untested** — treat as release gate.
 10. **Gaps denied** — publish §19 list internally with owners.
 
 ### Improvement Roadmap
@@ -1657,10 +1742,10 @@ Use in design review before approving the next storage PO.
 
 ## Further Reading
 
-- *Designing Data-Intensive Applications* (Kleppmann) — logs, streams, batch  
-- *Fundamentals of Data Engineering* (Reis & Housley) — lifecycle & quality  
-- MLOps feature parity literature — train–serve skew case studies  
-- Downstream pipeline: Kafka → AD → Correlation → RCA → LLM → Remediation  
+- *Designing Data-Intensive Applications* (Kleppmann) — logs, streams, batch
+- *Fundamentals of Data Engineering* (Reis & Housley) — lifecycle & quality
+- MLOps feature parity literature — train–serve skew case studies
+- Downstream pipeline: Kafka → AD → Correlation → RCA → LLM → Remediation
 
 ---
 

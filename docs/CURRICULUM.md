@@ -70,6 +70,25 @@ graph TD
 
 See [assets/diagrams/README.md](assets/diagrams/README.md).
 
+## Default OSS stack (decision map — not a product catalog)
+
+Tools change; **roles** stay. Prefer one tool per role; hybrid only with an owner.
+
+| Pipeline role | Default in this handbook | Common alternatives | Notes |
+|---------------|--------------------------|---------------------|--------|
+| Edge collect (logs) | Fluent Bit or OTel | Vector, Grafana Alloy | Thin edge → gateway; see Ch.02 |
+| Multi-signal gateway | OTel Collector | Alloy (Grafana-centric) | Policy, sampling, export |
+| Metrics | Prometheus (+ Thanos/VM) | VictoriaMetrics, Mimir, AMP | Ch.03 |
+| Logs (ops hot path) | Loki | — | Cheap labels; Ch.04 |
+| Logs (full-text / IR niche) | OpenSearch / ES **subset** | ClickHouse analytics | Dual-path, not 100% dual-write |
+| Traces | Tempo | Jaeger | Ch.05 |
+| Transport bus | Kafka / MSK | Kinesis, Redis Streams (small) | Ch.07 |
+| Stream process (heavy) | **Flink** (often with Kafka) | Kafka Streams, Spark, consumers | Ch.06 §5.6, Ch.07 §14 — Flink optional until state/windows hurt |
+| Stream process (light) | OTel processors + consumer services | Kafka Streams | Do not stand up Flink for renames |
+| Intelligence | Custom on your data | Vendor AIOps add-on | Ch.00 build-vs-buy |
+
+**Kafka + Flink?** Common **yes** at mid/large scale (event-time, state, reprocess). **Not** mandatory on day one — see Ch.07 §14.
+
 ## Remaining backlog (optional later)
 
 - Synthetic / blackbox monitoring (deep chapter)
