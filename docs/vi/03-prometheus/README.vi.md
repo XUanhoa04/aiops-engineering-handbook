@@ -1,6 +1,6 @@
-# Chapter 03 — Prometheus
+# Chapter 03 — Metric evidence và feature engineering với Prometheus
 
-> **Prometheus là tiêu chuẩn thực tế (de-facto standard) cho thu thập, lưu trữ, và cảnh báo metrics trong môi trường cloud-native. Hiểu sâu về TSDB internals, scrape engine, và kiến trúc HA là điều kiện để xây dựng nền tảng AIOps đáng tin cậy.**
+> **Prometheus chỉ là nguồn dữ liệu. Giá trị AIOps nằm ở việc biến counter, gauge và histogram thành evidence có đúng mẫu số, đúng cửa sổ, đúng freshness và đúng phạm vi. Chương này dùng các dãy số cụ thể để chỉ ra khi nào một metric nói thật, nói thiếu hoặc khiến detector kết luận ngược.**
 
 ---
 
@@ -20,49 +20,238 @@ Sau chương này, hãy chuyển sang [04 — Loki](../04-loki/README.vi.md).
 
 ---
 
-## Sub-Documents
+## Cách đọc chương này
 
-| Tài liệu | Mô tả |
-|----------|-------------|
-| [Architecture](architecture.md) | Components nội bộ, data flow |
-| [TSDB](tsdb.md) | TSDB internals: WAL, compaction |
-| [Scraping](scraping.md) | Scrape engine, exporters |
-| [Service Discovery](service-discovery.md) | Kubernetes SD, relabeling |
-| [Recording Rules](recording-rules.md) | Pre-aggregation, federation |
-| [Alerting](alerting.md) | Alert rules, Alertmanager, routing |
-| [High Availability](high-availability.md) | HA pair, Thanos, VictoriaMetrics |
-| [Production](production.md) | Sizing, tuning, operations |
+Phần I đi từ raw samples tới feature/alert có thể dùng trong Chapter 08. Phần II giữ reference về Prometheus, TSDB, PromQL, HA và storage. Mọi công thức ở Phần I đều đi kèm một dãy số và một case mà cách tính ngây thơ thất bại.
+
+## Phần I — Khi time series trở thành evidence
+
+### Dãy số không tự mang ý nghĩa
+
+Trong incident payment, engine đọc năm chuỗi theo phút:
+
+| Phút | Requests | Errors | P99 | DB pool | Retry ratio |
+|---:|---:|---:|---:|---:|---:|
+| 10:08 | 4.080 | 20 | 438 ms | 51% | 2% |
+| 10:09 | 4.110 | 22 | 451 ms | 55% | 2% |
+| 10:10 | 4.130 | 31 | 490 ms | 64% | 3% |
+| 10:11 | 4.150 | 50 | 610 ms | 76% | 4% |
+| 10:12 | 4.140 | 184 | 1.420 ms | 91% | 12% |
+| 10:13 | 4.120 | 391 | 3.100 ms | 98% | 22% |
+| 10:14 | 4.100 | 738 | 5.800 ms | 100% | 31% |
+
+Error count tăng 20 → 738 là thật, nhưng feature hữu ích là error ratio 0,49% → 18%. P99 tăng sau pool pressure; retry ratio tăng sau error, nên retry hợp lý là amplifier. CPU không có trong bảng vì nó không giúp phân biệt candidate ở thời điểm này.
+
+Một feature phải ghi: value, event interval, scope, denominator, freshness, source và quality flags. `error_rate=0.18` mà không biết có 10 hay 10.000 requests là evidence thiếu.
+
+### Counter reset: số âm không phải traffic âm
+
+Counter requests được scrape: `100, 110, 125, 3, 15, 28`.
+
+Delta ngây thơ cho: `10, 15, -122, 12, 13`. Giá trị `-122` không mô tả thế giới; process restart và counter về 0. Cách xử lý counter-aware tính mức tăng qua reset dựa samples quanh biên, nhưng vẫn có uncertainty: giữa hai scrape có thể đã tăng rồi reset, nên phần trước reset bị mất.
+
+Edge cases:
+
+- Hai reset trong một scrape interval làm undercount.
+- Counter giảm do exporter bug, không phải restart.
+- Hai pod có cùng label set bị cộng trộn trước khi rate, reset của một pod làm méo chuỗi.
+- Counter từ batch job biến mất sau khi chạy; absence không phải reset.
+
+Quy tắc thực dụng: tính rate per-instance trước, xử lý reset, rồi aggregate theo service. Aggregate counter trước có thể che reset.
+
+### Missing, stale và zero là ba trạng thái khác nhau
+
+Chuỗi errors: `12, 14, missing, missing, 11`.
+
+Nếu điền zero, graph tạo “recovery” hai phút. Nhưng requests cùng lúc là `4.100, 4.080, missing, missing, 4.020`; cả numerator lẫn denominator biến mất, khả năng cao scrape/telemetry lỗi. Nếu errors missing nhưng requests còn 4.000, exporter có thể đổi metric name/schema. Nếu requests bằng zero và `up=1`, service có thể thật sự không có traffic.
+
+Detector nên nhận một trong bốn state:
+
+- observed value;
+- observed zero với denominator hợp lệ;
+- missing trong allowed lateness;
+- stale/unknown sau lateness.
+
+Unknown không được dùng để đóng incident. Recovery cần user outcome quan sát được và collection health đạt yêu cầu.
+
+### Rate window: nhanh phát hiện và chống nhiễu không thể tối ưu bằng một cửa sổ
+
+Errors mỗi phút: `2, 3, 2, 3, 60, 75, 82, 80, 78, 74` trên 1.000 requests/phút.
+
+- Cửa sổ 1 phút thấy spike ngay nhưng dễ flapping.
+- Cửa sổ 5 phút ở phút đầu lỗi mới khoảng `(2+3+2+3+60)/5.000 = 1,4%`, làm loãng onset.
+- Cửa sổ 30 phút còn chậm hơn nhưng xác nhận burn kéo dài.
+
+Không chọn một cửa sổ “tốt nhất”. Dùng cửa sổ ngắn cho tốc độ và cửa sổ dài cho mức tiêu error budget. Cảnh báo page có thể yêu cầu cả hai vượt ngưỡng; ticket/candidate có thể mở khi short window rất cao dù long window chưa đủ.
+
+Khi incident đã mở, trạng thái không phụ thuộc việc 1-minute rate tạm rơi dưới threshold một phút. Lifecycle và recovery window thuộc Chapter 08/09.
+
+### Low traffic: 50% error có thể chỉ là một request
+
+Service A có 500 lỗi/10.000 requests = 5%. Service B có 1 lỗi/2 requests = 50%. Nếu xếp chỉ theo ratio, B đứng đầu dù impact nhỏ và uncertainty lớn.
+
+Feature/alert cần volume gate hoặc interval ước lượng. Với service ít traffic, có thể:
+
+- dùng cửa sổ dài hơn;
+- kết hợp absolute failures;
+- dùng Bayesian prior/historical rate;
+- route thành warning thay vì page;
+- vẫn page nếu mỗi request có giá trị/rủi ro rất cao như settlement.
+
+Volume gate không áp dụng mù quáng. Một giao dịch treasury thất bại có thể nghiêm trọng dù denominator bằng một; severity cần business criticality.
+
+### Average che tail và trộn quần thể
+
+Chín request 100 ms và một request 5.000 ms có average 590 ms. Nếu traffic tăng, 99 request 100 ms và một request 5.000 ms cho average 149 ms — average “cải thiện” dù request xấu không đổi. Histogram/quantile cho tail tốt hơn, nhưng quantile cũng có sai số phụ thuộc bucket.
+
+Giả sử buckets latency là 0,5 s, 1 s, 5 s, +Inf. Một spike từ 1,1 s lên 4,9 s vẫn nằm cùng bucket và P99 ước lượng kém. Bucket phải phản ánh SLO/business boundaries, không dùng mặc định cho mọi service.
+
+Không aggregate client-side percentiles giữa instances. Percentile của percentiles không tạo global percentile đúng. Aggregate histogram counts rồi tính quantile, và giữ sample count.
+
+### Scope: global xanh có thể che APAC đỏ
+
+| Region | Requests/phút | Success |
+|---|---:|---:|
+| US | 7.000 | 99,9% |
+| EU | 2.000 | 99,8% |
+| APAC | 1.000 | 72,0% |
+| Global | 10.000 | 97,1% |
+
+Global 97,1% rõ là xấu trong ví dụ này, nhưng nếu APAC chỉ chiếm 1%, global có thể vẫn gần SLO. Detector cần per-scope isolation theo region/route/tenant tier có kiểm soát. Không đưa customer/order ID vào metric label để có độ chi tiết; đó là nhiệm vụ log/trace.
+
+Scope cũng quyết định correlation. Metric global gateway 5xx có thể là symptom của cả payment và auth incidents; metric failure-family per service giúp tách.
+
+### Burn-rate đa cửa sổ: đo tốc độ tiêu ngân sách lỗi
+
+Với SLO success 99,9%, error budget là 0,1%. Nếu error rate hiện tại 1%, burn-rate bằng 10; duy trì mức đó sẽ tiêu ngân sách nhanh gấp mười tốc độ cho phép.
+
+Ví dụ:
+
+| Window | Requests | Errors | Error rate | Burn-rate |
+|---|---:|---:|---:|---:|
+| 5 phút | 20.000 | 3.600 | 18% | 180× |
+| 1 giờ | 240.000 | 12.000 | 5% | 50× |
+| 6 giờ | 1.440.000 | 14.400 | 1% | 10× |
+
+Short + long window đều cao cho thấy incident vừa nặng vừa kéo dài. Nếu 5 phút 180× nhưng 1 giờ chỉ 0,5×, có thể là spike mới; vẫn cần candidate nhanh nhưng policy page tùy criticality. Nếu long window cao mà short đã thấp, hệ có thể ở Recovering; chưa nên tuyên bố “không có incident”.
+
+Không dùng burn-rate khi SLO/denominator sai. Planned traffic shed có thể giảm denominator làm ratio đổi; synthetic traffic không nên trộn với customer traffic.
+
+### Baseline và seasonality: so residual, không đóng băng raw traffic
+
+Traffic bình thường theo giờ: `4.000, 4.300, 5.100, 6.800, 8.900` requests/phút trong flash sale. Đóng băng raw baseline 4.000 sẽ coi mọi phút sau là anomaly. Điều cần theo dõi là residual so với expected traffic/seasonal model và quan hệ với outcome/saturation.
+
+Trong flash sale hợp lệ:
+
+- requests +122%;
+- CPU 43% → 78%;
+- P99 420 → 680 ms;
+- success vẫn 99,7%;
+- DB pool 48% → 66%;
+- burn-rate dưới page threshold.
+
+Đây là regime shift hợp lệ. Trong payment incident, traffic gần như không đổi nhưng pool/retry/error residual cùng lệch. Detector Chapter 08 freeze anomaly-contaminated residual baseline trong Firing, đồng thời có shadow baseline để đánh giá regime mới.
+
+### Cardinality: mỗi label là phép nhân
+
+Một metric có 20 services × 3 environments × 4 regions × 50 routes × 10 status/error classes = 120.000 series. Thêm `pod` trung bình 30 replica thành 3,6 triệu. Thêm `customer_id` 1 triệu thành con số không thể vận hành.
+
+Không chỉ storage tăng. Query/rule evaluation chậm, remote-write queue đầy, detector mất freshness đúng lúc incident. Cardinality incident của observability plane có thể che production incident.
+
+Mỗi label cần trả lời:
+
+- Decision nào cần dimension này?
+- Cardinality upper bound là bao nhiêu?
+- Giá trị có lifecycle/tombstone thế nào?
+- Có thể giữ ở log/trace thay vì metrics không?
+- Recording rule có aggregate trước khi downstream đọc không?
+
+Drop label ở ingest có thể cứu TSDB nhưng làm mất tenant/region evidence. Policy phải theo metric family, không regex tùy tiện toàn cục.
+
+### Scrape và remote write tạo failure modes riêng
+
+`up=0` có thể do service down, network policy, DNS, Prometheus overload hoặc exporter treo. Nó là collection symptom, chưa phải customer impact. So sánh synthetic/user outcome và target health để phân biệt.
+
+HA pair scrape cùng target tạo duplicate samples ở remote store. Dedup theo replica label cần external identity đúng; clock offset và scrape interval lệch có thể tạo sawtooth/gaps. Nếu detector đọc local Prometheus A còn correlation đọc remote store dedup, hai stage có thể thấy hai “sự thật”. Data source contract phải thống nhất hoặc ghi source/version.
+
+Remote-write backlog age quan trọng hơn queue length đơn thuần. Queue 100.000 samples ở 1 triệu samples/s chỉ là 0,1 giây; cùng queue ở 1.000 samples/s là 100 giây. Freshness theo event time quyết định evidence còn hợp lệ.
+
+### Recording rules là feature materialization có version
+
+Một recording rule cho `service:error_ratio:5m` là feature production. Thay grouping, denominator hay label mapping sẽ đổi nghĩa. Nó cần:
+
+- owner và mô tả semantic;
+- source metrics/version;
+- evaluation interval và window;
+- missing/reset behavior;
+- cardinality budget;
+- unit test với dãy số;
+- dual-run khi thay version;
+- consumers và deprecation window.
+
+Nếu rule mới loại traffic `status=499` nhưng detector model học trên rule cũ, đây là training-serving/semantic skew. Không deploy như thay tên dashboard.
+
+### Metric quality SLO
+
+| Chỉ số | Mục tiêu ví dụ | Hậu quả khi fail |
+|---|---:|---|
+| Critical scrape freshness P99 | < 45 giây | Detector chuyển degraded/unknown |
+| Series churn | Trong budget theo service | Cảnh báo schema/cardinality incident |
+| Rule evaluation miss | 0 critical groups | Feature gap, không fill zero |
+| Remote-write oldest sample | < 60 giây | RCA biết metrics đang cũ |
+| Counter reset anomaly | Có giải thích bằng restart/change | Quarantine exporter bug |
+| Denominator availability | > 99,9% | Ratio không hợp lệ nếu thiếu |
+| Label contract validity | > 99,9% | Identity mismatch không merge im lặng |
+
+### Edge cases khó và thường gặp
+
+**Autoscaling.** Pod count tăng làm sum CPU tăng dù per-pod load giảm. Chọn aggregate theo câu hỏi capacity hay saturation; không dùng sum CPU làm anomaly user impact.
+
+**Cold start.** Pod mới có histogram/counter ít samples, P99 nhảy. Volume gate và deployment context tránh page giả.
+
+**Clock/timezone.** Prometheus timestamp thường theo scrape time, exporter timestamp có thể khác. Backfilled samples tới muộn không được sửa incident onset mà không revision policy.
+
+**Pushgateway batch metric bất tử.** Job hôm qua vẫn success=1 nếu không delete. Cần completion timestamp/freshness, không chỉ giá trị.
+
+**Histogram schema đổi.** Hai deployment dùng bucket khác nhau; aggregate tạo kết quả vô nghĩa hoặc query drop series. Dual-read/version gate trong rollout.
+
+**Alert flapping.** Một sample vượt threshold rồi một scrape mất. `for` chỉ giảm một số noise; lifecycle, missing state và hysteresis mới giải quyết đầy đủ.
+
+**Traffic shed.** Error count giảm vì hệ từ chối request trước service, không phải recovery. Quan sát accepted, rejected và demand estimate.
+
+**Coordinated omission.** Client ngừng gửi khi latency cao, server metric trông đỡ. Synthetic/client-side SLI bổ sung demand bị mất.
+
+### Failure injection và acceptance
+
+Golden metric replay gồm:
+
+1. Counter reset đúng lúc deploy.
+2. Hai phút scrape gap giữa incident.
+3. Flash sale traffic +122% nhưng không customer impact.
+4. APAC partial outage bị global average che.
+5. Histogram buckets thay đổi giữa rolling deploy.
+6. Remote-write lag 8 phút và HA duplicate.
+7. Payment fault kéo dài 54 phút rồi auth fault nổ chồng.
+
+Điều kiện đạt:
+
+- Không tạo negative rate từ reset.
+- Missing không biến thành zero/recovery.
+- Flash sale không page; payment page liên tục.
+- APAC được phát hiện theo scope.
+- Features công bố denominator, freshness và version.
+- Replay local/remote store cho cùng quyết định trong allowed tolerance.
+- Cardinality/telemetry failure tạo quality incident và hạ confidence production incident.
+
+### Output contract sang Chapter 08–10
+
+Metric feature xuất sang intelligence plane gồm: name/version, value/unit, scope, event interval, numerator/denominator, sample count, freshness, quality flags, source và baseline context. Alert chỉ là một consumer; anomaly detector, correlator và RCA đều cần raw evidence/feature, không nên chỉ nhận chuỗi text từ Alertmanager.
 
 ---
 
-## Table of Contents
+## Phần II — Prometheus implementation reference
 
-1. [Why Prometheus?](#1-why-prometheus)
-2. [Internal Architecture](#2-internal-architecture)
-3. [TSDB Internals](#3-tsdb-internals)
-4. [The Scraping Engine](#4-the-scraping-engine)
-5. [Service Discovery](#5-service-discovery)
-6. [PromQL Deep Dive](#6-promql-deep-dive)
-7. [Recording Rules](#7-recording-rules)
-8. [Alerting Rules and Alertmanager](#8-alerting-rules-and-alertmanager)
-9. [Remote Write and Remote Read](#9-remote-write-and-remote-read)
-10. [High Availability](#10-high-availability)
-11. [Prometheus vs CloudWatch](#11-prometheus-vs-cloudwatch)
-12. [Prometheus vs VictoriaMetrics](#12-prometheus-vs-victoriametrics)
-13. [Thanos Architecture](#13-thanos-architecture)
-14. [Production Configuration](#14-production-configuration)
-15. [Common Mistakes](#15-common-mistakes)
-16. [Monitoring Prometheus](#16-monitoring-prometheus)
-17. [Scaling](#17-scaling)
-18. [Security](#18-security)
-19. [Cost](#19-cost)
-20. [Tư duy problem-solving trong production](#20-tư-duy-problem-solving-trong-production)
-21. [Edge cases thực tế](#21-edge-cases-thực-tế)
-22. [Decision trees](#22-decision-trees)
-23. [Bài học từ Big Tech / public incidents](#23-bài-học-từ-big-tech--public-incidents)
-24. [Câu hỏi Socratic cho on-call](#24-câu-hỏi-socratic-cho-on-call)
-25. [Improvement experiments (30/60/90 ngày)](#25-improvement-experiments-306090-ngày)
-26. [Production Review](#26-production-review)
+Phần dưới giải thích kiến trúc Prometheus, TSDB, scraping, PromQL, recording/alerting rules, HA, remote storage và vận hành. Dùng nó để bảo vệ semantic/freshness của feature ở Phần I.
 
 ---
 
@@ -1485,7 +1674,7 @@ North-star:
 
 1. **Native Histograms migration path**: Prometheus 2.40+ hỗ trợ native histograms (exponential buckets). Teams dùng classic histograms nên có migration plan. Cần thay đổi ở cả SDK code và Prometheus config.
 
-2. **Prometheus Operator**: Hầu hết production deployments dùng Prometheus Operator (kube-prometheus-stack) với CRDs như ServiceMonitor, PodMonitor, PrometheusRule. Xem [production.md](production.md).
+2. **Prometheus Operator**: Hầu hết production deployments dùng Prometheus Operator (kube-prometheus-stack) với CRDs như ServiceMonitor, PodMonitor, PrometheusRule. Xem [phần Production Configuration](#14-production-configuration).
 
 3. **OTLP receiver trong Prometheus 2.47+**: Prometheus có thể nhận OTLP trực tiếp mà không cần OTel Collector. Nhưng mất đi khả năng transformation/enrichment của Collector.
 

@@ -1,6 +1,6 @@
-# Chapter 00 — Giới thiệu về AIOps
+# Chapter 00 — AIOps bắt đầu từ một sự cố, không phải từ AI
 
-> **Chương này thiết lập nền tảng triết lý và kiến trúc của AIOps: tại sao nó tồn tại, nó giải quyết những vấn đề gì, nó thất bại ở đâu, và cách đo lường sự thành công.**
+> **Chương này không bắt đầu bằng định nghĩa. Ta sẽ đi qua một sự cố kéo dài 65 phút, xem từng stage của AIOps phải đưa ra quyết định gì, bằng chứng nào còn thiếu, khi nào máy phải từ chối hành động và cách chứng minh hệ thống thật sự tạo giá trị.**
 
 ### Architecture poster — pipeline AIOps end-to-end
 
@@ -31,29 +31,127 @@ Sau chương này, hãy chuyển sang [01 — Observability](01-observability/RE
 
 ---
 
-## Table of Contents
+## Cách đọc chương này
 
-1. [What Is AIOps?](#1-what-is-aiops)
-2. [The Problem AIOps Solves](#2-the-problem-aiops-solves)
-3. [Mental Models: OODA & Problem Framing](#3-mental-models-ooda--problem-framing)
-4. [AIOps vs AI SRE (Agentic)](#4-aiops-vs-ai-sre-agentic)
-5. [Edge Cases Early: Partial & Metastable Failures](#5-edge-cases-early-partial--metastable-failures)
-6. [AIOps Maturity Model](#6-aiops-maturity-model)
-7. [12-Month Maturity Journey](#7-12-month-maturity-journey)
-8. [ROI and Business Case](#8-roi-and-business-case)
-9. [Org Design & Ownership (RACI)](#9-org-design--ownership-raci)
-10. [Architecture Philosophy](#10-architecture-philosophy)
-11. [The AIOps Pipeline](#11-the-aiops-pipeline)
-12. [Data Flywheel](#12-data-flywheel)
-13. [When AIOps Fails](#13-when-aiops-fails)
-14. [Building vs Buying](#14-building-vs-buying)
-15. [Common Mistakes & Anti-Patterns](#15-common-mistakes--anti-patterns)
-16. [Production Review](#16-production-review)
-17. [Improvement Roadmap](#17-improvement-roadmap)
-18. [Seed for the Future: Junior → Principal](#18-seed-for-the-future-junior--principal)
-19. [Summary](#summary)
-20. [Chapter Score](#chapter-score)
-21. [References & Public Reading List](#references--public-reading-list)
+Phần I là đường chính: incident → evidence → decision → proof. Phần II giữ các khung khái niệm, maturity, ROI và tổ chức để tra cứu sau khi người đọc đã hiểu bài toán. Nếu chỉ có 30 phút, hãy đọc Phần I và tự trả lời các câu hỏi ở cuối mỗi mục.
+
+## Phần I — Một AIOps engine phải làm được gì?
+
+### Incident xuyên suốt handbook: checkout không chết hẳn nhưng khách không trả tiền được
+
+Hệ thống gồm `gateway → checkout → order → payment → payment-db`; `checkout` còn gọi `inventory`, còn mọi service dùng chung `auth-cache`. Bình thường hệ thống nhận khoảng 4.000 request/phút, error rate 0,4%, P99 420 ms. Sự cố thật diễn ra như sau:
+
+| Thời điểm | Điều quan sát được | Điều chưa được phép kết luận |
+|---|---|---|
+| 10:00 | 4.020 req/phút, error 0,4%, P99 420 ms, DB pool 48% | Đây chỉ là baseline của lát thời gian hiện tại |
+| 10:07 | `catalog-v42` vừa deploy | Deploy gần lỗi chưa có nghĩa deploy gây lỗi |
+| 10:11 | `payment-db` pool 76%, checkout error 1,2% | Một điểm vượt ngưỡng chưa đủ mở incident |
+| 10:14 | Pool 100%, payment timeout 18%, P99 5,8 s | Có customer impact, nhưng root cause vẫn chưa chắc là DB |
+| 10:16 | Retry tăng 4% → 31%, DB query 600 → 2.300/s | Retry có thể là khuếch đại, không nhất thiết là trigger đầu tiên |
+| 10:22 | Checkout, order, notification cùng đỏ | Ba service đỏ không đồng nghĩa ba sự cố độc lập |
+| 10:37 | `auth-cache` miss 46%, login 401 tăng riêng ở APAC | Một fault thứ hai đã nổ chồng lên fault payment |
+| 10:49 | Traffic giảm 35%, error payment còn 21% | Traffic giảm không phải recovery |
+| 11:05 | Payment phục hồi 5 phút; auth vẫn lỗi | Incident payment có thể đóng, incident auth chưa được đóng |
+| 11:16 | Auth phục hồi sau cache failover | Chỉ lúc này toàn bộ customer impact mới hết |
+
+Nếu hệ thống chỉ có threshold alert, on-call nhận hàng chục trang: pool cao, latency cao, timeout, queue lag, pod CPU, retry, 5xx ở từng service. Nếu hệ thống chỉ có một mô hình anomaly trượt, nó có thể học luôn 45 phút lỗi thành mức bình thường mới và im tiếng. Nếu hệ thống gom mọi thứ trong cùng cửa sổ 30 phút, lỗi auth sẽ bị nuốt vào incident payment. Đây là ba thất bại khác nhau: **noise**, **baseline poisoning**, và **over-correlation**.
+
+### Kết quả mong muốn không phải là một dashboard đẹp
+
+Sau 90 giây đầu, một engine hợp lệ phải tạo được candidate incident có phạm vi, onset và bằng chứng ban đầu. Khi đủ bằng chứng, output dành cho on-call nên có dạng quyết định, không phải một đoạn văn chung chung:
+
+| Trường | Giá trị tại 10:18 | Vì sao cần |
+|---|---|---|
+| Incident | `INC-payment-2026-08-01-1011` | Khóa lifecycle, không tạo incident mới mỗi phút |
+| Customer impact | Checkout success 99,6% → 81,7%; khoảng 750 đơn/phút thất bại | Ưu tiên theo tác động, không theo số alert |
+| Suspected origin | `payment-db` pool exhaustion | Candidate, chưa tuyên bố sự thật tuyệt đối |
+| Evidence for | Pool đỏ trước payment timeout 170 giây; failed spans bắt đầu ở DB; downstream-weight 4 service | Kết hợp thời gian, trace và topology |
+| Evidence against | Không có deploy DB; một replica DB vẫn khỏe | Buộc engine giữ phản chứng |
+| Confidence | 0,82; giảm còn 0,64 nếu trace coverage < 50% | Confidence phải phản ánh chất lượng evidence |
+| Safe action | Tắt retry cấp checkout; không restart toàn bộ payment | Hành động phải có blast-radius và điều kiện |
+| Verification | Success rate > 99%, pool < 70%, không tăng duplicate charge trong 10 phút | Thành công kỹ thuật chưa đủ; phải kiểm tra user outcome |
+
+Tại 10:37 engine phải tạo thêm `INC-auth-...`, liên kết hai incident là “concurrent, shared gateway symptoms” nhưng không merge. Một incident page toàn cục không được trở thành chiếc chăn che mọi anomaly mới.
+
+### Sáu quyết định nối tiếp nhau
+
+AIOps trong handbook này là một chuỗi quyết định có hợp đồng rõ ràng:
+
+| Stage | Câu hỏi | Output tối thiểu | Sai lầm nguy hiểm |
+|---|---|---|---|
+| Observe | Ta có nhìn thấy đúng user path không? | Telemetry có identity, timestamp, quality | Có metric nhưng thiếu service/deploy/trace context |
+| Detect | Điều gì khác baseline đủ lâu và đủ tác động? | Anomaly interval, severity, detector evidence | Học anomaly kéo dài thành normal mới |
+| Correlate | Những symptom nào thuộc cùng failure episode? | Incident membership và quan hệ linked/separate | Merge theo thời gian mà bỏ qua topology/failure signature |
+| Diagnose | Candidate nào giải thích nhiều symptom nhất? | RCA ranking kèm evidence và phản chứng | “Cái đỏ đầu tiên” bị nhầm với root vì clock/detector delay |
+| Decide | Hành động nào hợp lệ với trạng thái hiện tại? | Policy verdict, precondition, blast radius | LLM tự do biến gợi ý thành lệnh production |
+| Verify | Khách đã phục hồi và không tạo lỗi mới chưa? | Postcondition, observation lease, rollback verdict | Pod xanh nhưng giao dịch vẫn thất bại |
+
+Mỗi stage phải lưu cả event time lẫn processing time. Nếu một span của 10:12 đến lúc 10:19, engine được sửa ranking nhưng không được phát lại một incident mới. Nếu state store restart, replay cùng input phải tạo cùng incident ID và cùng quyết định.
+
+### Tại sao chỉ “có AI” không giải được sự cố
+
+Giả sử đưa cho LLM ba dòng: “payment timeout”, “DB pool 100%”, “catalog vừa deploy”. Một câu trả lời trôi chảy có thể nói rollback catalog. Nhưng dữ liệu trên cho thấy catalog deploy trước lỗi bốn phút mà đường request hỏng nằm ở payment; canary catalog cũng không lỗi. Ngôn ngữ tự nhiên không bù được evidence thiếu.
+
+AI/ML chỉ hữu ích khi được đặt đúng vai:
+
+- Thống kê robust tìm deviation mà threshold tĩnh bỏ lỡ.
+- Topology và temporal reasoning loại symptom downstream.
+- Model ranking kết hợp nhiều signal nhưng phải chịu veto từ bằng chứng mâu thuẫn.
+- LLM truy vấn, tổng hợp, lập hypothesis ledger và diễn đạt cho người; nó không tạo sự thật mới.
+- Policy engine độc lập quyết định quyền hành động.
+
+Nếu không có identity, data quality, topology, change history và outcome verification, “AI SRE” chỉ là giao diện đẹp đặt trên dữ liệu yếu.
+
+### Ba negative control bắt buộc
+
+Một demo chỉ inject lỗi rồi thấy alert là chưa đủ. Phải có tình huống gần giống sự cố nhưng **không được** báo sai.
+
+**Flash sale hợp lệ.** Traffic tăng 4.000 → 9.500 req/phút; CPU tăng 42% → 78%; latency tăng 420 → 680 ms, nhưng success vẫn 99,7%, burn-rate thấp và saturation chưa chạm giới hạn. Detector nên ghi nhận regime/traffic shift, không page.
+
+**Deploy vô tội.** `catalog-v42` diễn ra trước payment failure, nhưng error không tập trung ở catalog, canary và control group giống nhau, trace root error ở DB. Change event được giữ làm context rồi bị hạ điểm bằng negative evidence.
+
+**Telemetry outage.** OTel gateway mất 45% spans trong tám phút. “Không thấy failed spans” không được hiểu là “không còn lỗi”. Engine hạ confidence, dùng metric/log fallback và mở data-quality incident riêng nếu vượt SLO.
+
+### Sự cố dài và sự cố chồng
+
+Incident payment kéo dài 54 phút. Detector được phép cập nhật baseline theo traffic/seasonality nhưng không được cập nhật residual baseline bằng điểm đang thuộc anomaly. Trạng thái phải đi qua `Normal → Suspect → Firing → Recovering → Resolved`; chỉ thoát Firing khi user-impact và burn-rate cùng qua cửa sổ recovery.
+
+Tại 10:37, auth phát sinh fault mới. Isolation key không chỉ là `environment=prod`; tối thiểu phải chứa service scope, failure family và vùng tác động. Correlation được phép liên kết symptom gateway với cả hai incident, nhưng một symptom chỉ được “giải thích” bằng lease có thời hạn và evidence, không bị khóa vĩnh viễn bởi incident mở trước.
+
+### Đo giá trị bằng replay, không bằng cảm giác
+
+Một chương trình AIOps nên có bộ golden incident replay. Với kịch bản trên, acceptance tối thiểu là:
+
+| Thuộc tính | Điều kiện đạt |
+|---|---|
+| Long-incident coverage | Payment được giữ Firing trong toàn bộ phút có impact; silent gap = 0 |
+| Overlap isolation | Auth được phát hiện trong SLA và tạo incident riêng |
+| Noise | Flash sale và deploy vô tội không tạo page |
+| RCA | Root thật nằm top-1 hoặc top-3 với evidence đọc được; không chỉ có score |
+| Determinism | Replay sau restart cho cùng membership và lifecycle |
+| Calibration | Nhóm dự đoán confidence 0,8 đúng xấp xỉ 80%, không chỉ “điểm cao trông có vẻ tốt” |
+| Remediation safety | Action sai scope, stale evidence hoặc thiếu audit đều bị chặn |
+| Outcome | MTTA/MTTR và số page giảm mà missed-impact không tăng |
+
+Precision cao có thể đạt bằng cách im lặng; recall cao có thể đạt bằng cách la mọi thứ. Vì vậy phải theo dõi đồng thời detection coverage, false pages, incident purity, incident completeness, RCA rank và customer-impact minutes.
+
+### Output contract của Chapter 00
+
+Sau chương này, người đọc phải mang theo năm nguyên tắc:
+
+1. Incident là một **failure episode có lifecycle**, không phải một alert JSON.
+2. Mọi kết luận phải chỉ ra evidence, negative evidence và chất lượng dữ liệu.
+3. Baseline, topology và change context đều có thời gian hiệu lực; stale context có thể nguy hiểm hơn missing context.
+4. Automation chỉ hợp lệ khi có policy, blast-radius, rollback và verification độc lập.
+5. Hệ thống chỉ được gọi là AIOps khi vượt qua replay của sự cố thật, negative control và failure của chính platform.
+
+Các chapter 01–07 xây evidence plane; 08 phát hiện; 09 tạo incident; 10 xếp hạng nguyên nhân; 11 hỗ trợ điều tra; 12 hành động có kiểm soát; 13 vận hành toàn bộ platform.
+
+---
+
+## Phần II — Khung khái niệm và tổ chức để tra cứu
+
+Phần còn lại giải thích thuật ngữ, maturity, ROI, tổ chức và chiến lược build/buy. Hãy đọc chúng như reference cho quyết định đã thấy ở Phần I, không như danh sách công nghệ phải mua.
 
 ---
 

@@ -1,6 +1,6 @@
-# Chapter 02 — OpenTelemetry
+# Chapter 02 — Telemetry contract và context propagation với OpenTelemetry
 
-> **OpenTelemetry là tiêu chuẩn trung lập với nhà cung cấp (vendor-neutral), đã tốt nghiệp từ CNCF dùng để thu thập, xử lý, và xuất (export) dữ liệu telemetry. Nó là xương sống thu thập của mọi nền tảng AIOps trên môi trường production.**
+> **Mục tiêu không phải “cài được Collector”. Mục tiêu là mọi metric, log và span đến intelligence plane vẫn giữ đúng danh tính, thời gian, quan hệ nhân quả và chất lượng; khi mất dữ liệu, downstream biết chính xác mình đang mù ở đâu. OpenTelemetry là phương tiện hiện thực hóa hợp đồng đó.**
 
 ---
 
@@ -22,32 +22,207 @@ Sau chương này, hãy chuyển sang [03 — Prometheus](../03-prometheus/READM
 
 ---
 
-## Table of Contents
+## Cách đọc chương này
 
-1. [Why OpenTelemetry?](#1-why-opentelemetry)
-2. [OTel Components Overview](#2-otel-components-overview)
-3. [OTLP Protocol](#3-otlp-protocol)
-4. [The OTel Collector Deep Dive](#4-the-otel-collector-deep-dive)
-5. [Receiver Configuration](#5-receiver-configuration)
-6. [Processor Configuration](#6-processor-configuration)
-7. [Exporter Configuration](#7-exporter-configuration)
-8. [Pipeline Definition](#8-pipeline-definition)
-9. [Deployment Patterns](#9-deployment-patterns)
-10. [Kubernetes Operator](#10-kubernetes-operator)
-11. [Fluent Bit vs OTel Collector](#11-fluent-bit-vs-otel-collector)
-12. [Production Best Practices](#13-production-best-practices)
-13. [Common Mistakes](#13-common-mistakes)
-14. [Monitoring the Collector](#14-monitoring-the-collector)
-15. [Scaling](#15-scaling)
-16. [Security](#16-security)
-17. [Cost](#17-cost)
-18. [Tư duy problem-solving trong production](#18-tư-duy-problem-solving-trong-production)
-19. [Edge cases thực tế](#19-edge-cases-thực-tế)
-20. [Decision trees](#20-decision-trees)
-21. [Bài học từ Big Tech / public incidents](#21-bài-học-từ-big-tech--public-incidents)
-22. [Câu hỏi Socratic cho on-call](#22-câu-hỏi-socratic-cho-on-call)
-23. [Improvement experiments (30/60/90 ngày)](#23-improvement-experiments-306090-ngày)
-24. [Production Review](#24-production-review)
+Phần I theo một request checkout qua HTTP, Kafka và worker để tìm nơi context bị gãy. Phần II giữ reference về OTLP, Collector, receiver/processor/exporter, deployment và lựa chọn Fluent Bit/Vector/Alloy. Một pipeline chỉ đạt khi replay chứng minh downstream nhận đúng contract, không phải khi YAML hợp lệ.
+
+## Phần I — Thu telemetry mà không phá evidence
+
+### Một request, ba đường truyền, sáu cơ hội mất context
+
+Request `trace_id=7f2a...` vào `checkout-api`, gọi đồng bộ `order-api`, phát message `payment.requested`, worker gọi `payment-db`, rồi phát `payment.completed`. Sự cố payment-db xảy ra ở lần retry thứ hai.
+
+| Hop | Dữ liệu phải giữ | Failure thường gặp | Hậu quả AIOps |
+|---|---|---|---|
+| Gateway → checkout | Trace context, route, region, tenant tier | Gateway strip header | Checkout trở thành trace root giả |
+| Checkout → order | Parent/child, deadline, retry attempt | Client library không instrument | Không biết latency nằm ở network hay order |
+| Order → Kafka | Trace context trong message metadata, event ID | Chỉ serialize payload business | Consumer tạo trace mới, causal graph gãy |
+| Kafka → payment worker | Link tới producer span, message time | Dùng parent sai cho batch nhiều message | Một trace nuốt nhiều transaction độc lập |
+| Worker → DB | DB system/operation, pool wait, sanitized target | Chỉ tạo span cho query, bỏ pool wait | Root evidence biến mất |
+| Worker → completed event | Outcome, attempt, deployment, event ID | Retry emit duplicate không có idempotency key | Correlation đếm một lỗi thành nhiều lỗi |
+
+Nếu mỗi backend vẫn “có dữ liệu” nhưng sáu hop không nối được, collection thành công về hạ tầng và thất bại về điều tra.
+
+### Contract tối thiểu của một telemetry record
+
+Mỗi record critical path phải mang bốn nhóm trường. Tên cụ thể theo semantic conventions có thể thay đổi theo version; ý nghĩa không được thay đổi âm thầm.
+
+| Nhóm | Trường ví dụ | Quy tắc |
+|---|---|---|
+| Identity | service, environment, region, cluster, deployment digest | Stable, normalized, không suy từ pod name nếu đã có nguồn chuẩn |
+| Causality | trace ID, span ID, parent/link, event ID, retry attempt | Không tái sử dụng ID cho transaction khác |
+| Semantics | operation, outcome, dependency, failure family | Low-cardinality cho metrics; business ID có policy riêng |
+| Quality | event time, observed time, schema version, sampling decision | Downstream tính freshness, coverage và uncertainty |
+
+Hai record cùng `service.name` nhưng khác environment không được merge. Hai deployment cùng tag `latest` không đủ phân biệt change. Một error message thay text sau release không được tạo failure family mới nếu bản chất vẫn là pool timeout.
+
+### So sánh record tốt và record nguy hiểm
+
+Record A nói: `service=payment`, `error=true`, `message=timeout`. Record B nói: `service=payment-api`, `deployment=sha256:8f2`, `region=ap-southeast-1`, `operation=payment.authorize`, `dependency=payment-db`, `failure_family=db.pool.acquire_timeout`, `attempt=2`, `event_time=10:10:42.310`, `observed_time=10:10:44.005`, `trace_sampled=true`.
+
+Record A đủ để vẽ count lỗi. Record B đủ để:
+
+- nối với metric pool saturation;
+- xếp đúng onset dù ingestion chậm 1,7 giây;
+- nhóm retry vào cùng failure episode;
+- so sánh deployment/control group;
+- truyền confidence sang RCA.
+
+Collector không thể tự phát minh các field nghiệp vụ thiếu trong SDK. Contract phải được kiểm thử từ application đến backend.
+
+### Resource identity: lỗi nhỏ làm graph vỡ thành ba node
+
+Trong thực tế có thể đồng thời xuất hiện:
+
+- metric: `service="payment"`;
+- log: `app="payment-api"`;
+- trace: `service.name="payments"`;
+- deploy event: `application="pay-svc"`.
+
+Nếu enrich theo bốn bảng mapping riêng, hệ tạo bốn thực thể. Identity resolution nên có canonical `service_id`, alias có version và owner. Khi alias không map được, quarantine hoặc gắn quality flag; không tự fuzzy-match tên gần giống trong production decision.
+
+Kubernetes metadata cũng có vòng đời. Pod UID là instance identity tốt nhưng không phải service identity. Deployment name có thể stable nhưng không immutable. Image digest/commit SHA dùng cho change attribution; human-friendly version chỉ là display.
+
+### Context propagation qua HTTP: header có không đồng nghĩa trace đúng
+
+Một trace có thể vẫn hiện nhưng parentage sai. Các tình huống phổ biến:
+
+- Proxy tạo trace mới thay vì tiếp tục context.
+- Retry client tạo nhiều child spans nhưng không ghi attempt/deadline.
+- Request nội bộ vô tình tin trace header do client bên ngoài tự đặt.
+- Thread pool/async callback mất context và attach vào request khác.
+- Baggage chứa email/token rồi lan qua mọi service.
+
+Acceptance không chỉ là “98% request có trace ID”. Cần đo orphan-span ratio, root-span rate theo route, impossible parent relation và context collision. Nếu root spans của `payment-api` tăng từ 0,5% lên 22% sau gateway release, trace coverage tổng vẫn cao nhưng causal coverage đã hỏng.
+
+### Async messaging: parent, link và thời gian chờ khác nhau
+
+Với một message xử lý một lần, consumer span có thể tiếp tục quan hệ từ producer. Với batch 100 message hoặc fan-in nhiều nguồn, ép một parent duy nhất làm sai graph; span links mô tả đúng hơn. Event cần cả produced time, broker time và processing start để tách:
+
+- queue wait;
+- consumer lag;
+- service processing latency;
+- retry/redelivery delay.
+
+Ví dụ message được tạo 10:11:00, tới broker 10:11:00.030, consumer nhận 10:13:20, xử lý 180 ms. Nếu chỉ nhìn consumer span 180 ms, payment worker “nhanh”; khách vẫn chờ 140 giây vì lag. RCA phải thấy queue delay là evidence riêng.
+
+Duplicate delivery không phải duplicate telemetry. `event_id` và `delivery_attempt` cho phép Chapter 06/07 dedup nghiệp vụ mà vẫn giữ evidence về redelivery storm.
+
+### Sampling: tiết kiệm sai chỗ sẽ xóa root cause
+
+Giả sử 100.000 request/phút, error chỉ 0,05% tức 50 request. Head sampling 1% giữ trung bình 0,5 failed trace/phút; nhiều phút không có trace lỗi nào. Nếu detector dựa trace, incident hiếm biến mất.
+
+Tail sampling “giữ mọi error” tốt hơn nhưng vẫn có bẫy:
+
+- Root span chưa biết error trong khi child span đã timeout.
+- Decision phân tán qua nhiều collector không thấy đủ trace.
+- Trace quá dài vượt decision wait.
+- Backend overload làm queue drop trước khi sampler quyết định.
+- Slow-success brownout không có error status nên bị bỏ.
+
+Policy hợp lý thường kết hợp: giữ lỗi, latency tail, rare operation/failure family, một mẫu success có xác suất biết được, và quota theo tenant/service. Sampling decision/ratio phải đi cùng record để downstream không biến sample bias thành tỷ lệ thật.
+
+Trong incident, trace coverage giảm 88% → 49% tại 10:22 do gateway pressure. RCA được phép dùng trace còn lại nhưng phải hạ confidence; detector vẫn dùng metric/log fallback. Không bao giờ diễn giải “failed spans giảm” mà bỏ qua denominator received/dropped.
+
+### Processor order là semantic order
+
+Thứ tự xử lý không chỉ ảnh hưởng hiệu năng. Nó thay đổi dữ liệu:
+
+1. Memory protection phải ngăn process chết nhưng drop/reject phải đo được.
+2. Identity/resource enrichment phải xảy ra trước routing theo service/tenant.
+3. Redaction phải xảy ra trước exporter tới sink không được phép thấy PII.
+4. Sampling cần field mà transform không được xóa trước đó.
+5. Batch sau filtering/sampling để không tốn queue cho data sẽ bỏ.
+
+Nếu hash email sau khi route bản raw sang debug sink, compliance đã thất bại. Nếu filter error log trước khi tail sampler nhận biết failure family, trace coverage lỗi giảm đúng lúc cần nhất. Mỗi thay đổi pipeline cần golden-record test, không chỉ config validation.
+
+### Agent và gateway: tách blast radius
+
+Agent gần workload phù hợp thu local telemetry, thêm metadata và buffer ngắn. Gateway phù hợp policy chung, tail sampling, tenant routing và export. Nhưng gateway toàn vùng là shared fate: backend chậm có thể gây backpressure cho mọi service.
+
+Thiết kế cần trả lời bằng số:
+
+- Ingest bình thường 220.000 spans/s, peak 480.000.
+- Gateway xử lý bền vững 120.000 spans/s/replica ở headroom 60%.
+- Backend outage 10 phút cần buffer bao nhiêu; disk queue có đủ không.
+- Một tenant chiếm 70% volume có quota/isolation không.
+- Fan-out exporter chậm có chặn sink còn lại không.
+
+Không đặt một con số “replica=3” cho mọi hệ thống. Sizing dựa peak, byte/record, processor cost, queue horizon và failure mode.
+
+### Chọn OTel, Fluent Bit, Vector hay Alloy theo vai trò
+
+Các lựa chọn hiện có trong working tree được giữ lại nhưng đặt đúng lớp:
+
+| Nhu cầu | Lựa chọn hợp lý | Điều phải tránh |
+|---|---|---|
+| Node/system logs cực nhẹ | Fluent Bit | Kỳ vọng nó làm multi-signal policy gateway |
+| Log transform/routing phức tạp | Vector | Hai transform plane đổi schema độc lập |
+| Grafana-centric edge collection | Alloy | Gắn identity theo cách khác OTel gateway |
+| Multi-signal policy, sampling, vendor-neutral export | OTel Collector | Một gateway global không isolation |
+
+Một edge shipper cộng một đường OTel hội tụ thường dễ vận hành hơn bốn agent chạy song song. Công cụ không thay thế contract test.
+
+### Failure của collection plane phải trở thành signal
+
+Các metric quan trọng của Collector không chỉ là CPU/RAM:
+
+- accepted, refused, dropped records theo signal/reason/tenant;
+- queue occupancy và oldest item age;
+- exporter latency/error;
+- sampling kept/dropped theo policy;
+- invalid semantic records;
+- identity enrichment misses;
+- end-to-end canary delay;
+- context propagation coverage.
+
+Nếu exporter thành công nhưng backend query không thấy canary, collection vẫn thất bại. Synthetic telemetry canary nên đi qua cùng đường thật và được kiểm tra ở consumer end.
+
+### Edge cases production
+
+**Collector restart giữa incident dài.** Persistent queue giữ record nhưng replay tạo duplicate. Downstream cần stable event identity/idempotency; lifecycle incident không reset.
+
+**Backend chậm một nhánh.** Export Tempo lag không được chặn metrics tới Prometheus. Isolation queue và failure policy phải rõ; nếu drop trace, quality event đi theo.
+
+**Schema drift.** SDK mới đổi status/failure attribute. Cả hai version chạy trong rolling deploy; transform phải hiểu dual-read và đo unknown version.
+
+**PII trong baggage.** Baggage lan xa hơn log cục bộ và có thể ra vendor sink. Allowlist tốt hơn blocklist; security event phải audit được.
+
+**Multi-tenant noisy neighbor.** Tenant A tạo 80% spans do loop. Per-tenant quota bảo vệ tenant B; không drop đều khiến critical low-volume service mất cùng tỷ lệ.
+
+**Clock skew.** Collector observed time không sửa được application event time. Ghi uncertainty/clock health; RCA coi onset gần nhau trong khoảng skew là tie.
+
+**Tail sampler scale-out.** Các spans cùng trace vào replica khác nhau làm decision thiếu. Routing theo trace ID hoặc state-sharing phải được kiểm thử khi autoscale/failover.
+
+**Semantic success sai.** SDK đánh status OK vì HTTP 200, nhưng payment outcome system error. Application instrumentation phải ghi semantic outcome; Collector không đoán body nghiệp vụ.
+
+### Failure injection và acceptance
+
+Replay Chapter 02 gồm bốn lần chạy:
+
+1. Đường chuẩn: HTTP + Kafka + DB giữ causal graph hoàn chỉnh.
+2. Gateway strip context: propagation SLO fail và RCA hạ confidence, không tạo root giả chắc chắn.
+3. Tempo exporter chậm: metrics/logs tiếp tục; trace quality event phản ánh lag/drop.
+4. Collector restart và redelivery: record có thể lặp nhưng incident membership/RCA aggregate không nhân đôi.
+
+Điều kiện đạt:
+
+- ≥98% sync requests và ≥95% async messages nối đúng context trên critical path.
+- 100% critical records có canonical service/deployment/environment.
+- Không PII test fixture nào xuất hiện ở sink không được phép.
+- Quality/freshness phản ánh mọi injected loss trong SLA.
+- Replay không đổi customer-impact count vì telemetry duplicate.
+- Trace sampling giữ đủ rare failure và luôn công bố coverage.
+
+### Output contract sang Chapter 03–06
+
+Chapter 02 xuất ra telemetry records có stable identity, causal links, semantic outcome, event/observed time, schema/sampling metadata và quality flags. Chapter 03 không cần biết Collector YAML; nó chỉ cần metric series đáng tin. Chapter 04 nhận log events đã redaction/normalize. Chapter 05 nhận traces có parent/link và coverage. Chapter 06 kiểm tra, enrich, quarantine và version các contract đó.
+
+---
+
+## Phần II — OpenTelemetry implementation reference
+
+Phần dưới giải thích OTLP, Collector, receivers, processors, exporters, deployment và lựa chọn edge agents. Dùng nó để hiện thực hóa contract ở Phần I; không coi số component đã cấu hình là thước đo thành công.
 
 ---
 
@@ -107,12 +282,17 @@ graph LR
 | Công cụ | Điểm mạnh | Điểm yếu | Tốt nhất cho |
 |------|-----------|------------|---------|
 | **OTel Collector** | Đầy đủ tín hiệu, extensible, vendor-neutral | Cấu hình phức tạp | Production AIOps (khuyến nghị) |
-| **Fluent Bit** | Cực kỳ nhẹ (< 1MB RAM) | Chỉ logs, xử lý cơ bản | Edge / tài nguyên hạn chế |
-| **Fluentd** | Plugin ecosystem phong phú | Tốn tài nguyên hơn, Ruby-based | Legacy systems |
-| **Prometheus (scrape)** | Native Prometheus support | Chỉ metrics, pull-based | Prometheus-native environments |
-| **Datadog Agent** | Dễ setup, full-featured | Vendor lock-in, đắt đỏ | Teams chỉ dùng Datadog |
+| **Fluent Bit** | Cực nhẹ (< 1MB RAM); tail log đã chiến | Ưu tiên logs; multi-signal / sampling yếu | Edge / node hạn chế tài nguyên |
+| **Vector** | Transform mạnh (VRL); route multi-sink tốt | Thêm agent phải own; kém “OTel-native” hơn Collector | Pipeline log nặng, routing phức tạp |
+| **Grafana Alloy** | Native Grafana stack; thay Promtail; hỗ trợ OTel | Hợp nhất khi đã Grafana-centric | Shop Prometheus + Loki + Grafana |
+| **Fluentd** | Plugin ecosystem phong phú | Nặng hơn, Ruby-based | Legacy systems |
+| **Prometheus (scrape)** | Native Prometheus | Chỉ metrics, pull | Môi trường Prometheus-native |
+| **Datadog / vendor agent** | Setup dễ, full-featured | Lock-in, đắt, song song nhiều agent | Team chuẩn hoá một vendor |
 
-**Quyết định**: Dùng OTel Collector cho production AIOps. Dùng Fluent Bit như sidecar nhẹ nếu Collector DaemonSet tốn quá nhiều tài nguyên.
+**Quyết định**: Dùng **OTel Collector** làm gateway AIOps. Dùng **Fluent Bit / Vector / Alloy** ở edge khi cần shipper mỏng hoặc gắn stack — rồi forward về Collector (hoặc Kafka), không để ba “bộ não” song song.
+
+> [!TIP]
+> **Đừng nhầm tầng**: Fluent Bit / Vector / Alloy / OTel là **collect & process nhẹ**. Flink / Kafka Streams là **stream process trên bus** sau Kafka ([06 §4.7](../06-data-plane/README.vi.md#47-stream-processing-flink-kafka-streams-spark-consumer)). Elasticsearch / Loki là **store**. So Fluent Bit với Flink là nhầm category.
 
 ---
 
@@ -783,39 +963,52 @@ metadata:
 
 ---
 
-## 11. Fluent Bit vs OTel Collector
+## 11. Fluent Bit vs OTel Collector (và Vector / Alloy)
 
 > [!NOTE]
 > **Ý TƯỞNG**
-> Fluent Bit và OTel Collector không phải đối thủ — chúng giải quyết các vấn đề khác nhau. Fluent Bit xuất sắc khi xử lý **log collection** với tài nguyên cực kỳ thấp (<1MB RAM). OTel Collector là lựa chọn khi cần xử lý **đa tín hiệu** (metrics + logs + traces) và các tính năng nâng cao như tail-based sampling.
+> Edge shipper không phải “ai thắng tuyệt đối” — chúng đánh đổi **RAM, coverage tín hiệu, và sức transform**. Fluent Bit xuất sắc **thu log** với tài nguyên cực thấp. OTel Collector khi cần **đa tín hiệu** và tail-based sampling. Vector và Grafana Alloy nằm giữa “log router” và “agent OTel-compatible” tùy cấu hình.
 
-| Tiêu chí | Fluent Bit | OTel Collector |
-|-----------|-----------|----------------|
-| **RAM** | ~1MB | 256MB+ |
-| **Tín hiệu** | Chỉ logs | Metrics + Logs + Traces |
-| **Tail sampling** | ❌ | ✅ |
-| **Transform phức tạp** | Cơ bản | Full AST (mạnh hơn nhiều) |
-| **Tương quan đa tín hiệu** | ❌ | ✅ |
-| **Throughput** | ~500K events/s | ~200K spans/s |
-| **Production maturity** | Cực cao | Cao (CNCF graduated) |
+| Tiêu chí | Fluent Bit | Vector | Grafana Alloy | OTel Collector |
+|-----------|------------|--------|---------------|----------------|
+| **RAM** | ~1MB class | Cao hơn FB | Trung bình | 256MB+ gateway điển hình |
+| **Tín hiệu** | Logs-first | Logs + metrics (tuỳ) | Metrics/logs/traces (Grafana + OTel) | Metrics + logs + traces |
+| **Tail sampling** | ❌ | ❌ / hạn chế | Qua pipeline kiểu OTel | ✅ |
+| **Transform** | Filter cơ bản | Mạnh (VRL) | Tốt (River / components) | Processors + OTTL |
+| **Vai AIOps** | Edge log node | Fan-out log phức tạp | Edge Grafana-stack | **Policy gateway** |
+| **Maturity** | Cực cao | Cao | Cao (ecosystem Grafana) | Cao (CNCF graduated) |
 
 ### Decision Matrix
 
 ```
-Cần traces với tail sampling?      → OTel Collector
-Chỉ logs, tài nguyên hạn chế?     → Fluent Bit
-Toàn bộ telemetry platform?        → OTel Collector
-Legacy infrastructure?              → Fluent Bit (setup đơn giản hơn)
-Kubernetes-native?                  → OTel Operator + OTel Collector
+Cần traces + tail sampling / policy org-wide?  → OTel Collector (gateway)
+Chỉ logs, tài nguyên hạn chế?                 → Fluent Bit
+Route/transform log phức tạp, multi-sink?     → Vector (hoặc Collector)
+All-in Grafana (Prom/Loki/Tempo)?             → Alloy + OTel gateway tuỳ chọn
+Full telemetry platform AIOps?                → OTel Collector
+Estate Fluentd legacy?                        → Fluent Bit edge → migrate OTel
 ```
 
-### Hybrid Pattern (cả hai)
+### Ưu / nhược (edge tools)
+
+| Tool | Ưu | Nhược |
+|------|----|-------|
+| **Fluent Bit** | Nhỏ; DaemonSet đã chứng minh; đơn giản | Multi-signal yếu; policy sâu hạn chế |
+| **Vector** | Route/transform xuất sắc; self-observability | Thêm skill (VRL); dễ trùng “não” với Collector |
+| **Alloy** | Một agent nhiều receiver Grafana; thay Promtail | Kéo về backend Grafana |
+| **OTel Collector** | Một policy plane; export vendor-neutral; sampling | Nặng hơn; config phức tạp |
+
+### Hybrid Pattern (khuyến nghị)
 
 ```
-Fluent Bit (DaemonSet) → system/node logs → OTel Collector Gateway
-OTel Agent (DaemonSet) → application OTLP → OTel Collector Gateway
-OTel Collector Gateway → xử lý tất cả → storage backends
+Fluent Bit hoặc Vector hoặc Alloy (DaemonSet) → node/system logs
+OTel Agent / SDK → application OTLP
+        ↘
+          OTel Collector Gateway → Prometheus / Loki / Tempo / Kafka
 ```
+
+> [!WARNING]
+> Chạy **Datadog Agent + OTel + Fluent Bit + Vector** trên mọi node “cho chắc” = đốt CPU và nhân đôi bug cardinality. Chọn **một edge log shipper + một đường OTel**, rồi hội tụ.
 
 ---
 

@@ -1,6 +1,6 @@
-# Chapter 05 — Tempo
+# Chapter 05 — Trace causality và error propagation với Tempo
 
-> **Grafana Tempo là hệ thống lưu trữ distributed tracing quy mô lớn, lưu trữ traces trên bộ lưu trữ đối tượng (S3) nhằm cung cấp khả năng lưu trữ không giới hạn với chi phí tối thiểu. Nó tích hợp tự nhiên với Prometheus exemplars và Loki TraceIDs để tạo nên sự liên kết tương quan khả năng quan sát giữa ba cột trụ chính.**
+> **Trace không tự tìm ra root cause. Nó chỉ trở thành causal evidence khi parent/link đúng, queue/retry được mô hình hóa, sampling coverage được công bố và thời gian được đọc cùng uncertainty. Chương này dựng lại failure path của payment incident bằng span cụ thể; Tempo là storage/query implementation ở phần reference.**
 
 ---
 
@@ -22,32 +22,227 @@ Sau chương này, hãy chuyển sang [06 — Telemetry Data Plane](../06-data-p
 
 ---
 
-## Table of Contents
+## Cách đọc chương này
 
-1. [Why Tempo?](#1-why-tempo)
-2. [Tempo vs Jaeger vs AWS X-Ray](#2-tempo-vs-jaeger-vs-aws-x-ray)
-3. [Internal Architecture](#3-internal-architecture)
-4. [Data Flow — Write Path](#4-data-flow--write-path)
-5. [Data Flow — Read Path](#5-data-flow--read-path)
-6. [Trace Storage Format](#6-trace-storage-format)
-7. [TraceQL Query Language](#7-traceql-query-language)
-8. [Metrics from Traces (SpanMetrics)](#8-metrics-from-traces-spanmetrics)
-9. [Deployment Modes](#9-deployment-modes)
-10. [Production Configuration](#10-production-configuration)
-11. [Grafana Integration](#11-grafana-integration)
-12. [Trace vs Log vs Metric cho RCA](#12-trace-vs-log-vs-metric-cho-rca)
-13. [Sampling Paradox — Head vs Tail Based](#13-sampling-paradox--head-vs-tail-based)
-14. [Cost vs Coverage Decision Tree](#14-cost-vs-coverage-decision-tree)
-15. [Edge Cases: Cardinality, PII, Multi-tenant](#15-edge-cases-cardinality-pii-multi-tenant)
-16. [Trace-based SLI/SLO Patterns](#16-trace-based-slislo-patterns)
-17. [Tempo trong AIOps Pipeline](#17-tempo-trong-aiops-pipeline)
-18. [Case Study: Timeout Cascade](#18-case-study-timeout-cascade)
-19. [Common Mistakes](#19-common-mistakes)
-20. [Monitoring Tempo](#20-monitoring-tempo)
-21. [Scaling](#21-scaling)
-22. [Security](#22-security)
-23. [Cost](#23-cost)
-24. [Production Review](#24-production-review)
+Phần I đọc một failed trace, sau đó cố tình làm mất span, đảo clock, thêm retry, async queue và fan-out để xem RCA còn đứng vững không. Phần II giữ Tempo/TraceQL/storage/sampling reference. Đích đến là một trace evidence contract cho Chapter 09–10, không phải một UI tìm trace đẹp.
+
+## Phần I — Từ request path đến causal evidence
+
+### Failed trace của một checkout
+
+Đơn vị thời gian dưới đây tính từ lúc gateway nhận request. Các span cùng trace, trừ Kafka consumer dùng span link vì xử lý async:
+
+| Span | Start | Duration | Status | Evidence |
+|---|---:|---:|---|---|
+| gateway `POST /checkout` | 0 ms | 6.340 ms | error | Customer request boundary |
+| checkout `create_order` | 8 ms | 6.280 ms | error | Parent business operation |
+| order-api `POST /orders` | 25 ms | 6.190 ms | error | Chờ payment result |
+| kafka produce `payment.requested` | 41 ms | 12 ms | ok | Async handoff |
+| queue wait | 53 ms | 1.820 ms | unset | Broker/consumer lag, không phải app CPU |
+| payment-worker attempt 1 | 1.873 ms | 2.030 ms | error | Retry attempt 1 |
+| payment-db `pool.acquire` #1 | 1.891 ms | 2.000 ms | error | `db.pool.acquire_timeout` |
+| payment-worker backoff | 3.903 ms | 210 ms | unset | Retry delay |
+| payment-worker attempt 2 | 4.113 ms | 2.040 ms | error | Retry attempt 2 |
+| payment-db `pool.acquire` #2 | 4.130 ms | 2.000 ms | error | Cùng failure family |
+| order-api compensation | 6.170 ms | 35 ms | ok | Chuyển order sang pending |
+
+Nếu chỉ nhìn span dài nhất, gateway 6.340 ms đứng đầu. Nếu nhìn service có nhiều error spans, payment-worker có thể thắng. Nếu nhìn operation đỏ sớm nhất theo trace, `payment-db pool.acquire` xuất hiện sau queue wait nhưng là nơi failure bắt đầu trong execution. Root-cause reasoning phải giải thích **vì sao** DB pool candidate giải thích queue/retry/downstream errors tốt hơn, không xếp theo duration/count đơn thuần.
+
+### Phân biệt critical path, causal path và error path
+
+Ba khái niệm thường bị trộn:
+
+- **Critical path:** chuỗi spans quyết định latency end-to-end. Trong trace này gồm queue wait + hai pool timeouts + backoff.
+- **Error propagation path:** nơi status/outcome lỗi lan ngược từ DB → worker → order → checkout → gateway.
+- **Candidate causal path:** chuỗi điều kiện có thể tạo failure. Pool saturation là evidence ngoài trace; trace chỉ thấy acquire timeout.
+
+Một child span lỗi không phải lúc nào gây parent lỗi. Analytics call có thể fail nhưng checkout fallback thành công. Ngược lại, parent có business error dù child status OK vì semantic outcome sai. Propagation engine cần policy operation/failure family, không chỉ OR mọi `status=error`.
+
+### Downstream weighting: root candidate giải thích bao nhiêu triệu chứng?
+
+Topology quan sát được:
+
+`payment-db → payment-worker → order → checkout → gateway`, và order event ảnh hưởng notification.
+
+Nếu `payment-db` onset phù hợp và failed spans lan qua bốn downstream services, candidate nhận downstream explanatory weight cao. Gateway 5xx có nhiều traffic hơn nhưng không có upstream reach; nó là symptom boundary.
+
+Weight không nên chỉ là số node. Một notification service không critical bằng payment path; edge cần criticality, traffic fraction, success/error propagation rate và freshness. Shared dependency như DNS có downstream lớn nhưng nếu DNS probes/control group khỏe, negative evidence hạ điểm.
+
+### Temporal order: “đỏ trước” cần hiệu chỉnh detector delay
+
+Giả sử detector timestamps:
+
+| Signal | Alert time | Detector/window delay | Estimated onset interval |
+|---|---:|---:|---:|
+| Gateway 5xx | 10:11:30 | 30–60 s | 10:10:30–10:11:00 |
+| Payment timeout | 10:11:20 | 30–60 s | 10:10:20–10:10:50 |
+| DB pool saturation | 10:12:00 | 2-min averaging | 10:10:00–10:10:30 |
+| DB acquire error spans | 10:10:44 | 2–5 s ingest | 10:10:39–10:10:42 |
+
+DB metric alert đến sau gateway nhưng estimated onset sớm hơn. Trace event time giúp, song clock uncertainty vẫn tồn tại. Nếu DB node chậm 90 giây, raw span timestamps có thể đặt DB “trước” giả. RCA Chapter 10 dùng onset intervals, ingest delay và clock health; các interval overlap được coi tie thay vì tạo thứ tự chắc chắn giả.
+
+### Retry làm duration/count nói dối
+
+Một operation có hai attempts. Nếu mỗi attempt tạo trace root mới, engine thấy hai incidents/request. Nếu attempts là child spans nhưng không ghi attempt/backoff, engine có thể kết luận DB lỗi hai lần độc lập.
+
+Cần giữ:
+
+- stable operation/business correlation ID có privacy policy;
+- attempt number và retry reason;
+- original deadline và remaining budget;
+- backoff duration;
+- outcome cuối;
+- idempotency/side-effect status.
+
+Retry amplification có thể trở thành root của giai đoạn sau dù DB pool là trigger ban đầu. Ví dụ tắt retry làm DB query 2.300 → 900/s và success tăng 78% → 95%, nhưng pool leak vẫn còn. RCA nên biểu diễn “trigger: pool leak; amplifier: retry; downstream symptoms”, không ép mọi incident chỉ có một nhãn root.
+
+### Async queue: trace ngắn không có nghĩa request nhanh
+
+Producer mất 12 ms, consumer processing chỉ 180 ms nhưng message chờ 140 giây. Nếu trace model chỉ nối spans khi consumer bắt đầu, service map không hiển thị queue wait. Event produced time/broker time/processing time cần trở thành explicit wait evidence hoặc derived span/feature.
+
+Với batch 100 messages, một consumer span không nên là child của một producer ngẫu nhiên. Dùng links cho từng message hoặc batch summary có coverage; nếu chỉ giữ 10 links vì limit, quality flag phải nói partial. Correlation theo incident scope, không theo một parent giả.
+
+### Fan-out: child lỗi có thể không ảnh hưởng customer
+
+Checkout song song gọi inventory, recommendations và fraud. Recommendations timeout nhưng fallback cache; payment DB timeout làm request fail. Cả hai child đỏ.
+
+Phân biệt bằng:
+
+- dependency criticality/optional edge;
+- parent outcome;
+- cancellation/fallback events;
+- proportion failed traces có child failure;
+- control group successful traces.
+
+Nếu recommendations timeout xuất hiện ở 30% success traces lẫn 32% failed traces, nó là tương quan nền. Payment acquire timeout xuất hiện 84% failed và 0,2% success traces, evidence mạnh hơn. So với control group quan trọng hơn việc một span “đỏ”.
+
+### Span error propagation cần semantic outcome
+
+Các trường hợp status đánh lừa:
+
+- HTTP 200 nhưng body `processor_unavailable`.
+- gRPC cancelled vì parent deadline, child không phải origin.
+- DB query trả zero rows hợp lệ nhưng application log ERROR.
+- Client timeout trong khi server hoàn tất và tạo side effect.
+- Circuit breaker trả fallback nhanh với status OK nhưng degraded outcome.
+
+Propagation rule nên map protocol status, application outcome, cancellation origin và failure family. “Error=true” là feature thô, không phải verdict.
+
+### Partial trace: RCA phải suy luận có điều kiện
+
+Trong 100 failed requests:
+
+- 84 trace đầy đủ có `payment-db pool.acquire` lỗi;
+- 11 trace mất DB child nhưng payment span ghi cùng failure family;
+- 3 trace chỉ có gateway/checkout vì async context gãy;
+- 2 trace là card-network declines không liên quan.
+
+RCA có thể nói: “DB pool giải thích 84/100 observed failed traces và 95/97 traces có đủ payment context; overall trace coverage 87%.” Không được nói “DB gây 84% mọi lỗi” nếu sampling/inclusion chưa cho phép ước lượng.
+
+Khi root span thiếu nhưng children còn, trace store có thể xem trace partial. Orphan rate và missing expected edges là quality evidence. Không tự nối spans chỉ vì service/time gần nhau; đó là correlation probabilistic và phải đánh dấu.
+
+### Sampling bias và trace-derived metrics
+
+Giữ 100% error traces, 1% success traces làm dataset có error ratio quan sát cực cao. Span metrics dùng để tính service error rate chỉ đúng nếu tạo trước biased sampling hoặc có weighting/inclusion probability phù hợp.
+
+Tail sampling cũng ảnh hưởng novelty: rare success path có thể không bao giờ thấy; detector tưởng operation mới khi policy đổi. Mọi feature từ trace cần sampling policy/version và coverage theo service/route/outcome.
+
+Exemplar là đường vào tốt từ metric spike tới trace cụ thể, nhưng một exemplar không đại diện distribution. Dùng exemplar để điều tra, rồi query/aggregate một tập trace có thiết kế mẫu rõ.
+
+### Từ traces sang service graph: observed graph không phải intended graph
+
+Trace-derived graph cho biết edge đã quan sát trong window. Nó bỏ edge không có traffic/sampled, có thể thêm edge tạm do debug/canary và không biết ownership/criticality. Chapter 17 hợp nhất observed graph với service catalog, mesh/cloud/config sources.
+
+Mỗi edge nên có:
+
+- direction và protocol;
+- first/last observed, request volume;
+- success/error/latency distribution;
+- sampling coverage;
+- environment/region/tenant scope;
+- critical/optional semantics từ source đáng tin;
+- freshness/confidence.
+
+Một graph snapshot theo incident time quan trọng hơn graph hiện tại. Sau rollback, topology mới không được dùng để giải thích incident cũ.
+
+### Trace search: bắt đầu từ incident, không quét tùy ý toàn kho
+
+Điểm vào hiệu quả:
+
+1. Metric anomaly có scope/window và exemplar.
+2. Log failure signature có trace ID.
+3. Incident có service/operation/failure family để tìm cohort traces.
+
+Query “mọi trace chậm trong 24 giờ” vừa đắt vừa trộn regimes. Query cohort nên có window, service/operation, deployment/region và control group. Tempo/TraceQL hay backend khác chỉ là cách thực hiện.
+
+Business ID có thể giúp support điều tra một giao dịch nhưng có cardinality/privacy cao. Tokenize, access control và audit; không biến customer ID thành indexed attribute mặc định.
+
+### Storage/cost phải bảo vệ rare evidence
+
+Giả sử 100.000 req/s × 15 spans × 1 KB = khoảng 1,5 GB/s trước compression, tương đương quy mô rất lớn mỗi ngày. Không thể quyết định “giữ tất cả” mà không nói retention, sampling và query pattern.
+
+Policy theo decision value:
+
+- giữ errors/slow tails/rare failure families lâu hơn;
+- giữ success sample đại diện cho control group;
+- giữ critical transaction paths ưu tiên;
+- giảm verbose/internal spans ít giá trị;
+- tách hot investigation window và cold replay retention;
+- đo cost per retained useful trace, không chỉ $/GB.
+
+Nếu chỉ giữ lỗi, mất control group và dễ gán nhầm correlation. Nếu chỉ random sample thấp, mất rare faults. Cần stratified policy và budget guardrail per tenant/service.
+
+### Failure modes của trace platform
+
+**Trace hoàn tất muộn.** Root tới trước, child tới sau decision wait. Search sớm thấy partial; revision policy cập nhật evidence.
+
+**Collector sharding sai.** Spans cùng trace vào sampler khác nhau và bị quyết định thiếu. Coverage/orphan metrics phát hiện.
+
+**Tempo ingest thành công, query chưa thấy.** Compaction/index/query lag làm agent nhận empty. Response phải phân biệt not-found, partial và backend error.
+
+**Trace ID collision/reuse bug.** Hai request dính một trace tạo impossible concurrency. Validation giới hạn duration/service graph và quarantine.
+
+**Clock skew tạo negative duration.** Không sửa im lặng; giữ raw time, corrected time/uncertainty và quality flag.
+
+**Large trace.** Fan-out hàng chục nghìn spans bị truncate; root-cause evidence có thể nằm phần mất. Quota kèm truncation marker, aggregate branch evidence.
+
+**PII/secrets trong attributes.** Tail sampler giữ mọi error vô tình giữ payload nhạy cảm nhiều hơn. Redact trước storage/sampling export, allowlist attributes.
+
+**Multi-tenant leakage.** Trace search theo ID phải enforce tenant, kể cả ID bị log ở ticket tenant khác.
+
+### Golden replay chứng minh Chapter 05
+
+Replay gồm:
+
+1. Trace đầy đủ với queue wait, hai attempts và DB acquire timeout.
+2. Mất DB child spans ở 30% traces.
+3. Clock DB lệch -90 giây.
+4. Recommendations lỗi trên cả success và failed control group.
+5. Async batch có 100 producers và partial links.
+6. Tail sampling policy đổi giữa incident.
+7. Trace backend trả partial/not-found trong ba phút.
+8. Fault auth nổ chồng với path riêng tại 10:37.
+
+Điều kiện đạt:
+
+- Root ranking không chọn gateway chỉ vì duration/count.
+- Pool timeout vẫn là top candidate khi một phần child span mất, nhưng confidence giảm.
+- Clock skew không làm DB được tuyên bố “đỏ trước” chắc chắn ngoài evidence.
+- Optional recommendations bị loại bằng successful control group.
+- Queue wait được tính vào customer path.
+- Sampling change không bị hiểu là recovery/novelty.
+- Backend partial không trả zero evidence giả.
+- Auth traces tạo failure episode riêng dù cùng gateway parent symptoms.
+
+### Output contract sang Chapter 09–10
+
+Trace evidence gồm: trace/operation identity, parent/link graph, event intervals và clock uncertainty, retry/batch semantics, semantic outcome/failure family, critical/optional edge, sampled cohort/coverage, partial/truncation flags, deployment/scope và control-group statistics. RCA dùng nó cùng metric/log/topology/change evidence; trace không có quyền tự mình tuyên bố root cause.
+
+---
+
+## Phần II — Tempo và distributed tracing reference
+
+Phần dưới giải thích Tempo, storage/query path, TraceQL, span metrics, sampling, deployment, security và cost. Dùng nó để giữ/query trace evidence ở Phần I với coverage và failure semantics rõ ràng.
 
 ---
 

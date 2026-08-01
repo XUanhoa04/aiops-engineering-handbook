@@ -1,6 +1,6 @@
-# Chapter 01 — Observability
+# Chapter 01 — Thiết kế bằng chứng cho AIOps
 
-> **Khả năng quan sát (Observability) là nền tảng mà mọi khả năng của AIOps được xây dựng dựa trên đó. Không có telemetry chất lượng cao, không có thuật toán nào, không có LLM nào, và không có tự động hóa nào có thể đáng tin cậy.**
+> **Observability không được đo bằng số dashboard hay số terabyte log. Nó được đo bằng khả năng tái dựng một failure episode, phân biệt nguyên nhân với triệu chứng và nói rõ phần nào ta chưa nhìn thấy. Chương này thiết kế “evidence pack” cho incident xuyên suốt handbook bằng dữ liệu cụ thể.**
 
 ---
 
@@ -24,34 +24,197 @@ Sau chương này, hãy chuyển sang [02 — OpenTelemetry](../02-opentelemetry
 
 ---
 
-## Table of Contents
+## Cách đọc chương này
 
-1. [The Three Pillars of Observability](#1-the-three-pillars-of-observability)
-2. [Metrics — Deep Dive](#2-metrics--deep-dive)
-3. [Logs — Deep Dive](#3-logs--deep-dive)
-4. [Traces — Deep Dive](#4-traces--deep-dive)
-5. [The Fourth Signal — Profiles](#5-the-fourth-signal--profiles)
-6. [Golden Signals vs RED vs USE](#6-golden-signals-vs-red-vs-use)
-7. [SLI, SLO, SLA, Error Budget](#7-sli-slo-sla-error-budget)
-8. [Observability Architecture](#8-observability-architecture)
-9. [Instrumentation Strategy](#9-instrumentation-strategy)
-10. [Correlation — Connecting the Three Pillars](#10-correlation--connecting-the-three-pillars)
-11. [Data Cardinality — The Silent Killer](#11-data-cardinality--the-silent-killer)
-12. [Observability Platform Design](#12-observability-platform-design)
-13. [Production Best Practices](#13-production-best-practices)
-14. [Common Mistakes](#14-common-mistakes)
-15. [Monitoring the Monitoring Stack](#15-monitoring-the-monitoring-stack)
-16. [Scaling Observability](#16-scaling-observability)
-17. [Security](#17-security)
-18. [Cost Management](#18-cost-management)
-19. [Tư duy problem-solving trong production](#19-tư-duy-problem-solving-trong-production)
-20. [Edge cases thực tế](#20-edge-cases-thực-tế)
-21. [Decision trees](#21-decision-trees)
-22. [Bài học từ Big Tech / public incidents](#22-bài-học-từ-big-tech--public-incidents)
-23. [Câu hỏi Socratic cho on-call](#23-câu-hỏi-socratic-cho-on-call)
-24. [Improvement experiments (30/60/90 ngày)](#24-improvement-experiments-306090-ngày)
-25. [Production Review](#25-production-review)
-26. [Improvement Roadmap](#26-improvement-roadmap)
+Phần I trả lời “cần quan sát cái gì để engine không đoán mò?”. Phần II là reference về metrics, logs, traces, SLO, kiến trúc và chi phí. Không cần triển khai mọi signal; cần chứng minh signal mình chọn thay đổi được một quyết định incident.
+
+## Phần I — Từ customer impact đến evidence pack
+
+### Bắt đầu từ câu hỏi, không bắt đầu từ ba cột trụ
+
+Tại 10:14, checkout error tăng từ 0,4% lên 18%. On-call cần phân biệt ít nhất bốn giả thuyết:
+
+1. Traffic vượt capacity của checkout.
+2. Deploy `catalog-v42` làm hỏng request path.
+3. `payment-db` pool cạn, retry khuếch đại tải.
+4. Observability pipeline lỗi nên số liệu đang nói dối.
+
+Nếu chỉ có CPU và HTTP 5xx, cả bốn giả thuyết đều có thể trông hợp lý. Thiết kế observability đúng là chọn bằng chứng có khả năng **phân biệt** chúng, không phải thu mọi dữ liệu có thể thu.
+
+| Phút | Req/phút | Success | P99 | Checkout CPU | DB pool | Retry | Log `pool_timeout` | Failed DB spans | Trace coverage |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 10:00 | 4.020 | 99,6% | 420 ms | 43% | 48% | 2% | 3 | 12 | 91% |
+| 10:07 | 4.080 | 99,5% | 438 ms | 44% | 51% | 2% | 4 | 14 | 90% |
+| 10:11 | 4.150 | 98,8% | 610 ms | 47% | 76% | 4% | 19 | 53 | 89% |
+| 10:14 | 4.100 | 82,0% | 5.800 ms | 55% | 100% | 31% | 840 | 1.920 | 88% |
+| 10:16 | 4.060 | 78,7% | 7.100 ms | 61% | 100% | 54% | 1.430 | 2.860 | 87% |
+| 10:22 | 3.900 | 73,2% | 8.200 ms | 64% | 100% | 57% | 2.100 | 3.400 | 49% |
+
+Từ bảng này, CPU checkout không giải thích được onset: nó tăng sau DB pool và vẫn dưới saturation. Deploy catalog không tạo thay đổi ở phút 10:07. DB pool, timeout log và failed DB span cùng thay đổi trước customer error nặng. Nhưng trace coverage tụt ở 10:22 làm confidence phải giảm; nó không được xem như bằng chứng recovery.
+
+### Minimum evidence pack cho một service
+
+Mỗi service không cần hàng nghìn metrics. Nó cần một gói evidence đủ trả lời sáu câu hỏi:
+
+| Câu hỏi | Evidence tối thiểu | Dùng cho stage sau |
+|---|---|---|
+| Người dùng có bị ảnh hưởng? | Request count, success/error theo outcome, latency distribution | Detection severity, burn-rate |
+| Resource nào gần giới hạn? | Saturation thực: pool usage, queue wait, throttling, disk/network pressure | Candidate cause, capacity |
+| Failure bắt đầu ở operation nào? | Structured failure event và span status theo operation | Failure signature, RCA |
+| Request đi qua dependency nào? | Trace/service edge, protocol, route class | Topology và downstream weighting |
+| Thay đổi gì vừa xảy ra? | Deployment/config/flag version gắn đúng service/region | Change evidence và phản chứng |
+| Dữ liệu có đáng tin? | Scrape/export loss, lag, coverage, clock offset, schema version | Confidence và degraded mode |
+
+Một service trả `200` nhưng business outcome `payment_declined_system_error` vẫn là lỗi. Vì vậy outcome phải là semantic field, không suy ra hoàn toàn từ HTTP status. Ngược lại, declined do ngân hàng từ chối hợp lệ không được tính như lỗi platform.
+
+### Metrics: nhanh và rẻ, nhưng dễ mất nguyên nhân
+
+Metrics phù hợp với câu hỏi “bao nhiêu, từ khi nào, kéo dài bao lâu?”. Trong incident này:
+
+- Success rate định lượng customer impact.
+- Histogram latency cho thấy tail bị kéo dài trước khi average thay đổi mạnh.
+- Pool utilization và wait time đo saturation thật.
+- Retry ratio cho thấy feedback loop.
+- Telemetry loss và scrape age đo độ tin cậy của chính evidence.
+
+Nhưng metric tổng hợp có thể trộn hai quần thể. Giả sử global success là 97,8%, tưởng chưa nghiêm trọng; APAC chỉ 72% còn EU/US gần 100%. Nếu aggregate toàn cầu, detector bỏ lọt partial outage. Nếu gắn `customer_id` làm label để tránh aggregate, cardinality phá hệ metrics. Cách đúng là giữ dimension hữu hạn như region, route class, tenant tier; business ID đi vào log/trace có sampling và access control.
+
+### Logs: failure event, không phải kho văn xuôi
+
+Một log hữu ích cho engine phải chứa event time, service identity, operation, outcome, error family, dependency, deployment và trace correlation. Nội dung “payment failed” lặp 10.000 lần không cho biết đây là một lỗi hay nhiều lỗi.
+
+Trong incident, 2.100 dòng có thể rút về ba template:
+
+| Template | Count/5m | First seen | Vai trò |
+|---|---:|---:|---|
+| `db_pool_acquire_timeout dependency=payment-db` | 1.640 | 10:10:42 | Candidate origin |
+| `payment_attempt_timeout attempt={n}` | 4.910 | 10:11:07 | Retry-amplified symptom |
+| `notification_order_missing` | 730 | 10:14:16 | Downstream symptom |
+
+Count cao nhất không mặc nhiên là root. Template downstream có thể nhiều hơn vì fan-out. “First seen” cũng cần hiệu chỉnh ingestion lag và clock skew; log từ DB đến chậm hai phút không được làm đảo causal order.
+
+### Traces: đường lan truyền, không tự động là bằng chứng nhân quả
+
+Trace cho biết request A gọi service B rồi lỗi truyền trở lại. Nó giúp phân biệt checkout CPU cao do tự nó hay do chờ payment. Nhưng một span cha dài không chứng minh child là root; parent duration bao gồm wait, queue và retry. Một trace sampled cũng không đại diện cho toàn bộ traffic nếu sampling bias theo status/latency.
+
+Trong 100 failed traces đại diện:
+
+- 84 trace bắt đầu lỗi tại `payment-db.acquire`.
+- 11 trace mất child span nhưng payment span có error family tương ứng.
+- 5 trace lỗi do card-network hợp lệ, không liên quan DB.
+
+RCA có thể dùng tỷ lệ 84/100 nhưng phải kèm coverage 87% và sampling policy. Không được viết “100% request lỗi ở DB” chỉ vì 84 trace quan sát được cùng mẫu.
+
+### Profiles và resource evidence chỉ có giá trị khi gắn vào failure interval
+
+CPU profile cho thấy hàm nào tiêu CPU; nó không cho biết khách có bị ảnh hưởng. Nếu checkout CPU 75% trong flash sale nhưng success 99,8%, profile chỉ hỗ trợ tối ưu capacity. Nếu lock contention xuất hiện đúng anomaly interval và biến mất ở control group, nó trở thành evidence cho incident.
+
+Resource metric cũng vậy. CPU 95% có thể là batch hợp lệ; DB pool 100% có thể không gây lỗi nếu queue wait vẫn thấp. Luôn ghép saturation với user outcome và temporal alignment.
+
+### Identity là phép nối quan trọng nhất
+
+Các backend không “tự tương quan”. Cùng một thực thể phải có identity nhất quán:
+
+| Khái niệm | Giá trị ví dụ | Quy tắc |
+|---|---|---|
+| Service | `payment-api` | Không lúc là `payment`, lúc là `payments-v2` |
+| Environment | `prod` | Không suy từ cluster name không ổn định |
+| Region | `ap-southeast-1` | Chuẩn hóa cloud/colo naming |
+| Deployment | `payment-api@sha256:8f2...` | Immutable; không chỉ dùng `latest` |
+| Operation | `POST /payments` hoặc semantic route | Không dùng raw URL chứa ID |
+| Trace | 128-bit trace ID | Truyền qua sync và async boundary |
+| Failure family | `db.pool.acquire_timeout` | Ổn định qua thay đổi text/stack trace |
+
+Nếu metric gọi service là `payment`, log là `payment-api`, trace là `payments`, correlation tạo ba node. Identity mapping không phải cleanup cosmetic; nó quyết định incident membership và downstream weight.
+
+### Missing data là một trạng thái, không phải số 0
+
+Chuỗi error count `12, 14, missing, missing, 11` có ít nhất bốn diễn giải:
+
+- Service không còn request.
+- Exporter/collector hỏng.
+- Query window chưa hoàn tất.
+- Series biến mất do deploy/label change.
+
+Không trường hợp nào cho phép điền zero vô điều kiện. Mỗi feature cần `value`, `event_time`, `freshness`, `coverage` và `quality flags`. Khi quality dưới ngưỡng, detector chuyển sang unknown/degraded thay vì resolved.
+
+Đặc biệt trong outage của observability stack, absence of evidence không phải evidence of recovery. Alert “không còn lỗi” chỉ hợp lệ nếu denominator traffic còn hiện diện và collection health đạt SLO.
+
+### Observability SLO: đo khả năng tạo evidence
+
+Uptime của Grafana không đủ. Evidence plane cần SLO theo consumer:
+
+| SLO | Mục tiêu khởi đầu | Điều nó bảo vệ |
+|---|---:|---|
+| Metric freshness P99 | < 60 giây | Detector không ra quyết định trên dữ liệu cũ |
+| Log ingestion lag P99 | < 120 giây | Temporal ordering có sai số hữu hạn |
+| Trace end-to-end coverage | > 85% critical paths | RCA không dựa trên mẫu quá mỏng |
+| Context propagation | > 98% sync, > 95% async | Không gãy dependency graph |
+| Deployment attribution | > 99% events có immutable version | Change correlation có control group |
+| Semantic schema validity | > 99,9% critical events | Feature không âm thầm đổi nghĩa |
+| Query success | > 99,9% trong incident windows | Agent/on-call lấy được evidence |
+
+Mục tiêu không phải lúc nào cũng 100%. Quan trọng là downstream biết coverage thực tế và hạ confidence đúng cách.
+
+### Cost là một bài toán chọn bằng chứng
+
+Giả sử hệ thống tạo 1,5 triệu span/s, 3 TB log/ngày và 12 triệu active series. Giữ tất cả không phải observability maturity; đó có thể là thiếu policy.
+
+Ưu tiên ngân sách theo decision value:
+
+- Metrics giữ aggregate ổn định phục vụ SLO/detection, loại label vô hạn.
+- Logs giữ full cho audit/payment failure, sample debug success và rút template/count cho detection.
+- Traces giữ 100% lỗi hiếm/latency cực cao, sample success đại diện theo route/region.
+- Luôn giữ telemetry-quality metrics; đừng tiết kiệm bằng cách làm mù chính pipeline.
+
+Sampling phải giữ denominator và inclusion probability nếu dùng để ước lượng. “Giữ mọi error” nghe hợp lý nhưng có thể bỏ qua slow-success brownout; “giữ 1% đều” có thể mất failure hiếm.
+
+### Edge cases mà evidence-first phải chịu được
+
+**Partial outage.** Chỉ APAC và tenant enterprise lỗi; global average che mất. Cần slice hữu hạn và detector per-scope.
+
+**Retry inversion.** Log ở checkout xuất hiện trước log DB do buffer/ingestion khác nhau. Causal order dùng event time, clock uncertainty và trace relation, không dùng thứ tự dòng tới backend.
+
+**Cardinality incident.** Một deploy đưa `order_id` vào metric label, TSDB quá tải đúng lúc payment lỗi. Engine phải tách telemetry-platform incident khỏi customer incident nhưng liên kết loss of confidence.
+
+**Sampling policy change.** Trace coverage giảm 90% → 20% vì cost control. RCA ranking thay đổi không được xem là hệ thống đã khỏe.
+
+**Success code sai nghĩa.** Payment trả HTTP 200 với body `processor_unavailable`; RED metric dựa status code báo xanh. Business outcome SLI mới thấy lỗi.
+
+**Clock skew.** Node DB chậm 90 giây làm “đỏ trước” sai. Mỗi event cần clock source/uncertainty; ordering gần hơn uncertainty interval phải coi là chưa xác định.
+
+**Observability shared fate.** Production và telemetry cùng phụ thuộc một DNS/control plane. Khi control plane hỏng, dashboard xanh do dữ liệu đứng yên. Freshness gate phải chặn kết luận.
+
+### Replay chứng minh Chapter 01
+
+Replay incident 10:00–11:16 phải trả lời được:
+
+1. Customer impact được phát hiện cả ở global và APAC slice.
+2. DB pool, log template và failed span nối cùng `payment-db` identity.
+3. Trace coverage tụt tại 10:22 làm confidence giảm nhưng không đóng incident.
+4. Deploy catalog được giữ làm candidate rồi bị negative evidence loại.
+5. Fault auth lúc 10:37 tạo signature khác dù gateway symptom trộn lẫn.
+6. Khi xóa 50% logs, hệ vẫn phát hiện bằng metrics/traces nhưng giải thích uncertainty.
+7. Khi xóa trace context, RCA không giả vờ chắc chắn và data-quality SLO fail.
+
+### Output contract sang Chapter 02–05
+
+Chapter này xuất ra một telemetry contract, không xuất ra danh sách tool:
+
+- Stable resource identity và immutable deployment identity.
+- Customer outcome, operation và failure-family taxonomy.
+- Event time, processing time, freshness và quality flags.
+- Correlation keys có privacy policy.
+- Per-signal coverage/retention/sampling policy.
+- Observability SLO và fallback khi một signal mất.
+
+Chapter 02 hiện thực hóa contract trong collection/context propagation. Chapter 03 biến metrics thành feature đáng tin. Chapter 04 biến log thành failure evidence. Chapter 05 dựng causal path từ trace.
+
+---
+
+## Phần II — Reference về signals và nền tảng observability
+
+Phần dưới giữ kiến thức metrics/logs/traces/SLO/kiến trúc để tra cứu. Khi đọc, luôn hỏi: chi tiết này thay đổi detector, correlation, RCA hay remediation decision nào?
 
 ---
 
@@ -357,7 +520,7 @@ k8s_node_name: ip-10-0-1-50
 }
 ```
 
-**Tại sao `trace_id` trong log là bắt buộc**: Đây là "sợi chỉ đỏ" kết nối log → trace → span. Không có `trace_id`, bạn không thể biết "log lỗi này" thuộc về "request nào trong trace". Xem [Section 10 — Correlation](#10-correlation--connecting-the-three-pillars).
+**Tại sao `trace_id` trong log là bắt buộc**: Đây là "sợi chỉ đỏ" kết nối log → trace → span. Không có `trace_id`, bạn không thể biết "log lỗi này" thuộc về "request nào trong trace". Xem [Section 10 — Correlation](#10-correlation-connecting-the-three-pillars).
 
 ### 3.3 Log Severity Levels
 
