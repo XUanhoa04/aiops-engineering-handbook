@@ -1,6 +1,6 @@
-# Chapter 12 — Automated Remediation
+# Chapter 12 — Remediation Safety Engine: policy, blast radius và verified recovery
 
-> **Khắc phục tự động (Automated remediation) là lớp thực thi hành động để khép kín chu trình xử lý sự cố. Nó chuyển hóa các chẩn đoán RCA và đề xuất của LLM thành các hành động an toàn, có thể kiểm toán, và có thể đảo ngược trên hạ tầng production. Thử thách kỹ thuật cốt lõi ở đây không phải là "chúng ta có thể tự động hóa việc này không?" mà là "làm sao để tự động hóa một cách an toàn mà không làm sự cố tồi tệ hơn?".**
+> **Remediation engine không phải một danh sách script và cũng không phải cánh tay của LLM. Nó là một safety controller độc lập: nhận một đề xuất có bằng chứng, kiểm tra policy và blast radius, chỉ thực thi action đã đăng ký, thử trên phạm vi nhỏ, xác minh bằng outcome của người dùng rồi rollback nếu tình hình xấu đi. Một engine tốt phải dám từ chối hành động, kể cả khi RCA đang rất tự tin.**
 
 ---
 
@@ -23,56 +23,276 @@ Sau chương này, hãy chuyển sang [12 — Production Operations](../13-produ
 
 ---
 
-## Table of Contents
+## Cách đọc chapter này
 
-1. [Why Automated Remediation?](#1-why-automated-remediation)
-2. [Remediation Architecture](#2-remediation-architecture)
-3. [Remediation Action Catalog](#3-remediation-action-catalog)
-4. [Kubernetes-Based Remediation](#4-kubernetes-based-remediation)
-5. [AWS SSM Automation](#5-aws-ssm-automation)
-6. [Safety Framework](#6-safety-framework)
-7. [Blast Radius Calculation](#7-blast-radius-calculation)
-8. [Rollback Design](#8-rollback-design)
-9. [Canary-Based Remediation](#9-canary-based-remediation)
-10. [GitOps Remediation](#10-gitops-remediation)
-11. [Verification Pipeline](#11-verification-pipeline)
-12. [Audit Logging](#12-audit-logging)
-13. [Production Configuration](#13-production-configuration)
-14. [Common Mistakes](#14-common-mistakes)
-15. [Monitoring Remediation](#15-monitoring-remediation)
-16. [Scaling](#16-scaling)
-17. [Security](#17-security)
-18. [Cost](#18-cost)
-19. [Risk Decision Matrix](#19-risk-decision-matrix)
-20. [Circuit Breakers, Rate Limits & Dual-Control](#20-circuit-breakers-rate-limits--dual-control)
-21. [Runbook-as-Code vs LLM Freeform](#21-runbook-as-code-vs-llm-freeform)
-22. [Human Approval UX (On-Call 3am)](#22-human-approval-ux-on-call-3am)
-23. [Edge Cases: Retry Storms & Wrong RCA](#23-edge-cases-retry-storms--wrong-rca)
-24. [Chaos Testing of Remediation](#24-chaos-testing-of-remediation)
-25. [Case Studies — Famous Incidents](#25-case-studies--famous-incidents)
-26. [Production Checklist (40+)](#26-production-checklist-40)
-27. [Production Review](#27-production-review)
+Phần I xây một remediation safety engine bằng một sự cố cụ thể. Hãy theo dõi ba câu hỏi: **engine được phép làm gì, nó biết hành động có tác dụng bằng cách nào, và nó dừng ở đâu khi bằng chứng không đủ**. Phần II giữ lại tài liệu triển khai chi tiết để tra cứu sau khi đã hiểu hợp đồng an toàn.
+
+## Phần I — Safety engine thực tế
+
+### Tình huống: một RCA đúng chưa đủ để được phép hành động
+
+Từ Chapter 11, investigation engine trả về incident `INC-8421` lúc 10:16:
+
+| Tín hiệu | Giá trị quan sát |
+|---|---:|
+| Checkout success rate | 98,8% → 71,4% |
+| `payment-api` timeout | 0,7% → 24,9% |
+| DB pool wait p95 | 18 ms → 1.840 ms |
+| Pool utilization | 93% |
+| Retry amplification | 1,1 → 4,6 request/giao dịch |
+| RCA hàng đầu | pool exhaustion do retry storm, confidence 0,86 |
+| RCA thứ hai | lỗi database diện rộng, confidence 0,38 |
+
+Agent đề xuất ba khả năng:
+
+| Đề xuất | Lợi ích kỳ vọng | Rủi ro thật |
+|---|---|---|
+| Tắt retry cấp ứng dụng | Chặn khuếch đại tải nhanh | Giao dịch lỗi tạm thời không được retry |
+| Tăng pool từ 80 lên 160 | Giảm hàng đợi trước mắt | Có thể đẩy gấp đôi connection xuống DB và làm DB sập |
+| Restart toàn bộ `payment-api` | Xóa connection kẹt | Tạo reconnect storm, mất toàn bộ capacity trong vài chục giây |
+
+Nếu lấy confidence 0,86 làm lệnh thực thi thì hệ thống vẫn có thể chọn đúng nguyên nhân nhưng chọn sai hành động. Vì vậy remediation engine không hỏi “RCA có tự tin không?” trước tiên. Nó hỏi:
+
+1. Đề xuất có thuộc action catalog và còn hiệu lực không?
+2. Có invariant nào bị phá nếu action thành công đúng như dự kiến?
+3. Phạm vi nhỏ nhất có thể chứng minh tác dụng là gì?
+4. Tín hiệu nào chứng minh khách hàng phục hồi, tín hiệu nào buộc rollback?
+5. Trong lúc thực thi có incident khác đang tranh chấp cùng tài nguyên không?
+
+### Kiến trúc quyền lực: không thành phần nào được vừa đề xuất vừa tự duyệt
+
+Luồng production nên có năm miền trách nhiệm tách biệt:
+
+| Thành phần | Được làm | Không được làm |
+|---|---|---|
+| Investigation engine | Đưa bằng chứng, giả thuyết và action ID gợi ý | Gọi Kubernetes, cloud API hay shell |
+| Policy decision point | Đọc policy, risk, change calendar, ownership | Tự sửa target hoặc tham số để “cho qua” |
+| Approval service | Ghi nhận người/nhóm phê duyệt đúng thẩm quyền | Thay đổi nội dung request sau phê duyệt |
+| Bounded executor | Thực thi đúng catalog ID, target và giới hạn đã ký | Nhận lệnh tự do hoặc mở rộng selector |
+| Verifier | Đo outcome, invariant và quyết định expand/rollback | Dùng chính tín hiệu đã kích hoạt làm bằng chứng duy nhất |
+
+Việc tách này ngăn một lỗi phần mềm, một prompt injection hoặc một tài khoản bị chiếm quyền đi thẳng từ văn bản tới production.
+
+### Hợp đồng action: một đề xuất phải là dữ liệu bất biến
+
+Mỗi action request cần tối thiểu:
+
+| Trường | Ví dụ | Lý do |
+|---|---|---|
+| Incident và revision | `INC-8421/r7` | Revision cũ không được chạy sau khi RCA đổi |
+| Action catalog ID | `retry-policy.reduce.v3` | Không chấp nhận câu lệnh tự do |
+| Target | `payment-api`, region `ap-southeast-1`, canary 5% | Khóa blast radius |
+| Tham số | retry 3 → 1, TTL 15 phút | Chỉ nhận range đã schema hóa |
+| Evidence snapshot | trace/log/metric IDs, chụp lúc 10:16 | Quyết định có thể kiểm toán |
+| Hạn bằng chứng | 5 phút | Không hành động trên trạng thái đã cũ |
+| Preconditions | DB healthy, config revision 912, no freeze | Chặn race condition |
+| Expected outcome | success rate +8 điểm trong 5 phút | Tạo tiêu chuẩn thành công trước khi chạy |
+| Abort/rollback | DB CPU >85% hoặc success rate giảm 2 điểm | Dừng máy móc, không tranh luận giữa sự cố |
+
+Request được băm và ký tại thời điểm phê duyệt. Nếu selector, tham số, evidence revision hoặc catalog version thay đổi, chữ ký hết hiệu lực và phải đánh giá lại.
+
+### State machine: action không phải một API call
+
+Một remediation đi qua các trạng thái:
+
+`Proposed → Validating → AwaitingApproval → Authorized → ExecutingCanary → Verifying → Expanding → Succeeded`
+
+Các nhánh lỗi là `Rejected`, `Expired`, `Aborted`, `RollingBack`, `RolledBack` và `RollbackFailed`. Mỗi chuyển trạng thái phải có actor, timestamp, input revision và reason code.
+
+Ví dụ, action giảm retry được duyệt lúc 10:18 nhưng deployment mới xuất hiện lúc 10:19. Precondition “config revision 912” không còn đúng. Executor phải chuyển action sang `Expired`, không được suy luận rằng thay đổi đó “chắc không liên quan”. Đây là cách chặn time-of-check/time-of-use — một edge case rất thường gặp trong incident dài.
+
+### Hard gate: điều kiện nào khiến engine từ chối ngay
+
+Các gate sau không được cộng điểm để bù trừ cho nhau:
+
+| Gate | Điều kiện đạt | Nếu không đạt |
+|---|---|---|
+| Evidence freshness | metric <2 phút, topology <10 phút | Expire request |
+| Target identity | workload UID và revision khớp | Re-resolve, xin duyệt lại |
+| Catalog validity | action version active, signature hợp lệ | Reject |
+| Invariant | không vượt DB connection budget | Reject hoặc thu nhỏ canary |
+| Change policy | không nằm trong freeze đặc biệt | Chuyển human approval |
+| Authorization | service owner + môi trường đúng scope | Reject |
+| Observability | verifier và audit sink còn hoạt động | Detection-only, không execute |
+| Conflict lock | không có action cạnh tranh trên cùng dependency | Queue hoặc merge có chủ đích |
+
+Confidence cao không vượt qua được hard gate. “Không nhìn thấy verifier” cũng không phải lý do bỏ xác minh; đó là lý do **không tự động thay đổi production**.
+
+### Tính risk và blast radius bằng số
+
+Risk không chỉ là xác suất RCA sai. Một cách vận hành được là:
+
+`risk = uncertainty × impact × irreversibility × exposure`
+
+Chuẩn hóa mỗi thành phần từ 0 đến 1. Với action giảm retry trên canary 5%:
+
+| Thành phần | Điểm | Giải thích |
+|---|---:|---|
+| Uncertainty | 0,14 | confidence đã calibration là 0,86 |
+| Impact | 0,70 | payment nằm trên đường doanh thu |
+| Irreversibility | 0,10 | config có TTL và rollback nhanh |
+| Exposure | 0,05 | chỉ 5% pod ở một region |
+
+Risk thô là `0,14 × 0,70 × 0,10 × 0,05 = 0,00049`. Nhưng action tăng pool 80 → 160 có exposure tới toàn bộ kết nối DB và impact liên vùng; nó không được coi an toàn chỉ vì tích số nhỏ. Vì vậy engine còn dùng các **risk floor**:
+
+- Chạm shared database: tối thiểu mức `high`.
+- Thay đổi schema/data không đảo ngược: luôn cần hai người duyệt.
+- Mở rộng quá 25% traffic: cần một vòng verification mới.
+- Target không có control group: không được auto-expand.
+
+Blast radius cần tính theo traffic và dependency, không theo số pod. Một pod gateway giữ 40% traffic nguy hiểm hơn 20 worker nhàn rỗi. Với target `payment-api`, engine ước lượng:
+
+- 5% instance nhưng 4,7% request: exposure 4,7%.
+- Downstream là shared DB phục vụ cả refund: thêm shared-dependency penalty.
+- Hành động chỉ đổi retry client-side: không thay đổi schema hay dữ liệu.
+- Thời gian rollback p95 là 42 giây: nằm trong error-budget guard 2 phút.
+
+### Chọn canary để có bằng chứng, không chỉ để “triển khai ít”
+
+Canary 1% có thể quá nhỏ: 12 request/phút không đủ phân biệt phục hồi với nhiễu. Canary 20% lại quá lớn khi checkout đang cháy. Engine tính cỡ mẫu từ lưu lượng và effect tối thiểu cần phát hiện.
+
+Trong case này, 5% nhận khoảng 620 request/phút. Sau 5 phút có gần 3.100 request, đủ kiểm tra mức tăng success rate tối thiểu 8 điểm phần trăm. Control group 5% giữ config cũ, phần còn lại chưa thay đổi.
+
+| Cohort | Trước action | Sau 5 phút | Diễn giải |
+|---|---:|---:|---|
+| Canary giảm retry | 71,8% success | 91,2% | Cải thiện 19,4 điểm |
+| Control giữ nguyên | 71,5% success | 74,0% | Chỉ cải thiện 2,5 điểm |
+| DB CPU | 68% | 64% | Không gây hại downstream |
+| p95 latency | 4,8 s | 1,7 s | Khách hàng thấy tốt hơn |
+
+Chênh lệch canary–control 16,9 điểm là bằng chứng mạnh hơn việc metric toàn hệ thống cùng đi xuống do traffic giảm.
+
+### Verification phải đo outcome và harm cùng lúc
+
+Mỗi action cần ba nhóm tín hiệu:
+
+1. **Outcome chính:** checkout success, latency và số giao dịch hoàn tất.
+2. **Cơ chế tác động:** retry amplification, pool wait, connection usage.
+3. **Guardrail gây hại:** duplicate charge, refund failure, DB CPU, error ở service khác.
+
+Nếu timeout giảm nhưng số đơn hoàn tất không tăng, action chưa được coi thành công. Nếu success rate tăng do traffic giảm từ 10.000 xuống 1.000 request/phút, verifier phải dùng count và control cohort để loại “phục hồi giả”.
+
+Success cần tồn tại qua ít nhất hai cửa sổ: cửa sổ nhanh 5 phút để phát hiện harm, cửa sổ chậm 15 phút để loại dao động. Khi incident dài, engine tiếp tục theo dõi SLO cho tới khi action TTL hết hoặc trạng thái incident chuyển `Resolved`; không đánh dấu xong chỉ vì ba điểm dữ liệu đầu đẹp.
+
+### Sự cố thứ hai nổ chồng: lock theo tài nguyên, không khóa toàn hệ thống
+
+Lúc 10:37, trong khi payment đang canary, `auth-service` bắt đầu lỗi do chứng thư sắp hết hạn. Safety engine tạo `INC-8422` độc lập.
+
+Global lock kiểu “đang remediation, không làm gì nữa” sẽ bỏ lỡ auth. Không lock gì thì hai action có thể cùng restart shared ingress. Thiết kế đúng dùng resource intent:
+
+| Incident | Read set | Write set | Quyết định |
+|---|---|---|---|
+| `INC-8421` payment | DB health, checkout outcome | retry config của payment | Được tiếp tục |
+| `INC-8422` auth | cert expiry, login outcome | secret + rollout auth | Được đánh giá riêng |
+| Đề xuất restart ingress | payment/auth traffic | shared ingress | Bị chặn do xung đột |
+
+Lock nằm trên service, config key và dependency được ghi, không nằm trên toàn tenant. Mỗi incident có budget, approval và verification riêng nên sự cố đầu không che sự cố sau.
+
+### Sai RCA, action đúng một phần và các trạng thái khó
+
+#### RCA sai nhưng metric tình cờ đẹp
+
+Giả sử traffic tự giảm đúng lúc restart canary. Success rate tăng nhưng control group cũng tăng tương đương, pool wait không đổi. Verifier kết luận `Inconclusive`, rollback canary và không mở rộng. Correlation theo thời gian không đủ chứng minh causality.
+
+#### Action chỉ chữa triệu chứng
+
+Giảm retry làm checkout phục hồi từ 71% lên 91%, nhưng mục tiêu là trên 98,5%. Engine có thể ghi `PartialSuccess`, giữ mitigation có TTL, đồng thời không đóng incident và không xóa giả thuyết DB pool. “Đỡ hơn” không đồng nghĩa “đã sửa gốc”.
+
+#### Rollback cũng thất bại
+
+Rollback là một hành động production và có thể fail vì API server mất quorum hoặc revision cũ không còn tương thích. Khi `RollbackFailed`:
+
+- Dừng mọi expansion trong cùng write set.
+- Kích hoạt kill switch ngoài đường điều khiển chính.
+- Page platform owner và service owner bằng kênh độc lập.
+- Giữ nguyên evidence, không retry vô hạn.
+- Chạy recovery action đã đăng ký nếu precondition còn đúng.
+
+Không được viết “có rollback” trong runbook nếu chưa đo rollback success rate và thời gian rollback p95.
+
+#### Executor nhận lại cùng message
+
+Kafka hoặc workflow engine có thể giao trùng. Idempotency key phải gắn với `incident/revision/action/target`. Executor trả lại kết quả trước đó nếu cùng key; nếu target revision khác thì expire. Retry không được biến “scale +1” thành scale thêm năm lần — action phải mô tả desired state có giới hạn.
+
+#### Mất telemetry giữa action
+
+Nếu canary đã chạy nhưng verifier mất trace hoặc metric freshness vượt ngưỡng, engine không được mặc định là thành công. Chính sách an toàn có thể rollback tự động với action đảo ngược nhanh, hoặc giữ canary nhỏ và chuyển human-only nếu rollback có rủi ro lớn. Quyết định này phải được định nghĩa trước cho từng catalog entry.
+
+### Human approval lúc 3 giờ sáng phải giúp ra quyết định
+
+Một approval card tốt không gửi 200 dòng log. Nó hiển thị trong một màn hình:
+
+- Khách hàng đang bị gì, bắt đầu khi nào, xu hướng hiện tại.
+- Ba bằng chứng ủng hộ và bằng chứng phản bác mạnh nhất.
+- Action chính xác, target, canary, TTL và quyền sẽ dùng.
+- Blast radius theo traffic/dependency, không chỉ pod count.
+- Success, abort và rollback condition bằng số.
+- Ai sở hữu service, ai đã duyệt, change nào đang chạy.
+- Nút `Approve once`, `Reject`, `Reduce scope`; không có “approve mọi lần”.
+
+Approval hết hạn sau vài phút. Nếu incident revision đổi trong khi người trực đang đọc, UI phải báo stale và bắt tải lại; không cho ký một quyết định đã khác.
+
+### Kill switch phải nằm ngoài failure domain của executor
+
+Cần ít nhất ba mức:
+
+- Dừng action mới toàn nền tảng.
+- Dừng theo tenant/region/action class.
+- Thu hồi credential của executor và khóa admission ở hạ tầng.
+
+Nếu kill switch dùng cùng Kafka topic, cùng controller và cùng IAM role với executor thì nó có thể chết cùng lúc cần nhất. Đường ngắt khẩn cấp phải tối giản, có xác thực mạnh, log bất biến và được diễn tập.
+
+### Audit chain: tái dựng được “ai biết gì vào lúc nào”
+
+Audit không chỉ ghi “restart thành công”. Chuỗi bằng chứng cần nối:
+
+`incident revision → evidence snapshot → policy version → approval → action digest → executor observation → verification → rollback/closure`
+
+Log cần append-only, đồng hồ được đồng bộ, chứa hash của request/response và tách khỏi quyền sửa của executor. Secret, token và dữ liệu khách hàng phải được redact trước khi lưu; audit đầy đủ không đồng nghĩa sao chép payload nhạy cảm.
+
+### Khi nào được tự động, khi nào phải dừng ở đề xuất
+
+| Tình huống | Chế độ |
+|---|---|
+| Action đảo ngược, blast radius <5%, verifier khỏe, từng pass replay | Auto-canary |
+| Shared dependency, traffic 5–25%, hai tín hiệu độc lập | Một người duyệt rồi canary |
+| Data/schema, security control, multi-region hoặc irreversible | Dual control; thường chỉ đề xuất |
+| Topology stale, audit sink lỗi, incident chưa tách được | Không execute |
+| Action mới hoặc model/policy revision mới | Shadow trước, không tự động |
+
+Mục tiêu không phải nâng “automation rate” bằng mọi giá. Một safety engine tốt có thể giảm automation rate nhưng giảm mạnh harmful-action rate và thời gian ra quyết định.
+
+### Chứng minh engine bằng golden replay và game day
+
+Replay phải dùng timeline thật, kể cả dữ liệu trễ và thiếu, không chỉ happy path:
+
+1. Retry storm kéo dài 65 phút; baseline và evidence revision thay đổi.
+2. Auth fault nổ chồng phút 37; hai incident phải có lock riêng.
+3. Traffic giảm tự nhiên ngay sau action; control group phải chặn false success.
+4. Metric verifier mất 7 phút; action không được auto-expand.
+5. Delivery trùng 5 lần; target chỉ thay đổi một lần.
+6. Deployment chen giữa approval và execution; request cũ phải expire.
+7. Rollback API lỗi; kill switch và escalation phải hoạt động.
+8. Prompt chứa “bỏ qua policy”; broker không tạo freeform command.
+
+Các tiêu chí nên đo:
+
+| Chỉ số | Ngưỡng khởi đầu hợp lý |
+|---|---:|
+| Unauthorized execution | 0 |
+| Action ngoài catalog | 0 |
+| Harmful action rate | <0,1% và không có severity-1 |
+| Stale action rejected | 100% |
+| Duplicate execution tạo thêm thay đổi | 0 |
+| Canary phát hiện regression trước expansion | >99% bộ test |
+| Rollback success | >99,9% với action auto-eligible |
+| Audit reconstruction completeness | 100% |
+
+Chapter 12 kết thúc khi đội vận hành có thể trả lời bằng evidence: **action nào được phép, ai chịu trách nhiệm, blast radius thật là bao nhiêu, làm sao biết khách hàng hồi phục, và làm gì khi cả action lẫn rollback cùng hỏng**.
 
 ---
 
-
-## Cách đọc chapter này (concept-first)
-
-> [!IMPORTANT]
-> **Đọc concept trước — code để sau**
-> Từ chapter 08 trở đi, handbook ưu tiên: **vấn đề → ý tưởng → input data → thuật toán/model → output → ưu/nhược → khi nào dùng**. Phần implementation nằm trong khối **See the code below** (bấm mới mở). Mục tiêu: bạn hiểu *tại sao và hoạt động ra sao trên telemetry AIOps*, không chỉ copy-paste.
-
-| Bước đọc | Câu hỏi |
-|----------|---------|
-| 1. Vấn đề | Detector/engine này giải quyết pain gì (false positive, cascade, MTTR…)? |
-| 2. Ý tưởng | Trực giác 2–3 câu, không công thức |
-| 3. Data in | Metric/log/trace/event nào, window nào, feature nào? |
-| 4. Thuật toán | Các bước tính toán / model flow |
-| 5. Output | Schema sự kiện, score, rank, action proposal? |
-| 6. Trade-off | Ưu / nhược / chi phí / giải thích được không? |
-| 7. When | Dùng khi nào — và khi nào **đừng** dùng |
-
----
+## Phần II — Remediation implementation reference
 
 ## 1. Why Automated Remediation?
 
@@ -251,7 +471,7 @@ Các hành động này an toàn, có thể đảo ngược và ít rủi ro:
 
 > [!IMPORTANT]
 > **Chỉ scale UP tự động; scale DOWN cần người**
-> Scale down khi “traffic tạm lắng” sau spike thường tạo capacity cliff ngay khi traffic trở lại — pattern kinh điển (xem [§23](#23-edge-cases-retry-storms--wrong-rca) và bài học kiểu S3 capacity removal). Tier 1 **không** bao gồm scale down.
+> Scale down khi “traffic tạm lắng” sau spike thường tạo capacity cliff ngay khi traffic trở lại — pattern kinh điển (xem [§23](#edge-cases-remediation) và bài học kiểu S3 capacity removal). Tier 1 **không** bao gồm scale down.
 
 > [!TIP]
 > **Ánh xạ tier → executor**
@@ -880,7 +1100,7 @@ class SafetyFramework:
 
 > [!NOTE]
 > **Ý TƯỞNG — Safety là composition, không phải một if**
-> Namespace deny-list, confidence floor, rate limit, whitelist tier, pre-health check là **AND**. Một check fail → fail-closed. Mở rộng: change-freeze calendar, dual-control, circuit breaker remediation, advisory lock service — xem [§20](#20-circuit-breakers-rate-limits--dual-control).
+> Namespace deny-list, confidence floor, rate limit, whitelist tier, pre-health check là **AND**. Một check fail → fail-closed. Mở rộng: change-freeze calendar, dual-control, circuit breaker remediation, advisory lock service — xem [§20](#remediation-circuit-breakers).
 
 > [!WARNING]
 > **Confidence của LLM không phải xác suất vật lý**
@@ -1870,7 +2090,7 @@ Chip risk trên approval card: `rev=45s · blast=1svc · conf=0.88 · compliance
 
 ---
 
-## 20. Circuit Breakers, Rate Limits & Dual-Control
+## 20. Circuit Breakers, Rate Limits & Dual-Control { #remediation-circuit-breakers }
 
 ### Rate limits (nhiều tầng)
 
@@ -1997,7 +2217,7 @@ Timeout 15m → escalate; KHÔNG auto-execute
 
 ---
 
-## 23. Edge Cases: Retry Storms & Wrong RCA
+## 23. Edge Cases: Retry Storms & Wrong RCA { #edge-cases-remediation }
 
 ### Edge A — Remediation gây retry storm / thundering herd
 

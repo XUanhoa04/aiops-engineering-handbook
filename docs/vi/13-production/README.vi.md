@@ -1,6 +1,6 @@
-# Chapter 13 — Production Operations
+# Chapter 13 — Production Engine: AIOps tự bảo vệ khi production đang cháy
 
-> **Chương vận hành production cho chính nền tảng AIOps: chaos engineering, disaster recovery, cost governance, security hardening, performance benchmarking, và runbooks giữ hệ thống khỏe mạnh. Bản thân nền tảng giám sát production bắt buộc phải đạt chuẩn production. Sau chương này, hãy đọc tiếp các chương case study: [13 — Big Tech](../14-bigtech-aiops/README.vi.md), [14 — E-commerce & Banking](../15-ecommerce-banking/README.vi.md), [15 — Famous Incidents](../16-famous-incidents/README.vi.md).**
+> **AIOps chỉ có giá trị nếu nó còn nhìn thấy, còn nhớ và còn biết tự kiềm chế đúng lúc production suy thoái. Chapter này biến tập hợp detector, correlation, RCA, investigation và remediation thành một production engine có degraded mode, state bền vững, rollout an toàn, disaster recovery và đường điều khiển khẩn cấp độc lập. Uptime của từng component không phải đích đến; đích đến là con người vẫn nhận được cảnh báo đúng, không mất incident dài và không có action nguy hiểm.**
 
 ---
 
@@ -27,45 +27,264 @@ Sau chương này, hãy chuyển sang [13 — Big Tech AIOps](../14-bigtech-aiop
 
 ---
 
-## Table of Contents
+## Cách đọc chapter này
 
-1. [Platform Architecture Summary](#1-platform-architecture-summary)
-2. [High Availability Design](#2-high-availability-design)
-3. [Disaster Recovery](#3-disaster-recovery)
-4. [Chaos Engineering for AIOps](#4-chaos-engineering-for-aiops)
-5. [Performance Benchmarks](#5-performance-benchmarks)
-6. [Cost Governance](#6-cost-governance)
-7. [Security Hardening](#7-security-hardening)
-8. [Observability of the Observability Platform](#8-observability-of-the-observability-platform)
-9. [Runbook: Platform Recovery](#9-runbook-platform-recovery)
-10. [Capacity Planning](#10-capacity-planning)
-11. [Upgrade and Maintenance](#11-upgrade-and-maintenance)
-12. [Team Operations Model](#12-team-operations-model)
-13. [Maturity Progression Roadmap](#13-maturity-progression-roadmap)
-14. [Total Cost of Ownership](#14-total-cost-of-ownership)
-15. [Tư duy sâu: Dogfooding, DR control plane, Cost runaway, RACI, Game days, Scorecard](#15-tư-duy-sâu-dogfooding-dr-control-plane-cost-runaway-raci-game-days-scorecard)
-16. [Final Production Review](#16-final-production-review)
+Đừng đọc chapter này như checklist “cài Kafka HA, chạy Kubernetes nhiều replica”. Hãy đặt nền tảng AIOps vào đúng thời điểm tệ nhất: incident payment đã kéo dài 37 phút, auth vừa lỗi chồng, telemetry bắt đầu mất và đội trực đang cân nhắc remediation. Phần I mô tả production engine phải giữ lời hứa nào khi từng dependency hỏng. Phần II là tài liệu triển khai và vận hành chi tiết.
+
+## Phần I — Production engine dưới điều kiện xấu
+
+### Nền tảng AIOps cũng nằm trong blast radius
+
+Timeline đang xử lý xuyên suốt ba chapter:
+
+| Thời điểm | Hệ thống nghiệp vụ | Nền tảng AIOps |
+|---|---|---|
+| 10:00 | Retry storm bắt đầu ở payment | Detector tạo incident, freeze baseline |
+| 10:16 | Checkout success còn 71,4% | RCA + investigation chọn pool exhaustion |
+| 10:20 | Canary giảm retry bắt đầu | Verifier so canary với control |
+| 10:31 | Payment cải thiện nhưng chưa hết | Incident vẫn open, state được checkpoint |
+| 10:37 | Auth certificate lỗi chồng | Incident thứ hai phải được tách riêng |
+| 10:41 | OTel gateway mất 35% span | Confidence phải giảm, không được coi missing là healthy |
+| 10:45 | Kafka lag tăng lên 11 phút | Alert mới có thể trễ; remediation phải khóa expansion |
+| 10:52 | Operator restart correlation worker | Engine phải replay mà không phát alert/action trùng |
+| 11:05 | Payment thật sự ổn định | Hai cửa sổ burn-rate mới đủ điều kiện resolve |
+
+Một kiến trúc “mọi component đều có ba replica” vẫn có thể thất bại: ba replica cùng đọc config lỗi, cùng phụ thuộc một Kafka cluster, cùng dùng DNS hoặc IAM bị hỏng. Production engine phải biết **nó đang mù ở đâu** và đổi hành vi có chủ đích.
+
+### SLO phải đo lời hứa với người trực, không đo pod xanh
+
+Các SLO hữu ích của AIOps là end-to-end:
+
+| Lời hứa | SLI đo được | Ví dụ SLO |
+|---|---|---:|
+| Không bỏ lọt sự cố đáng page | Tỷ lệ incident benchmark được phát hiện trong deadline | 99,5%/30 ngày |
+| Không tự nuốt incident dài | Incident-active continuity, không có khoảng câm >2 phút | 99,9% |
+| Bắt được lỗi nổ chồng | Recall theo fault/service độc lập | ≥98% tập replay |
+| RCA hữu dụng | Top-3 có root cause đúng, đo trên incident đóng | ≥85% |
+| Không hành động nguy hiểm | Harmful autonomous action | 0 severity-1 |
+| Operator nhận đủ bối cảnh | Freshness của brief và evidence provenance | p99 <5 phút |
+| Có thể phục hồi sau outage | Replay convergence và state loss | RPO/RTO đã cam kết |
+
+Kafka uptime 99,99% không chứng minh alert đến on-call đúng hạn. Ngược lại, một worker restart có thể chấp nhận được nếu checkpoint + replay giữ incident liên tục và không gửi trùng.
+
+### Operating modes: suy thoái phải hữu hạn và nhìn thấy được
+
+Production engine nên có state machine toàn cục, đồng thời có trạng thái riêng theo tenant/region:
+
+| Mode | Điều kiện điển hình | Được phép | Bị cấm |
+|---|---|---|---|
+| `Healthy` | Telemetry, state, topology và audit đều fresh | Detection, RCA, investigation, gated remediation | — |
+| `DegradedContext` | Mất một loại signal hoặc topology cũ | Alert + RCA với uncertainty tăng | Auto-expand action phụ thuộc signal mất |
+| `DetectionOnly` | Audit/verifier/policy dependency lỗi | Tiếp tục detect, correlate, page | Mọi action mới |
+| `HumanOnly` | State divergence, model bất thường, security event | Hiện raw evidence và runbook | RCA tự tin giả, auto-remediation |
+| `Recovery` | Đang replay/checkpoint reconciliation | Cập nhật incident theo revision | Duplicate page/action, resolve sớm |
+
+Chuyển mode phải có reason, phạm vi và TTL. Nếu OTel gateway ở region A hỏng, không cần kéo region B xuống `HumanOnly`. Nếu audit sink dùng chung hỏng, remediation toàn cục phải dừng vì không còn chuỗi kiểm toán.
+
+Không cho hệ tự trở lại `Healthy` chỉ vì một health check xanh. Cần cửa sổ ổn định, đối chiếu backlog, state convergence và một operator-visible event.
+
+### Failure matrix: dependency hỏng thì hành vi phải định trước
+
+| Failure | Điều còn biết | Hành vi degrade | Tuyệt đối không làm |
+|---|---|---|---|
+| Mất metrics 35%, trace còn | Span errors, logs, missingness rate | Giữ incident open; hạ confidence; page telemetry gap riêng | Diễn giải metric biến mất là recovery |
+| Mất traces, metrics/logs còn | SLO và lỗi tổng hợp | Detect theo service; RCA không dùng path propagation mới | Bịa causal chain |
+| Kafka lag 11 phút | Event time và watermark | Xử lý theo event time; gắn `late`; khóa action dùng stale evidence | Dùng processing time để đổi thứ tự nguyên nhân |
+| Topology stale 28 phút | Graph revision cũ | Correlate bảo thủ, hiển thị revision | Auto-remediate shared dependency |
+| State store mất leader | Checkpoint gần nhất | Sang `Recovery`; replay theo idempotency key | Tạo incident/action ID mới cho cùng fault |
+| Detector/model mới tạo storm | Raw SLO rules còn | Kill model revision, fallback rules | Tắt toàn bộ paging |
+| RCA/LLM unavailable | Alerts, traces, runbooks | Page với evidence thô; human investigation | Chặn phát hiện vì thiếu phần “AI” |
+| Policy/audit unavailable | Có thể vẫn gọi executor | `DetectionOnly` | Bypass safety để “cứu nhanh” |
+| Notification provider lỗi | Incident state còn | Route kênh độc lập, escalation clock vẫn chạy | Đánh dấu acknowledged |
+
+Failure matrix là hợp đồng được test, không phải đoạn văn trong runbook. Mỗi hàng cần owner, probe, mode transition và game-day định kỳ.
+
+### Incident dài: tách baseline học tập khỏi incident memory
+
+Sự cố dài có hai state khác nhau:
+
+- **Baseline state:** mức bình thường dùng cho detection. Nó được freeze theo service/signal khi alert active để không học anomaly thành normal.
+- **Incident state:** timeline, evidence revision, hypothesis, action và acknowledgement. Nó vẫn cập nhật suốt incident.
+
+Nếu freeze toàn bộ baseline toàn platform, dao động traffic hợp lệ lúc 10:30 có thể sinh false positive ở service khỏe. Nếu không freeze gì, payment error 24% sau 30 phút trở thành “bình thường mới”. Thiết kế đúng freeze theo `service × signal × regime`, vẫn cập nhật seasonality từ cohort khỏe hoặc baseline trước incident.
+
+Ví dụ với chuỗi error rate payment mỗi 5 phút:
+
+`0,7; 0,8; 0,6; 12; 21; 25; 24; 23; 25; 24; 22; 8; 1,2`
+
+Rolling median/MAD ngây thơ đưa median dần lên vùng 23–24% và im lặng giữa sự cố. Production engine giữ baseline khoảng 0,7%, còn burn-rate cửa sổ nhanh 5 phút và chậm 60 phút tiếp tục chứng minh budget đang cháy. Khi giá trị về 1,2%, engine chưa resolve ngay: nó đợi cửa sổ nhanh ổn định và burn-rate chậm xuống ngưỡng đóng.
+
+Auth ở phút 37 có state detector và baseline riêng, nên lỗi mới không bị incident payment che. Correlation có thể nối hai incident nếu có dependency evidence; nếu chỉ cùng thời gian, chúng vẫn là hai fault candidates.
+
+### Checkpoint và replay: khôi phục kết quả, không chỉ khôi phục process
+
+State cần checkpoint gồm:
+
+- Incident identity, fault partition và lifecycle revision.
+- Baseline snapshot + lý do freeze/unfreeze.
+- Event-time watermark và danh sách source đang trễ.
+- Dedup/correlation membership.
+- RCA hypothesis ledger và evidence provenance.
+- Remediation state, idempotency key, lock và TTL.
+- Notification/ack/escalation state.
+
+Giả sử worker chết lúc 10:52, checkpoint gần nhất 10:50 và Kafka giữ dữ liệu từ 10:45. Sau restart, engine replay 10:50–10:52. Nó phải hội tụ về cùng incident revision như khi không crash. Alert `INC-8421` không được page lại; action canary không được chạy lần hai; evidence đến muộn có thể tăng revision nhưng không thay identity.
+
+“Consumer chạy lại được” chưa phải DR. Bài test đúng so sánh output event-by-event giữa continuous run và recovery run, cho phép khác timestamp xử lý nhưng không khác incident/action semantics.
+
+### Event time, watermark và dữ liệu đến muộn
+
+Trong outage, network buffer có thể đưa span 10:36 tới sau metric 10:43. RCA “cái đỏ trước là gốc” chỉ đúng khi dùng event time đã hiệu chỉnh skew, không phải thời gian consumer nhận message.
+
+Production engine duy trì watermark theo source. Event đến trước watermark được cập nhật bình thường; event đến muộn:
+
+- Vẫn bổ sung evidence vào incident nếu nằm trong retention window.
+- Có thể phát revision mới nếu thay đổi RCA đáng kể.
+- Không được tự động đảo một action đã hoàn tất; cần review event riêng.
+- Không page lại nếu customer-impact state không đổi.
+
+Nếu clock skew của host vượt 90 giây, evidence từ host đó bị giảm trust và gắn cờ. NTP khỏe là dependency của causal inference, không phải chi tiết hạ tầng phụ.
+
+### DR: RPO/RTO phải gắn với hậu quả vận hành
+
+Chọn RPO/RTO riêng cho từng lớp:
+
+| State | Mất dữ liệu gây gì | RPO mục tiêu | RTO mục tiêu |
+|---|---|---:|---:|
+| Raw telemetry | Mất bằng chứng và replay | ≤5 phút hoặc theo retention upstream | 30 phút |
+| Active incident | Khoảng câm/page trùng | Gần 0 qua replicated log | 5 phút |
+| Action/audit | Không biết production đã đổi gì | 0 | 5 phút |
+| Baseline/model | False alert hoặc bỏ lọt | 15 phút, có version | 15 phút |
+| Topology/change | Correlation/RCA sai | Theo change event, ≤5 phút | 10 phút |
+
+Active-passive khác region chỉ có ý nghĩa nếu credentials, schema registry, encryption key, DNS, notification route và runbook cũng khả dụng. Restore backup mỗi quý mà chưa chạy replay equivalence không chứng minh RTO.
+
+### Rollout rule, model và prompt như rollout code production
+
+Một threshold hoặc prompt sai có thể tạo blast radius lớn hơn một service deploy. Pipeline an toàn:
+
+1. **Offline replay:** chạy trên incident đã gắn nhãn, gồm long-running và concurrent faults.
+2. **Shadow:** nhận traffic live nhưng không thay decision; so disagreement với incumbent.
+3. **Canary tenant/service:** bật decision cho nhóm nhỏ, remediation vẫn manual.
+4. **Progressive rollout:** 5% → 25% → 50% → 100%, mỗi bước có hold window.
+5. **Automatic rollback:** precision-at-page, incident continuity, compute cost hoặc latency vi phạm guardrail.
+
+Artifact phải version cùng feature schema, baseline policy, graph revision expectation và calibration dataset. Rollback model mà giữ feature transform mới có thể còn nguy hiểm hơn.
+
+Ví dụ model RCA mới tăng Top-1 từ 62% lên 69% offline nhưng disagreement live tập trung ở incident thiếu trace. Không rollout 100%; giữ shadow cho cohort thiếu trace và chỉ canary ở service có sampling đủ. Một con số trung bình đẹp không bù được failure slice nguy hiểm.
+
+### Shared fate: đừng quan sát observability bằng chính một đường duy nhất
+
+Nếu AIOps tự monitor qua cùng OTel gateway và Kafka mà nó đang đánh giá, outage chung sẽ tạo dashboard xanh giả vì không còn dữ liệu. Cần đường tối thiểu độc lập:
+
+- Synthetic heartbeat từ ngoài cluster/region.
+- Queue-age và object-store probe không đi qua pipeline chính.
+- Paging cho “AIOps blind” bằng provider hoặc route thứ hai.
+- Break-glass status/read path có dependency tối thiểu.
+- Audit/kill switch nằm ngoài executor failure domain.
+
+Không cần nhân đôi toàn bộ platform. Chỉ cần một safety plane đủ để nói: dữ liệu đang thiếu ở đâu, incident nào còn active, action nào đang chạy, và làm sao dừng chúng.
+
+### Capacity: thiết kế cho incident storm, không cho ngày bình thường
+
+Traffic telemetry thường tăng đúng lúc outage do retry, stack trace và debug logging. Ví dụ tải thường:
+
+| Loại | Bình thường | Incident storm | Hệ số |
+|---|---:|---:|---:|
+| Metrics samples/s | 500.000 | 900.000 | 1,8× |
+| Log events/s | 80.000 | 640.000 | 8× |
+| Spans/s | 120.000 | 420.000 | 3,5× |
+| Alert candidates/min | 300 | 45.000 | 150× |
+
+Autoscaling dựa trên CPU thường phản ứng quá muộn khi queue đã đầy. Capacity plan cần headroom, queue-age SLO và admission priority:
+
+1. Giữ SLO/error signals và active-incident traffic.
+2. Giữ change/topology/audit events.
+3. Giảm sampling trace khỏe trước.
+4. Rate-limit debug logs/cardinality offender.
+5. Không drop action result hoặc incident state.
+
+Backpressure phải truyền upstream có kiểm soát. Consumer scale vô hạn có thể làm database state chết trước khi Kafka hồi phục.
+
+### Cost runaway là một dạng availability failure
+
+LLM loop, high-cardinality label hoặc retry fetch log có thể đốt ngân sách trong vài giờ. Budget guard nên có:
+
+- Token/query budget theo incident và theo giờ.
+- Cardinality budget theo tenant/service.
+- Maximum evidence bytes và retention tier.
+- Circuit breaker khi cost slope vượt dự báo.
+- Fallback deterministic summary khi LLM hết budget.
+
+Hết budget không được làm detector im lặng. Engine giảm enrichment trước, giữ detection, paging và incident state. Chi phí là resource constraint, không phải lý do phá SLO cốt lõi.
+
+### Security: telemetry và runbook đều là input không tin cậy
+
+Log có thể chứa prompt injection; label có thể làm nổ cardinality; attacker có thể cố tạo alert để kích hoạt action. Production engine cần:
+
+- Tách dữ liệu quan sát khỏi instruction; LLM không có credential executor.
+- Schema, size, tenant và provenance validation tại ingest.
+- Least privilege theo action catalog, target và environment.
+- Secret retrieval ngắn hạn; không đưa token vào evidence/audit.
+- Dual control cho security policy, identity, data và multi-region.
+- Ký artifact/policy và xác minh trước khi load.
+- Phát hiện behavior bất thường của chính agent/executor.
+
+Break-glass không có nghĩa bỏ log. Nó cần MFA, TTL ngắn, reason bắt buộc, notification độc lập và review hậu kiểm.
+
+### Game day phải phá lời hứa end-to-end
+
+Chaos chỉ kill pod là quá nhẹ. Bộ game day nên ép hệ qua các edge case:
+
+| Kịch bản | Điều phải chứng minh |
+|---|---|
+| Incident payment 65 phút | Không có khoảng câm; baseline không tự nuốt anomaly |
+| Auth fault tại phút 37 | Incident thứ hai được phát hiện/tách riêng |
+| Drop 35% span có chọn lọc | Missingness hiển thị; RCA confidence giảm |
+| Delay partition Kafka 11 phút | Event-time order đúng; action stale bị chặn |
+| Corrupt topology revision | Shared-dependency remediation bị cấm |
+| Restart state store leader | Replay hội tụ; không page/action trùng |
+| Audit sink unavailable | Mode chuyển `DetectionOnly` |
+| LLM timeout/cost cap | Evidence thô vẫn tới người trực |
+| Policy rollout sai | Canary rollback, incumbent tiếp quản |
+| Region chính mất hoàn toàn | RPO/RTO và notification route đạt cam kết |
+
+Mỗi game day có hypothesis, failure injection, expected mode transition, customer-facing SLI, evidence artifact và owner sửa lỗi. “Hệ thống tự hồi phục” mà không so output trước/sau không phải kết luận kiểm chứng được.
+
+### Incident command: máy không thay ownership
+
+| Vai trò | Quyết định |
+|---|---|
+| Incident commander | Priority, scope, communication, chấp nhận risk |
+| AIOps platform on-call | Data quality, engine mode, replay/recovery |
+| Service owner | Business invariant, remediation approval |
+| Security/compliance | Credential, data/action policy đặc biệt |
+| Communications | Customer/status update từ incident state đã xác nhận |
+
+Engine đưa uncertainty ra ánh sáng; nó không tự nhận vai incident commander. Khi RCA đổi từ H1 sang H2 hoặc action thành `PartialSuccess`, state phải xuất hiện trong brief chung để các nhóm không làm theo phiên bản sự thật khác nhau.
+
+### Production acceptance scoreboard
+
+Trước khi bật autonomous remediation, yêu cầu evidence tối thiểu:
+
+| Cổng | Bằng chứng pass |
+|---|---|
+| Long-incident continuity | Replay nhiều giờ, không khoảng câm >2 phút |
+| Concurrent isolation | Fault thứ hai có incident ID và lifecycle riêng |
+| Missing-data behavior | Không resolve khi telemetry biến mất |
+| Recovery equivalence | Continuous và recovered run cùng quyết định |
+| Stale-data safety | Evidence/action quá hạn bị từ chối 100% |
+| Model/rule rollout | Shadow + canary + rollback đã diễn tập |
+| Remediation safety | Không freeform; canary/control/rollback đầy đủ |
+| DR | Restore thật đạt RPO/RTO, không chỉ review tài liệu |
+| Security | Prompt/telemetry injection và credential abuse bị chặn |
+| Human operation | On-call hoàn thành game day bằng brief/audit hiện có |
+
+Chapter 13 hoàn tất không phải khi deployment “green”, mà khi đội có thể tắt từng dependency và chứng minh hệ thống chuyển sang một chế độ an toàn, hữu dụng, quan sát được — rồi trở lại bình thường mà không mất incident, không tạo quyết định trùng và không che giấu uncertainty.
 
 ---
 
-
-## Cách đọc chapter này (concept-first)
-
-> [!IMPORTANT]
-> **Đọc concept trước — code để sau**
-> Từ chapter 08 trở đi, handbook ưu tiên: **vấn đề → ý tưởng → input data → thuật toán/model → output → ưu/nhược → khi nào dùng**. Phần implementation nằm trong khối **See the code below** (bấm mới mở). Mục tiêu: bạn hiểu *tại sao và hoạt động ra sao trên telemetry AIOps*, không chỉ copy-paste.
-
-| Bước đọc | Câu hỏi |
-|----------|---------|
-| 1. Vấn đề | Detector/engine này giải quyết pain gì (false positive, cascade, MTTR…)? |
-| 2. Ý tưởng | Trực giác 2–3 câu, không công thức |
-| 3. Data in | Metric/log/trace/event nào, window nào, feature nào? |
-| 4. Thuật toán | Các bước tính toán / model flow |
-| 5. Output | Schema sự kiện, score, rank, action proposal? |
-| 6. Trade-off | Ưu / nhược / chi phí / giải thích được không? |
-| 7. When | Dùng khi nào — và khi nào **đừng** dùng |
-
----
+## Phần II — Production operations reference
 
 ## 1. Platform Architecture Summary
 
