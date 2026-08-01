@@ -220,11 +220,19 @@
   display: block;
   width: 100%;
   margin: 1.25rem 0 1.65rem;
-  overflow-x: auto;
   border: 1px solid var(--md-default-fg-color--lightest);
   border-radius: 0.55rem;
+}
+
+.md-typeset__table,
+.md-typeset .table-scroll--wide {
+  overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-inline: contain;
+}
+
+.md-typeset .table-scroll--fit {
+  overflow-x: hidden;
 }
 
 .md-typeset .table-scroll:focus-visible {
@@ -248,13 +256,44 @@
   background: var(--handbook-surface);
   color: var(--md-default-fg-color);
   font-weight: 780;
-  vertical-align: bottom;
+  text-align: left;
+  vertical-align: top;
 }
 
 .md-typeset table:not([class]) td {
   padding: 0.62rem 0.82rem;
   border-top: 1px solid var(--md-default-fg-color--lightest);
+  text-align: left;
   vertical-align: top;
+}
+
+.md-typeset .table-scroll--fit table:not([class]) {
+  table-layout: fixed;
+}
+
+.md-typeset .table-scroll--fit th,
+.md-typeset .table-scroll--fit td,
+.md-typeset .table-scroll--fit code {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  hyphens: auto;
+}
+
+.md-typeset .table-scroll--cols-2 th:first-child,
+.md-typeset .table-scroll--cols-2 td:first-child {
+  width: 34%;
+}
+
+.md-typeset .table-scroll--cols-3 th:first-child,
+.md-typeset .table-scroll--cols-3 td:first-child {
+  width: 24%;
+}
+
+.md-typeset .table-scroll--cols-4 th:first-child,
+.md-typeset .table-scroll--cols-4 td:first-child {
+  width: 18%;
 }
 
 .md-typeset table:not([class]) tbody tr:nth-child(even) {
@@ -596,8 +635,17 @@ html.mermaid-lightbox-open body {
 
   .md-typeset table:not([class]) th,
   .md-typeset table:not([class]) td {
-    min-width: 7.5rem;
     padding: 0.55rem 0.65rem;
+  }
+
+  .md-typeset .table-scroll--wide th,
+  .md-typeset .table-scroll--wide td {
+    min-width: 7.5rem;
+  }
+
+  .md-typeset .table-scroll--fit th,
+  .md-typeset .table-scroll--fit td {
+    padding: 0.5rem;
   }
 
   .mermaid-lightbox__panel {

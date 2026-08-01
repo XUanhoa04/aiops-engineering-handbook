@@ -129,13 +129,38 @@ def on_page_markdown(markdown: str, **kwargs) -> str:
 
 
 _TABLE_RE = re.compile(r"(<table(?:\s[^>]*)?>.*?</table>)", re.DOTALL | re.IGNORECASE)
+_TABLE_HEAD_RE = re.compile(r"<thead(?:\s[^>]*)?>(.*?)</thead>", re.DOTALL | re.IGNORECASE)
+_TABLE_ROW_RE = re.compile(r"<tr(?:\s[^>]*)?>(.*?)</tr>", re.DOTALL | re.IGNORECASE)
+_TABLE_CELL_RE = re.compile(r"<(?:th|td)\b", re.IGNORECASE)
+
+
+def _table_column_count(table: str) -> int:
+    """Return the number of cells in the table's first header/data row."""
+
+    head = _TABLE_HEAD_RE.search(table)
+    row = _TABLE_ROW_RE.search(head.group(1) if head else table)
+    return len(_TABLE_CELL_RE.findall(row.group(1))) if row else 0
+
+
+def _wrap_table(match: Match[str]) -> str:
+    table = match.group(1)
+    columns = _table_column_count(table)
+    layout = "fit" if 1 <= columns <= 4 else "wide"
+    classes = f"table-scroll table-scroll--{layout}"
+    if columns:
+        classes += f" table-scroll--cols-{columns}"
+
+    if layout == "wide":
+        attributes = (
+            'role="region" tabindex="0" aria-label="Scrollable data table"'
+        )
+    else:
+        attributes = 'role="group" aria-label="Data table"'
+
+    return f'<div class="{classes}" {attributes}>{table}</div>'
 
 
 def on_page_content(html: str, **kwargs) -> str:
-    """Give every rendered Markdown table a responsive, accessible scroll region."""
+    """Fit compact tables to the page and scroll only genuinely wide tables."""
 
-    return _TABLE_RE.sub(
-        r'<div class="table-scroll" role="region" tabindex="0" '
-        r'aria-label="Scrollable data table">\1</div>',
-        html,
-    )
+    return _TABLE_RE.sub(_wrap_table, html)
