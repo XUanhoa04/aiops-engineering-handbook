@@ -96,24 +96,23 @@ Khi anomaly detector báo "CPU utilization spike on pod X", câu hỏi đầu ti
 
 Một process trong Linux tồn tại ở một trong các trạng thái:
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                    Linux Process States                          │
-│                                                                  │
-│  TASK_RUNNING (R) ──── đang chạy hoặc sẵn sàng chạy trên CPU   │
-│         │                                                        │
-│         ├──→ TASK_INTERRUPTIBLE (S) ── chờ I/O, signal, event    │
-│         │         │                                              │
-│         │         └──→ wake up ──→ back to R (runqueue)          │
-│         │                                                        │
-│         ├──→ TASK_UNINTERRUPTIBLE (D) ── chờ disk I/O, NFS      │
-│         │         │                 (không thể kill bằng signal)  │
-│         │         └──→ I/O complete ──→ back to R                │
-│         │                                                        │
-│         ├──→ TASK_STOPPED (T) ── bị SIGSTOP, debug               │
-│         │                                                        │
-│         └──→ TASK_ZOMBIE (Z) ── đã exit, parent chưa wait()     │
-└──────────────────────────────────────────────────────────────────┘
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Running
+    state "TASK_RUNNING (R)\nĐang chạy hoặc ở runqueue" as Running
+    state "TASK_INTERRUPTIBLE (S)\nChờ I/O, signal hoặc event" as Interruptible
+    state "TASK_UNINTERRUPTIBLE (D)\nChờ disk I/O/NFS; không nhận signal" as Uninterruptible
+    state "TASK_STOPPED (T)\nSIGSTOP hoặc debugger" as Stopped
+    state "TASK_ZOMBIE (Z)\nĐã exit; parent chưa wait()" as Zombie
+
+    Running --> Interruptible: chờ event
+    Interruptible --> Running: wake up
+    Running --> Uninterruptible: chờ I/O
+    Uninterruptible --> Running: I/O complete
+    Running --> Stopped: SIGSTOP / debug
+    Stopped --> Running: SIGCONT
+    Running --> Zombie: exit
 ```
 
 **CPU time phân tách thành:**
@@ -173,15 +172,18 @@ Linux mặc định dùng CFS scheduler. Nguyên lý cốt lõi:
 - Cây red-black tree sắp xếp tasks theo `vruntime` → O(log n) để chọn next task
 - **Time slice** không cố định — phụ thuộc số task runnable và target latency (`sched_latency_ns`, mặc định 6ms cho ≤8 tasks)
 
-```
-             CFS Red-Black Tree
-             ┌───────────┐
-             │ vruntime=50│ ← next to run (leftmost)
-             └─────┬─────┘
-               ┌───┴───┐
-          ┌────┤       ┌┴────┐
-          │ 65 │       │ 80  │
-          └────┘       └─────┘
+```mermaid
+flowchart TB
+    root["vruntime = 50<br/><b>Next to run · leftmost</b>"]
+    left["vruntime = 65"]
+    right["vruntime = 80"]
+    root --> left
+    root --> right
+
+    classDef next fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px
+    classDef queued fill:#eef2ff,stroke:#6366f1,color:#312e81
+    class root next
+    class left,right queued
 ```
 
 **AIOps implication:** Khi pod chạy trong container, CFS + cgroups CPU quota quyết định bao nhiêu CPU time pod thực sự nhận. `cpu.cfs_quota_us` / `cpu.cfs_period_us` tạo ra hiện tượng **CPU throttling** — một trong những nguyên nhân latency spike phổ biến nhất trong Kubernetes mà không hiện trên CPU utilization metric.
@@ -194,17 +196,22 @@ Linux mặc định dùng CFS scheduler. Nguyên lý cốt lõi:
 
 Mỗi process có address space riêng (virtual memory). Kernel ánh xạ virtual pages → physical frames qua **page table**. Khi process truy cập page chưa có trong RAM:
 
-```
-Process access   →  MMU lookup  →  Page Table  →  Page in RAM?
-      │                                               │
-      │                                          YES: direct access
-      │                                          NO:  PAGE FAULT
-      │                                               │
-      │                                    ┌──────────┴──────────┐
-      │                              Minor fault            Major fault
-      │                           (page in memory,       (page on disk,
-      │                            chỉ cần map)          phải đọc disk)
-      │                              ~1 μs                 ~1-10 ms
+```mermaid
+flowchart LR
+    access["Process truy cập<br/>virtual address"] --> mmu["MMU lookup"]
+    mmu --> table["Page table"]
+    table --> present{"Page đã ở RAM?"}
+    present -->|Có| direct["Direct access"]
+    present -->|Không · page fault| location{"Page nằm ở đâu?"}
+    location -->|Đã có trong memory| minor["<b>Minor fault</b><br/>Chỉ cần map · khoảng 1 μs"]
+    location -->|Ở disk / swap| major["<b>Major fault</b><br/>Phải đọc disk · khoảng 1–10 ms"]
+
+    classDef ok fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef warn fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef critical fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    class direct ok
+    class minor warn
+    class major critical
 ```
 
 - **Minor page fault:** page có sẵn trong memory (vd: shared library đã loaded) — chỉ cần update page table. Chi phí ~1 μs.
@@ -225,22 +232,25 @@ Process access   →  MMU lookup  →  Page Table  →  Page in RAM?
 
 Trên server multi-socket, mỗi CPU socket có "local memory" riêng. Truy cập local memory nhanh (~100ns), truy cập remote memory chậm hơn (~150–300ns):
 
-```
-┌─────────────────────────────────────────────────┐
-│              Server (2-socket)                  │
-│                                                 │
-│  ┌──────────────┐    QPI/UPI    ┌─────────────┐ │
-│  │  Socket 0    │◄────────────►│  Socket 1    │ │
-│  │  CPU cores   │   ~150-300ns  │  CPU cores   │ │
-│  │  0,1,2,3..   │  cross-node   │  8,9,10,11.. │ │
-│  └──────┬───────┘              └──────┬───────┘ │
-│         │ ~100ns                      │ ~100ns   │
-│  ┌──────┴───────┐              ┌──────┴───────┐ │
-│  │  Local RAM   │              │  Local RAM   │ │
-│  │  (Node 0)    │              │  (Node 1)    │ │
-│  │  128 GB      │              │  128 GB      │ │
-│  └──────────────┘              └──────────────┘ │
-└─────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph server["Server · 2 socket NUMA"]
+        direction LR
+        subgraph n0["NUMA Node 0"]
+            direction TB
+            cpu0["Socket 0<br/>CPU cores 0–7"] -->|Local access · khoảng 100 ns| ram0[("Local RAM<br/>128 GB")]
+        end
+        subgraph n1["NUMA Node 1"]
+            direction TB
+            cpu1["Socket 1<br/>CPU cores 8–15"] -->|Local access · khoảng 100 ns| ram1[("Local RAM<br/>128 GB")]
+        end
+        cpu0 <-->|QPI / UPI · cross-node<br/>khoảng 150–300 ns| cpu1
+    end
+
+    classDef cpu fill:#eef2ff,stroke:#4f46e5,color:#312e81
+    classDef memory fill:#ecfeff,stroke:#0891b2,color:#164e63
+    class cpu0,cpu1 cpu
+    class ram0,ram1 memory
 ```
 
 > [!NOTE]
@@ -254,19 +264,25 @@ Trên server multi-socket, mỗi CPU socket có "local memory" riêng. Truy cậ
 
 Cgroups v2 là **cơ chế cốt lõi** mà kernel Linux dùng để giới hạn, theo dõi, và cô lập tài nguyên cho groups of processes. Mọi container (Docker, containerd, CRI-O) đều là processes bị quản lý bởi cgroups.
 
-```
-cgroup v2 hierarchy (unified)
-/sys/fs/cgroup/
-├── system.slice/               ← systemd services
-├── user.slice/                 ← user sessions
-└── kubepods.slice/             ← Kubernetes pods
-    ├── kubepods-burstable.slice/
-    │   ├── kubepods-burstable-pod<uid>.slice/
-    │   │   ├── cri-containerd-<id>.scope   ← container A
-    │   │   └── cri-containerd-<id>.scope   ← container B (sidecar)
-    │   └── ...
-    ├── kubepods-besteffort.slice/
-    └── kubepods-guaranteed.slice/          ← QoS Guaranteed pods
+```mermaid
+flowchart TB
+    root["/sys/fs/cgroup/<br/><b>cgroup v2 unified hierarchy</b>"]
+    root --> system["system.slice<br/>systemd services"]
+    root --> user["user.slice<br/>user sessions"]
+    root --> pods["kubepods.slice<br/>Kubernetes pods"]
+    pods --> burstable["kubepods-burstable.slice"]
+    pods --> besteffort["kubepods-besteffort.slice"]
+    pods --> guaranteed["kubepods-guaranteed.slice<br/>QoS Guaranteed"]
+    burstable --> pod["kubepods-burstable-pod&lt;uid&gt;.slice"]
+    pod --> app["cri-containerd-&lt;id&gt;.scope<br/>Container A"]
+    pod --> sidecar["cri-containerd-&lt;id&gt;.scope<br/>Container B · sidecar"]
+
+    classDef rootNode fill:#312e81,stroke:#312e81,color:#fff
+    classDef kube fill:#eef2ff,stroke:#6366f1,color:#312e81
+    classDef container fill:#ecfeff,stroke:#0891b2,color:#164e63
+    class root rootNode
+    class pods,burstable,besteffort,guaranteed,pod kube
+    class app,sidecar container
 ```
 
 ### 3.2 Resource controllers quan trọng
@@ -311,27 +327,28 @@ Container là một **nhóm processes** bị cô lập bởi hai cơ chế kerne
 1. **Namespaces** — cô lập visibility: mỗi container thấy PID tree riêng, network stack riêng, filesystem riêng
 2. **Cgroups** — cô lập resources: giới hạn CPU, memory, I/O mà nhóm processes có thể dùng
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                       Host Kernel                             │
-│                                                               │
-│  ┌──────────────────┐  ┌──────────────────┐                  │
-│  │  Container A     │  │  Container B     │                  │
-│  │  ┌─────────────┐ │  │  ┌─────────────┐ │                  │
-│  │  │ PID ns      │ │  │  │ PID ns      │ │ ← namespaces    │
-│  │  │ NET ns      │ │  │  │ NET ns      │ │   (isolation)    │
-│  │  │ MNT ns      │ │  │  │ MNT ns      │ │                  │
-│  │  │ USER ns     │ │  │  │ USER ns     │ │                  │
-│  │  └─────────────┘ │  │  └─────────────┘ │                  │
-│  │  ┌─────────────┐ │  │  ┌─────────────┐ │                  │
-│  │  │ cgroup      │ │  │  │ cgroup      │ │ ← cgroups       │
-│  │  │ cpu: 2 cores│ │  │  │ cpu: 1 core │ │   (limits)      │
-│  │  │ mem: 4Gi    │ │  │  │ mem: 2Gi    │ │                  │
-│  │  └─────────────┘ │  │  └─────────────┘ │                  │
-│  └──────────────────┘  └──────────────────┘                  │
-│                                                               │
-│        Shared kernel, shared syscalls                         │
-└──────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph kernel["Linux host · shared kernel & syscalls"]
+        direction LR
+        subgraph a["Container A"]
+            direction TB
+            ans["Namespaces<br/>PID · NET · MNT · USER<br/><i>Visibility isolation</i>"]
+            acg["Cgroup<br/>CPU: 2 cores · Memory: 4 GiB<br/><i>Resource limits</i>"]
+        end
+        subgraph b["Container B"]
+            direction TB
+            bns["Namespaces<br/>PID · NET · MNT · USER<br/><i>Visibility isolation</i>"]
+            bcg["Cgroup<br/>CPU: 1 core · Memory: 2 GiB<br/><i>Resource limits</i>"]
+        end
+    end
+
+    ans ~~~ bns
+    acg ~~~ bcg
+    classDef isolation fill:#eef2ff,stroke:#6366f1,color:#312e81
+    classDef limits fill:#ecfeff,stroke:#0891b2,color:#164e63
+    class ans,bns isolation
+    class acg,bcg limits
 ```
 
 ### 4.2 Linux namespaces
@@ -353,13 +370,17 @@ Container là một **nhóm processes** bị cô lập bởi hai cơ chế kerne
 
 Container image sử dụng **layered filesystem** (OverlayFS):
 
-```
-Container writable layer (upperdir)  ← container writes go here
-        │
-        ▼ (union mount)
-Image Layer 3: app binary             ← read-only
-Image Layer 2: dependencies            ← read-only
-Image Layer 1: base OS (debian:slim)   ← read-only
+```mermaid
+flowchart TB
+    write["Container writes"] --> upper["Writable layer · upperdir"]
+    upper -->|OverlayFS union mount| app["Image layer 3 · app binary<br/>read-only"]
+    app --> deps["Image layer 2 · dependencies<br/>read-only"]
+    deps --> base["Image layer 1 · base OS<br/>debian:slim · read-only"]
+
+    classDef writable fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px
+    classDef readonly fill:#eef2ff,stroke:#6366f1,color:#312e81
+    class upper writable
+    class app,deps,base readonly
 ```
 
 **AIOps impact:** Write-heavy containers tạo large `upperdir` → disk I/O tăng → có thể trigger node eviction (`imagefs.available` pressure). Metric `container_fs_writes_bytes_total` (cAdvisor) và `io.stat` (cgroup) phát hiện vấn đề này.
@@ -417,23 +438,27 @@ stateDiagram-v2
 
 ### 5.3 Probe types và impact on traffic
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                    Kubernetes Probes                          │
-│                                                              │
-│  startupProbe ──── "Container đã start xong chưa?"          │
-│       │             Chạy trước, disable liveness/readiness   │
-│       │             Dùng cho: slow-starting apps (JVM, ML)   │
-│       ▼                                                      │
-│  livenessProbe ─── "Container còn sống không?"               │
-│       │             Fail → kubelet RESTART container          │
-│       │             ⚠️ KHÔNG remove khỏi Service endpoints   │
-│       ▼                                                      │
-│  readinessProbe ── "Container sẵn sàng nhận traffic không?"  │
-│                     Fail → remove khỏi Service endpoints     │
-│                     Recover → add lại vào endpoints          │
-│                     ⚠️ KHÔNG restart container               │
-└──────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    startup["<b>startupProbe</b><br/>Container đã start xong chưa?<br/><small>Cho app khởi động chậm: JVM, ML</small>"]
+    live["<b>livenessProbe</b><br/>Container còn sống không?"]
+    ready["<b>readinessProbe</b><br/>Sẵn sàng nhận traffic không?"]
+    restart["Kubelet restart container"]
+    remove["Remove khỏi Service endpoints"]
+    restore["Healthy trở lại<br/>Add lại vào endpoints"]
+
+    startup -->|Pass · bật các probe còn lại| live
+    startup -->|Pass| ready
+    live -->|Fail| restart
+    ready -->|Fail · không restart| remove
+    remove -->|Recover| restore
+
+    classDef gate fill:#eef2ff,stroke:#6366f1,color:#312e81
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef traffic fill:#fef3c7,stroke:#d97706,color:#78350f
+    class startup,live,ready gate
+    class restart danger
+    class remove,restore traffic
 ```
 
 > [!CAUTION]
@@ -443,18 +468,21 @@ stateDiagram-v2
 
 Khi pod bị xóa (rolling update), timeline xảy ra **song song**:
 
-```
-            ┌─── Path A: kube-proxy/iptables remove pod IP from Service
-            │    (async, có thể mất 1-5 giây)
-            │
-Pod delete ─┤
-            │
-            └─── Path B: kubelet gửi preStop → SIGTERM → countdown
-                 (bắt đầu ngay lập tức)
+```mermaid
+flowchart LR
+    delete(["Pod delete"])
+    delete -->|Path A · async, 1–5 giây| endpoint["kube-proxy / iptables<br/>remove Pod IP khỏi Service"]
+    delete -->|Path B · ngay lập tức| prestop["Kubelet chạy preStop"]
+    prestop --> term["SIGTERM + grace-period countdown"]
+    term --> race{"Endpoint đã cập nhật?"}
+    endpoint --> race
+    race -->|Chưa| error["Request vẫn vào Pod đang shutdown<br/><b>502 / 503</b>"]
+    race -->|Rồi| safe["Ngừng nhận traffic an toàn"]
 
-Vấn đề: Nếu preStop không có delay, container nhận SIGTERM
-         và bắt đầu shutdown TRƯỚC KHI iptables/Envoy cập nhật xong.
-         → Request vẫn được route đến pod đang shutdown → 502/503
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    classDef ok fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class error danger
+    class safe ok
 ```
 
 **Fix:** Thêm `preStop` hook với `sleep 5–10s` để chờ endpoint propagation:
@@ -493,9 +521,18 @@ Kubernetes tự động gán QoS class dựa trên requests/limits config:
 | **Burstable** | Có requests nhưng < limits (hoặc chỉ set 1 resource) | Evict sau BestEffort | Phần lớn workloads |
 | **BestEffort** | Không set requests NÀO | **Đầu tiên bị evict** | Batch jobs, dev/test |
 
-```
-Eviction order khi node memory pressure:
-BestEffort → Burstable (vượt request nhiều nhất trước) → Guaranteed
+```mermaid
+flowchart LR
+    pressure(["Node memory pressure"]) --> best["1 · BestEffort"]
+    best --> burst["2 · Burstable<br/>Vượt request nhiều nhất trước"]
+    burst --> guaranteed["3 · Guaranteed<br/>Evict cuối cùng"]
+
+    classDef first fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    classDef second fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef last fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class best first
+    class burst second
+    class guaranteed last
 ```
 
 > [!IMPORTANT]
@@ -530,21 +567,22 @@ Nếu container dùng hết quota trước khi period kết thúc:
 → Container bị THROTTLED — tất cả threads phải DỪNG cho đến period tiếp theo.
 ```
 
-```
-Timeline ví dụ (limit = 1 CPU = 100ms quota per 100ms period):
+```mermaid
+flowchart LR
+    subgraph p1["Period 1 · 0–100 ms"]
+        direction LR
+        used1["CPU chạy 70 ms"] --> spare["Còn 30 ms quota<br/><b>Không throttle</b>"]
+    end
+    subgraph p2["Period 2 · 100–200 ms"]
+        direction LR
+        used2["Dùng hết 100 ms quota"] --> frozen["Container frozen 12 ms<br/>3 threads phải chờ"]
+    end
+    p1 --> p2 --> impact["CPU utilization chỉ khoảng 85%<br/><b>P99 latency tăng 3×</b>"]
 
-Period 1 (0-100ms):
-  [█████████████████████████░░░░░░░]
-  ↑ dùng 70ms CPU              ↑ 30ms còn thừa
-  → Không throttle
-
-Period 2 (100-200ms):  
-  [████████████████████████████████│THROTTLED│]
-  ↑ dùng hết 100ms quota                    ↑ container frozen 12ms
-  → 3 threads chờ, latency spike ~12ms
-
-Kết quả: CPU utilization metric chỉ hiện ~85%,
-         nhưng P99 latency đã tăng 3x do throttling.
+    classDef ok fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    class spare ok
+    class frozen,impact danger
 ```
 
 ### 7.2 Phát hiện CPU throttling
@@ -578,16 +616,23 @@ rate(container_cpu_cfs_throttled_seconds_total[5m])
 
 Vấn đề đặc biệt nguy hiểm: JVM/Go runtime có nhiều threads (GC, compilation, app threads). Tất cả threads **chia chung** CPU quota của container:
 
-```
-Container limit: 2 CPU (200ms per 100ms period)
-Application: 8 threads (4 app + 2 GC + 1 compiler + 1 runtime)
+```mermaid
+flowchart LR
+    quota["Container limit<br/>2 CPU · 200 ms quota / 100 ms period"]
+    threads["8 threads<br/>4 app · 2 GC · compiler · runtime"]
+    gc["Parallel GC burst<br/>80 ms CPU trong 20 ms wall-time"]
+    app["App threads<br/>120 ms CPU"]
+    exhausted["Quota 200 ms cạn<br/>sau 50 ms wall-time"]
+    frozen["Container frozen<br/>50 ms còn lại"]
+    impact["Request mới<br/>delay hoặc timeout"]
 
-Kịch bản burst:
-- GC pause chạy parallel → 4 GC threads chạy cùng lúc → tiêu 80ms trong 20ms wall-time
-- App threads tiêu 120ms
-- Tổng: 200ms quota hết sau 50ms wall-time
-- Container bị freeze 50ms còn lại
-- Mọi request đến trong 50ms đó → timeout/delay
+    quota --> exhausted
+    threads --> gc --> exhausted
+    threads --> app --> exhausted
+    exhausted --> frozen --> impact
+
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    class exhausted,frozen,impact danger
 ```
 
 > [!WARNING]
@@ -599,68 +644,64 @@ Kịch bản burst:
 
 ### 8.1 Hai loại OOM Kill
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    OOM Kill Sources                          │
-│                                                             │
-│  1. Cgroup OOM (container level)                            │
-│     Trigger: container memory.current > memory.max          │
-│     Killer: cgroup OOM handler                              │
-│     Kill scope: process trong cgroup đó                     │
-│     Exit code: 137 (128 + SIGKILL=9)                       │
-│     K8s reason: OOMKilled                                   │
-│     → Phổ biến nhất trong Kubernetes                        │
-│                                                             │
-│  2. System OOM (node level)                                 │
-│     Trigger: toàn bộ node hết physical memory               │
-│     Killer: kernel global OOM killer                        │
-│     Kill scope: process có oom_score cao nhất trên node     │
-│     → Hiếm nếu kubelet eviction hoạt động đúng             │
-│     → Nhưng có thể kill kubelet/system processes!           │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    oom(["Memory exhaustion"]) --> scope{"Phạm vi thiếu memory"}
+    scope -->|Trong container| cgroup["<b>Cgroup OOM</b><br/>memory.current &gt; memory.max<br/>Cgroup OOM handler<br/>Kill process trong cgroup<br/>Exit 137 · K8s: OOMKilled"]
+    scope -->|Toàn node| system["<b>System OOM</b><br/>Hết physical memory<br/>Global OOM killer<br/>Kill process có oom_score cao nhất<br/>Có thể kill kubelet/system process"]
+    cgroup --> common["Phổ biến nhất trong Kubernetes"]
+    system --> rare["Hiếm nếu kubelet eviction<br/>hoạt động đúng"]
+
+    classDef container fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef node fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    class cgroup,common container
+    class system,rare node
 ```
 
 ### 8.2 Memory metric anatomy
 
-```
-Container memory.current =
-    RSS (anonymous pages — heap, stack)         ← phần "thật" app dùng
-  + Page Cache (file-backed pages — disk reads) ← kernel tự cache
-  + Kernel memory (socket buffers, etc.)        ← overhead
-  + Swap (nếu enabled)
+```mermaid
+flowchart TB
+    rss["RSS<br/>Heap + stack<br/><b>App thực dùng</b>"] --> current
+    cache["Page cache<br/>File-backed · reclaimable"] --> current
+    kernel["Kernel memory<br/>Socket buffers + overhead"] --> current
+    swap["Swap<br/>Nếu được bật"] --> current
+    current["<b>memory.current</b><br/>Tổng usage cgroup"] --> risk{"memory.max đặt quá sát?"}
+    risk -->|Có + RSS spike| oom["OOMKill<br/>dù cache có thể reclaim"]
+    risk -->|Không| healthy["Usage cao có thể vẫn ổn"]
+    current -. trừ inactive_file .-> working["<b>Working set</b><br/>memory.current − inactive_file<br/>container_memory_working_set_bytes"]
 
-Vấn đề:
-- memory.current bao gồm page cache
-- Page cache sẽ tự giải phóng khi cần (reclaimable)
-- Nhưng cgroup OOM killer nhìn memory.current, KHÔNG phân biệt reclaimable
-- → Container I/O-heavy (đọc nhiều file) có thể hiện usage 95%
-    mà phần lớn là page cache, hoàn toàn ổn
-- → Nhưng memory.max sát quá → OOMKill khi RSS spike nhỏ
-
-Metric đúng để detect memory pressure thật:
-  memory.current - inactive_file ≈ "working set"
-  Hoặc container_memory_working_set_bytes (kubelet/cAdvisor)
+    classDef metric fill:#eef2ff,stroke:#6366f1,color:#312e81
+    classDef warning fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    class current,working metric
+    class cache,risk warning
+    class oom danger
 ```
 
 ### 8.3 Memory leak detection cho AIOps
 
 Pattern memory leak trong container:
 
-```
-Memory usage (working set)
-     ▲
-     │                                    ╱── OOMKill → restart
-     │                              ╱────╱
-     │                        ╱────╱
-     │                  ╱────╱
-     │            ╱────╱
-     │      ╱────╱
-     │ ────╱
-     │╱
-     └──────────────────────────────────────────► Time
-     
-     Sawtooth pattern: linear growth → OOMKill → restart → growth lại
-     → Đây là memory leak signature rõ ràng
+```mermaid
+flowchart LR
+    restart["Container restart<br/>Working set thấp"] --> grow1["Working set tăng tuyến tính"]
+    grow1 --> limit1["Chạm memory.max"]
+    limit1 --> oom1["OOMKilled"]
+    oom1 --> restart2["Restart<br/>Usage về thấp"]
+    restart2 --> grow2["Working set lại tăng tuyến tính"]
+    grow2 --> limit2["Sắp chạm limit lần nữa"]
+
+    signature["<b>Chữ ký memory leak</b><br/>Tăng tuyến tính → OOMKill → restart → lặp lại"]
+    grow1 -.-> signature
+    grow2 -.-> signature
+
+    classDef growth fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    classDef recovery fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class grow1,grow2,limit1,limit2 growth
+    class oom1 danger
+    class restart,restart2 recovery
 ```
 
 **AIOps detection:**
@@ -684,37 +725,21 @@ Kubelet liên tục monitor node resources. Khi vượt ngưỡng, nó bắt đ�
 | `imagefs.available` | Disk space trên image fs | `15%` | `10%` |
 | `pid.available` | PIDs khả dụng trên node | — | `100` |
 
-```
-Node Pressure Flow:
-                            ┌─────────────────────┐
-                            │ Resource monitoring  │
-                            │ (every 10s)          │
-                            └─────────┬───────────┘
-                                      │
-                               ┌──────▼──────┐
-                               │ Vượt soft?  │
-                               └──────┬──────┘
-                              YES     │     NO
-                         ┌────────────┤     └── OK
-                         ▼            │
-                  Grace period        │
-                  (eviction-soft-     │
-                   grace-period)      │
-                         │            │
-                         ▼            ▼
-                  ┌──────────┐  ┌──────────┐
-                  │ Evict    │  │ Vượt hard?│
-                  │ pods     │  └─────┬────┘
-                  │ (soft)   │   YES  │  NO
-                  └──────────┘   │    └── OK
-                                 ▼
-                          ┌──────────┐
-                          │ Evict    │
-                          │ pods     │
-                          │ (hard,   │
-                          │ ngay lập │
-                          │ tức)     │
-                          └──────────┘
+```mermaid
+flowchart TB
+    monitor["Kubelet resource monitoring<br/>mỗi 10 giây"] --> soft{"Vượt soft threshold?"}
+    soft -->|Có| grace["Chờ eviction-soft-grace-period"]
+    grace --> softEvict["Evict Pod · soft"]
+    soft -->|Không| hard{"Vượt hard threshold?"}
+    hard -->|Không| ok["Node healthy"]
+    hard -->|Có| hardEvict["Evict Pod ngay lập tức · hard"]
+
+    classDef ok fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef warn fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    class ok ok
+    class grace,softEvict warn
+    class hardEvict danger
 ```
 
 ### 9.2 Node conditions
@@ -737,34 +762,24 @@ Node Pressure Flow:
 
 eBPF (extended Berkeley Packet Filter) cho phép chạy **sandboxed programs trong kernel** mà không cần kernel module hay application instrumentation:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  User Space                                                  │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  eBPF User Program (bpftrace, Cilium, Pixie)       │    │
-│  │  Load program → attach to hook → read maps          │    │
-│  └───────────────────────┬─────────────────────────────┘    │
-│                          │ bpf() syscall                     │
-├──────────────────────────┼──────────────────────────────────┤
-│  Kernel Space            ▼                                   │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │  Verifier    │  │  JIT Compiler│  │  BPF Maps    │      │
-│  │  (safety     │→ │  (native     │  │  (shared     │      │
-│  │   check)     │  │   machine    │  │   data)      │      │
-│  └──────────────┘  │   code)      │  └──────────────┘      │
-│                    └──────┬───────┘                          │
-│                           │ attach                           │
-│  ┌────────────────────────┼────────────────────────────┐    │
-│  │  Kernel Hooks:         ▼                            │    │
-│  │  • kprobes (any kernel function)                    │    │
-│  │  • tracepoints (stable kernel events)               │    │
-│  │  • XDP (network packets, pre-stack)                 │    │
-│  │  • tc (traffic control)                             │    │
-│  │  • cgroup hooks (resource events)                   │    │
-│  │  • LSM hooks (security events)                      │    │
-│  │  • uprobe (user-space function entry/exit)          │    │
-│  └─────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph user["User space"]
+        program["eBPF user program<br/>bpftrace · Cilium · Pixie<br/><small>Load program · attach hook · read maps</small>"]
+    end
+    subgraph kernel["Kernel space"]
+        direction TB
+        verifier["Verifier<br/>Safety checks"] --> jit["JIT compiler<br/>Native machine code"]
+        jit --> hooks["Kernel hooks<br/>kprobes · tracepoints · XDP · tc<br/>cgroup · LSM · uprobes"]
+        hooks --> maps[("BPF Maps<br/>Shared data")]
+    end
+    program -->|bpf syscall| verifier
+    maps -->|Read telemetry| program
+
+    classDef userspace fill:#eef2ff,stroke:#6366f1,color:#312e81
+    classDef kernelspace fill:#ecfeff,stroke:#0891b2,color:#164e63
+    class program userspace
+    class verifier,jit,hooks,maps kernelspace
 ```
 
 ### 10.2 eBPF cho AIOps — use cases cụ thể
@@ -856,45 +871,42 @@ graph LR
 
 Mỗi TCP connection đi qua state machine phức tạp. Kỹ sư AIOps cần hiểu vì **connection state accumulation** là nguồn gốc nhiều incidents:
 
-```
-Client                          Server
-  │                                │
-  ├──── SYN ─────────────────────►│  (1) Client gửi SYN
-  │                                │      Server: SYN_RECV (half-open)
-  │◄──── SYN+ACK ────────────────┤  (2) Server phản hồi
-  │                                │      Client: ESTABLISHED
-  ├──── ACK ─────────────────────►│  (3) Connection established
-  │                                │      Server: ESTABLISHED
-  │                                │
-  │◄──── DATA ───────────────────►│  (4) Data exchange
-  │                                │
-  ├──── FIN ─────────────────────►│  (5) Client muốn đóng
-  │                                │      Client: FIN_WAIT_1
-  │◄──── ACK ────────────────────┤  (6) Server acknowledge
-  │                                │      Client: FIN_WAIT_2
-  │◄──── FIN ────────────────────┤  (7) Server đóng phía nó
-  │                                │      Client: TIME_WAIT
-  ├──── ACK ─────────────────────►│  (8) Final ACK
-  │                                │
-  │   TIME_WAIT: 2 × MSL          │
-  │   (60s on Linux default)       │
-  │   → Socket không reuse được   │
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant S as Server
+    C->>S: SYN
+    Note right of S: SYN_RECV · half-open
+    S-->>C: SYN + ACK
+    C->>S: ACK
+    Note over C,S: ESTABLISHED
+    C<<->>S: DATA exchange
+    C->>S: FIN
+    Note left of C: FIN_WAIT_1
+    S-->>C: ACK
+    Note left of C: FIN_WAIT_2
+    S-->>C: FIN
+    C->>S: Final ACK
+    Note left of C: TIME_WAIT = 2 × MSL<br/>60 giây mặc định trên Linux<br/>Socket chưa thể reuse
 ```
 
 ### 12.2 TIME_WAIT — kẻ giết âm thầm
 
 **Vấn đề:** Mỗi connection đóng rồi sẽ ở `TIME_WAIT` 60 giây trên Linux. Trong thời gian đó, tuple (src_ip, src_port, dst_ip, dst_port) không được reuse.
 
-```
-High-traffic service đóng 10,000 connections/second:
-→ 10,000 × 60s = 600,000 sockets ở TIME_WAIT
-→ Ephemeral port range: 32768–60999 = 28,232 ports
-→ Nếu connect đến cùng 1 destination: PORT EXHAUSTION!
+```mermaid
+flowchart LR
+    rate["10.000 connections đóng / giây"] --> wait["× 60 giây TIME_WAIT"]
+    wait --> sockets["600.000 sockets TIME_WAIT"]
+    ports["Ephemeral ports<br/>32.768–60.999<br/>chỉ 28.232 ports"] --> exhausted
+    sockets --> exhausted["<b>Port exhaustion</b><br/>khi cùng một destination"]
+    exhausted --> e1["connect() → EADDRNOTAVAIL"]
+    exhausted --> e2["Log: Cannot assign requested address"]
+    exhausted --> e3["Destination X fail<br/>destination Y vẫn hoạt động"]
 
-Triệu chứng:
-- connect() trả EADDRNOTAVAIL
-- "Cannot assign requested address" trong logs
-- Tất cả requests đến destination X fail, nhưng Y vẫn OK
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    class exhausted,e1,e2,e3 danger
 ```
 
 **Metrics cần monitor:**
@@ -917,21 +929,21 @@ node_netstat_Tcp_CurrEstab    # Connections đang ESTABLISHED
 
 Retransmission xảy ra khi TCP segment bị mất (network congestion, packet drop, interface errors):
 
-```
-Retransmission Timeout (RTO) escalation:
-  Attempt 1: RTO = ~200ms (initial)
-  Attempt 2: RTO = ~400ms (doubled)
-  Attempt 3: RTO = ~800ms
-  Attempt 4: RTO = ~1600ms
-  ...
-  After net.ipv4.tcp_retries2 (default 15) attempts:
-  → Connection reset → application sees "Connection timed out"
-  → Tổng thời gian: ~13-30 phút!
+```mermaid
+flowchart LR
+    loss(["TCP segment bị mất"]) --> a1["Attempt 1<br/>RTO ≈ 200 ms"]
+    a1 --> a2["Attempt 2<br/>RTO ≈ 400 ms"]
+    a2 --> a3["Attempt 3<br/>RTO ≈ 800 ms"]
+    a3 --> a4["Attempt 4<br/>RTO ≈ 1.600 ms"]
+    a4 --> more["Tiếp tục exponential backoff<br/>tcp_retries2 mặc định: 15"]
+    more --> timeout["Connection timed out<br/>sau khoảng 13–30 phút"]
+    a1 -. "1 retransmit: +200 ms" .-> p99["P99 latency spike"]
+    a2 -. "2 retransmits: +600 ms" .-> p99
 
-Nhưng latency thấy ở application level:
-  1 retransmit = +200ms minimum delay
-  2 retransmits = +600ms
-  → P99 latency spike mà không rõ nguyên nhân
+    classDef warning fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    class a1,a2,a3,a4,more warning
+    class timeout,p99 danger
 ```
 
 **Metrics:**
@@ -979,22 +991,23 @@ rate(node_netstat_Tcp_OutSegs[5m])
 
 DNS resolution trong Kubernetes cluster đi qua nhiều lớp:
 
-```
-Pod gọi "payment-service.production.svc.cluster.local"
-  │
-  ├─ 1. Pod's /etc/resolv.conf:
-  │      nameserver 10.96.0.10 (CoreDNS ClusterIP)
-  │      search production.svc.cluster.local svc.cluster.local cluster.local
-  │      ndots: 5
-  │
-  ├─ 2. Với ndots:5, tên < 5 dots → thử search domains trước:
-  │      "payment-service.production.svc.cluster.local.production.svc.cluster.local" → NXDOMAIN
-  │      "payment-service.production.svc.cluster.local.svc.cluster.local" → NXDOMAIN
-  │      "payment-service.production.svc.cluster.local.cluster.local" → NXDOMAIN
-  │      "payment-service.production.svc.cluster.local" → FOUND!
-  │      → 4 unnecessary DNS queries trước khi resolve!
-  │
-  └─ 3. CoreDNS → kube-dns plugin → Kubernetes API → trả Service ClusterIP
+```mermaid
+sequenceDiagram
+    participant P as Pod
+    participant C as CoreDNS · 10.96.0.10
+    participant K as Kubernetes API
+    Note over P: resolv.conf · ndots:5<br/>3 search domains
+    P->>C: FQDN + production.svc.cluster.local
+    C-->>P: NXDOMAIN
+    P->>C: FQDN + svc.cluster.local
+    C-->>P: NXDOMAIN
+    P->>C: FQDN + cluster.local
+    C-->>P: NXDOMAIN
+    P->>C: payment-service.production.svc.cluster.local
+    C->>K: kube-dns plugin lookup
+    K-->>C: Service ClusterIP
+    C-->>P: FOUND · ClusterIP
+    Note over P,C: Có thể phát sinh 4 DNS queries không cần thiết trước khi resolve
 ```
 
 > [!WARNING]
@@ -1016,41 +1029,48 @@ Pod gọi "payment-service.production.svc.cluster.local"
 
 ### 14.1 L4 vs L7 Load Balancing
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│  L4 (Transport Layer)              L7 (Application Layer)    │
-│                                                              │
-│  • TCP/UDP level                   • HTTP/HTTPS/gRPC level   │
-│  • Không hiểu request content      • Đọc headers, path, host │
-│  • Forward by IP:Port              • Route by host, path,    │
-│  • Rất nhanh (~microseconds)         cookie, header          │
-│  • Không terminate TLS (passthru)   • TLS termination        │
-│  • AWS: NLB                        • Slow hơn L4 (~ms)       │
-│  • K8s: Service type=LoadBalancer   • AWS: ALB               │
-│                                    • K8s: Ingress + nginx/   │
-│                                           envoy/traefik      │
-└──────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph l4["L4 · Transport Layer"]
+        direction TB
+        l4p["TCP / UDP"]
+        l4r["Forward theo IP:Port<br/>Không đọc nội dung request"]
+        l4t["Độ trễ microseconds<br/>TLS passthrough"]
+        l4e["AWS NLB<br/>K8s Service LoadBalancer"]
+        l4p --> l4r --> l4t --> l4e
+    end
+    subgraph l7["L7 · Application Layer"]
+        direction TB
+        l7p["HTTP / HTTPS / gRPC"]
+        l7r["Route theo host · path<br/>cookie · header"]
+        l7t["TLS termination<br/>Độ trễ milliseconds"]
+        l7e["AWS ALB<br/>Ingress: nginx · Envoy · Traefik"]
+        l7p --> l7r --> l7t --> l7e
+    end
+    l4p ~~~ l7p
+
+    classDef transport fill:#ecfeff,stroke:#0891b2,color:#164e63
+    classDef application fill:#eef2ff,stroke:#6366f1,color:#312e81
+    class l4p,l4r,l4t,l4e transport
+    class l7p,l7r,l7t,l7e application
 ```
 
 ### 14.2 Health check gaps — nguồn gốc 502/503
 
-```
-Cloud LB health check → Ingress health check → Pod readiness probe
+```mermaid
+flowchart LR
+    client(["Client traffic"]) --> alb["Cloud ALB<br/>30 s × 3 = tối đa 90 s"]
+    alb --> ingress["Ingress nginx<br/>5 s × 3 = 15 s"]
+    ingress --> endpoint["Service endpoint"]
+    endpoint --> pod["Pod readiness<br/>10 s × 3 = 30 s"]
+    pod -->|Pod down| removed["Endpoint bị remove"]
+    alb -. "ALB chưa hội tụ" .-> stale["Vẫn gửi traffic"]
+    stale --> ingress --> error["Forward tới endpoint cũ<br/><b>502 / 503</b>"]
 
-Mỗi layer check độc lập, với interval và timeout khác nhau:
-
-ALB health check: interval=30s, timeout=5s, threshold=3
-  → Phát hiện target unhealthy sau: 30×3 = 90s CHẬM NHẤT
-
-Ingress nginx upstream check: interval=5s, timeout=3s, fails=3
-  → Phát hiện upstream down sau: 5×3 = 15s
-
-K8s readiness probe: period=10s, timeout=1s, failureThreshold=3
-  → Remove từ endpoints sau: 10×3 = 30s
-
-Vấn đề: Pod đã down, readiness fail, endpoint removed,
-         NHƯNG ALB vẫn gửi traffic đến Ingress → Ingress forward
-         đến endpoint cũ → 502 cho đến ALB detect target down.
+    classDef layer fill:#eef2ff,stroke:#6366f1,color:#312e81
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    class alb,ingress,endpoint,pod layer
+    class stale,error danger
 ```
 
 > [!TIP]
@@ -1062,59 +1082,38 @@ Vấn đề: Pod đã down, readiness fail, endpoint removed,
 
 ### 15.1 Sidecar Proxy Architecture (Istio/Envoy)
 
-```
-┌─────────────────── Pod ──────────────────────────┐
-│                                                   │
-│  ┌─────────────┐     ┌──────────────────────┐    │
-│  │  Envoy      │     │  Application         │    │
-│  │  Sidecar    │◄───►│  Container           │    │
-│  │             │     │                      │    │
-│  │  Port 15001 │     │  Port 8080           │    │
-│  │  (inbound)  │     │                      │    │
-│  │             │     │  Không biết gì về     │    │
-│  │  Port 15006 │     │  service mesh!        │    │
-│  │  (outbound) │     └──────────────────────┘    │
-│  │             │                                  │
-│  │  iptables redirect ALL traffic qua Envoy:     │
-│  │  - inbound:  port 8080 → envoy → localhost    │
-│  │  - outbound: any → envoy → upstream           │
-│  └─────────────┘                                  │
-└───────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    inbound(["Inbound traffic"]) --> ipt["iptables redirect"]
+    subgraph pod["Kubernetes Pod"]
+        direction LR
+        envoy["<b>Envoy sidecar</b><br/>Inbound 15001<br/>Outbound 15006"] <-->|localhost| app["Application container<br/>Port 8080<br/><small>Không biết service mesh</small>"]
+    end
+    ipt --> envoy
+    envoy --> outbound(["Upstream service"])
+    envoy -. cung cấp .-> capabilities["mTLS · L7 load balancing · retries<br/>circuit breaking · timeout · rate limit<br/>metrics · traces · access logs"]
 
-Envoy capabilities:
-✓ mTLS (automatic encryption between pods)
-✓ L7 load balancing (round-robin, least-conn, ring-hash)
-✓ Retry policy (max retries, retry budget, retry-on conditions)
-✓ Circuit breaking (max connections, max pending, max requests)
-✓ Timeout policy (per-route, per-retry)
-✓ Rate limiting (local and global)
-✓ Observability (automatic metrics, traces, access logs)
+    classDef proxy fill:#eef2ff,stroke:#6366f1,color:#312e81,stroke-width:2px
+    classDef app fill:#ecfeff,stroke:#0891b2,color:#164e63
+    class envoy proxy
+    class app app
 ```
 
 ### 15.2 Retry budget — phòng ngừa retry storm
 
-```
-Retry Storm:
+```mermaid
+flowchart LR
+    users["1.000 concurrent requests"] --> a["Service A<br/>retry tối đa 3×"]
+    a -->|3×| b["Service B<br/>retry tối đa 3×"]
+    b -->|3×| c["Service C · DOWN"]
+    c --> amplification["1 request → 3 × 3 = 9 attempts<br/>1.000 requests → 9.000 attempts"]
+    amplification --> cascade["C không thể recover<br/>B overload<br/>Cascading failure"]
+    budget["<b>Retry budget 20%</b><br/>1.000 baseline + 200 retries<br/>tối đa 1.200 requests"] --> recovery["Downstream có cơ hội recover"]
 
-Service A ──retry 3x──► Service B ──retry 3x──► Service C (down)
-                                                      │
-Request từ A:                                         │
-  Attempt 1 → B attempt 1 → C: timeout               │
-  Attempt 1 → B attempt 2 → C: timeout               │
-  Attempt 1 → B attempt 3 → C: timeout               │
-  Attempt 2 → B attempt 1 → C: timeout               │
-  ...                                                 │
-                                                      │
-1 request từ A → 3 × 3 = 9 requests đến C             │
-                                                      │
-Nếu A có 1000 concurrent users:                       │
-1000 × 9 = 9,000 requests đến C (đã down!)            │
-→ C càng không recover được                            │
-→ B cũng overload → cascading failure                 │
-
-Fix: Retry budget = max 20% extra traffic
-     1000 baseline + 200 retries max = 1200 total
-     → C có cơ hội recover
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    classDef safe fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class c,amplification,cascade danger
+    class budget,recovery safe
 ```
 
 ### 15.3 Envoy circuit breaking
@@ -1174,29 +1173,29 @@ spec:
 
 ### 16.2 Rate limiting — leaky bucket vs token bucket
 
-```
-Token Bucket (phổ biến hơn):
-  ┌──────────────┐
-  │  Bucket      │  capacity = 100 tokens
-  │  ████████░░  │  refill rate = 10 tokens/sec
-  │  ████████░░  │
-  │  ████████░░  │  Request arrives:
-  └──────┬───────┘    Token available? → Allow, remove 1 token
-         │            No token? → Reject (429 Too Many Requests)
-         │
-    Refill: 10/sec   Allows burst up to capacity,
-                     then limits to refill rate
+```mermaid
+flowchart LR
+    subgraph token["Token Bucket · cho phép burst"]
+        direction TB
+        refill["Refill 10 token / giây"] --> bucket[("Bucket<br/>Capacity 100 token")]
+        req1(["Request"]) --> has{"Còn token?"}
+        bucket --> has
+        has -->|Có| allow["Allow<br/>Trừ 1 token"]
+        has -->|Không| reject1["Reject · HTTP 429"]
+    end
+    subgraph leaky["Leaky Bucket · làm mượt traffic"]
+        direction TB
+        req2(["Request"]) --> full{"Queue đầy?"}
+        full -->|Không| queue[("Queue<br/>Capacity 100")]
+        full -->|Có| reject2["Reject"]
+        queue --> drain["Drain cố định<br/>10 request / giây"]
+    end
+    allow ~~~ drain
 
-Leaky Bucket:
-  ┌──────────────┐
-  │  Queue       │  size = 100
-  │  ████████░░  │
-  │  ████████░░  │  Request arrives:
-  │  ████████░░  │    Queue not full? → Enqueue
-  └──────┬───────┘    Queue full? → Reject
-         │
-    Drain: fixed     Smooths out bursts,
-    10 req/sec       constant output rate
+    classDef ok fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    class allow,drain ok
+    class reject1,reject2 danger
 ```
 
 > [!NOTE]
@@ -1210,16 +1209,27 @@ Leaky Bucket:
 
 Mỗi TCP connection mới tốn: DNS lookup + TCP handshake (1 RTT) + TLS handshake (1–2 RTT) = **50–200ms**. Connection pool giữ connections sẵn, reuse cho multiple requests:
 
-```
-Không có pool (connection per request):
-  Request 1: [DNS + TCP + TLS + Query + Close] = 180ms
-  Request 2: [DNS + TCP + TLS + Query + Close] = 180ms
-  Request 3: [DNS + TCP + TLS + Query + Close] = 180ms
+```mermaid
+flowchart LR
+    subgraph noPool["Không có pool · mỗi request tạo connection"]
+        direction TB
+        n1["Request 1<br/>DNS + TCP + TLS + Query + Close<br/><b>180 ms</b>"]
+        n2["Request 2<br/>DNS + TCP + TLS + Query + Close<br/><b>180 ms</b>"]
+        n3["Request 3<br/>DNS + TCP + TLS + Query + Close<br/><b>180 ms</b>"]
+    end
+    subgraph pooled["Connection pool · reuse"]
+        direction TB
+        p1["Request 1 · establish<br/>DNS + TCP + TLS + Query<br/><b>180 ms</b>"]
+        p2["Request 2 · reuse<br/>Query · <b>20 ms</b>"]
+        p3["Request 3 · reuse<br/>Query · <b>20 ms</b>"]
+        p1 --> p2 --> p3
+    end
+    n1 ~~~ p1
 
-Có pool (reuse connection):
-  Request 1: [DNS + TCP + TLS + Query] = 180ms  (first, establish)
-  Request 2: [Query] = 20ms                      (reuse!)
-  Request 3: [Query] = 20ms                      (reuse!)
+    classDef slow fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef fast fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class n1,n2,n3 slow
+    class p2,p3 fast
 ```
 
 ### 17.2 Pool failure modes
@@ -1259,63 +1269,55 @@ Nhưng:
 
 ### 18.1 Sync vs Async threading models
 
-```
-Synchronous (thread-per-request):
-┌──────────────────────────────────────────────────┐
-│  Thread Pool (size: 200)                         │
-│                                                  │
-│  [T1: handling request] ──── DB query 50ms ──    │
-│  [T2: handling request] ──── API call 200ms ──   │
-│  [T3: handling request] ──── DB query 30ms ──    │
-│  ...                                             │
-│  [T200: handling request] ── waiting DB pool ──  │
-│                                                  │
-│  Queue: [req 201, req 202, ..., req 500]         │
-│  → Queue full → REJECT (503)                     │
-└──────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph sync["Synchronous · thread per request"]
+        direction TB
+        queue1["Request queue<br/>req 201 … req 500"] --> pool["Thread pool · 200 threads"]
+        pool --> blocked["Tất cả threads chờ<br/>DB / API downstream"]
+        blocked --> reject["Queue đầy · HTTP 503<br/>CPU vẫn chỉ khoảng 10%"]
+    end
+    subgraph async["Asynchronous · event loop"]
+        direction TB
+        queue2["N requests"] --> loop["1 hoặc vài event-loop threads"]
+        loop --> asyncCall["Start DB / API call<br/>non-blocking · trả future"]
+        asyncCall --> ready["Result ready"]
+        ready --> callbackNode["Callback → response"]
+        callbackNode --> loop
+    end
+    blocked ~~~ asyncCall
 
-Thread pool exhaustion happens when:
-  All threads blocked on slow downstream → no thread for new requests
-  → 503 even though CPU is 10% (idle!)
-  → "CPU low, latency high" — classic thread exhaustion pattern
-
-Asynchronous (event loop):
-┌──────────────────────────────────────────────────┐
-│  Event Loop (1 thread, or few)                   │
-│                                                  │
-│  ┌──► Process request ──► Start DB call          │
-│  │    (non-blocking)      (async, returns future)│
-│  │                                               │
-│  ├──► Process request ──► Start API call         │
-│  │    (non-blocking)      (async)                │
-│  │                                               │
-│  └──► When DB result ready → callback → respond  │
-│                                                  │
-│  → Không block thread, 1 thread xử lý N requests │
-│  → Nhưng nếu code block (sync library): DEAD     │
-└──────────────────────────────────────────────────┘
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    classDef asyncNode fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class blocked,reject danger
+    class loop,asyncCall,ready,callbackNode asyncNode
 ```
 
 ### 18.2 Backpressure mechanisms
 
-```
-Backpressure = khả năng system nói "tôi đang quá tải, hãy chậm lại"
+```mermaid
+flowchart LR
+    subgraph without["Không có backpressure"]
+        direction LR
+        c1["Client<br/>10K req/s"] --> s1["Server<br/>Capacity 5K req/s"]
+        s1 --> overload["Overload → crash"]
+        overload --> retry["Client retry<br/>20K req/s"]
+        retry --> cascade["Cascading failure"]
+    end
+    subgraph with["Có backpressure"]
+        direction LR
+        c2["Client<br/>10K req/s"] --> s2["Server<br/>Capacity 5K req/s"]
+        s2 --> accepted["5K xử lý thành công"]
+        s2 --> shed["5K excess<br/>503 + Retry-After"]
+        shed --> backoff["Client exponential backoff"]
+        backoff --> recovery["Gradual recovery"]
+    end
+    overload ~~~ accepted
 
-Levels of backpressure:
-1. Application level:  Queue full → reject with 503 + Retry-After header
-2. Thread pool level:  Bounded queue → reject khi queue > threshold
-3. Connection level:   TCP receive window shrinks → sender slows down
-4. Load balancer:      HTTP 429 / connection limit
-5. Client level:       Exponential backoff on errors
-
-Không có backpressure:
-  Client → 10K req/s → Server (capacity 5K) → overload → crash
-  → Client retry → 20K req/s → faster crash
-  → Cascading failure
-
-Có backpressure:
-  Client → 10K req/s → Server → 503 cho 5K excess → client backoff
-  → 5K processed successfully → gradual recovery
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    classDef safe fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class overload,retry,cascade danger
+    class accepted,shed,backoff,recovery safe
 ```
 
 ---
@@ -1324,31 +1326,18 @@ Có backpressure:
 
 ### 19.1 Circuit Breaker pattern
 
-```
-         ┌─────────────────────────────────────┐
-         │         Circuit Breaker FSM          │
-         │                                     │
-         │  ┌────────┐                         │
-    ────►│  │ CLOSED │ ← Normal operation       │
-         │  │        │   Requests pass through  │
-         │  └───┬────┘                         │
-         │      │ failure_count > threshold     │
-         │      ▼                              │
-         │  ┌────────┐                         │
-         │  │  OPEN  │ ← All requests fail-fast │
-         │  │        │   Return error immediately│
-         │  │        │   No load on downstream  │
-         │  └───┬────┘                         │
-         │      │ timeout expires              │
-         │      ▼                              │
-         │  ┌──────────┐                       │
-         │  │HALF-OPEN │ ← Allow 1 test request│
-         │  │          │                       │
-         │  └───┬──────┘                       │
-         │      │                              │
-         │   success → CLOSED                   │
-         │   failure → OPEN                     │
-         └─────────────────────────────────────┘
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Closed
+    state "CLOSED\nRequests đi qua bình thường" as Closed
+    state "OPEN\nFail-fast; không tải downstream" as Open
+    state "HALF-OPEN\nCho phép một test request" as HalfOpen
+
+    Closed --> Open: failure_count > threshold
+    Open --> HalfOpen: timeout hết hạn
+    HalfOpen --> Closed: test thành công
+    HalfOpen --> Open: test thất bại
 ```
 
 **AIOps metrics cho circuit breaker:**
@@ -1382,28 +1371,34 @@ resilience4j_circuitbreaker_failure_rate                 # Current failure rate 
 
 ### 20.1 Cache access patterns
 
-```
-Read-Aside (Cache-Aside) — phổ biến nhất:
-
-    Client ───► Cache ───► HIT → Return data
-                  │
-                  └──► MISS → Query DB → Store in Cache → Return
-
-Write-Through:
-    Client ───► Cache (write) ───► DB (write) → Return
-    (data luôn consistent, nhưng write chậm hơn)
-
-Write-Behind (Write-Back):
-    Client ───► Cache (write) → Return immediately
-                  │
-                  └──► Async write to DB (batched)
-    (nhanh, nhưng risk data loss nếu cache crash)
-
-Read-Through:
-    Client ───► Cache ───► HIT → Return
-                  │
-                  └──► MISS → Cache tự query DB → Store → Return
-    (cache đóng vai trò abstraction layer)
+```mermaid
+flowchart TB
+    subgraph aside["Read-Aside · phổ biến nhất"]
+        direction LR
+        aClient(["Client"]) --> aCache[("Cache")]
+        aCache -->|HIT| aReturn["Return data"]
+        aCache -->|MISS| aDb[("Database")]
+        aDb --> aStore["Store vào cache"] --> aReturn
+    end
+    subgraph through["Write-Through · consistent, write chậm hơn"]
+        direction LR
+        tClient(["Client"]) -->|Write| tCache[("Cache")]
+        tCache -->|Sync write| tDb[("Database")]
+        tDb --> tReturn["Return"]
+    end
+    subgraph behind["Write-Behind · nhanh, có rủi ro mất data"]
+        direction LR
+        bClient(["Client"]) -->|Write| bCache[("Cache")]
+        bCache --> bReturn["Return ngay"]
+        bCache -. Async / batch .-> bDb[("Database")]
+    end
+    subgraph readThrough["Read-Through · cache là abstraction layer"]
+        direction LR
+        rClient(["Client"]) --> rCache[("Cache")]
+        rCache -->|HIT| rReturn["Return"]
+        rCache -->|MISS · tự query| rDb[("Database")]
+        rDb --> rCache
+    end
 ```
 
 ### 20.2 Cache hit ratio — north star metric
@@ -1463,76 +1458,62 @@ Nếu hit ratio drop từ 95% → 80%:
 
 ### 21.1 Cache Avalanche (tuyết lở cache)
 
-```
-Scenario: Nhiều cache keys expire cùng lúc (cùng TTL)
+```mermaid
+flowchart LR
+    set["T = 0<br/>Set 100.000 keys<br/>cùng TTL = 3.600 s"] --> expire["T = 3.600<br/>100.000 keys expire cùng lúc"]
+    expire --> miss["100.000 cache MISS đồng thời"]
+    miss --> db["Database overload"]
+    db --> timeout["Timeout → cascading failure"]
 
-Timeline:
-  T=0:    Set 100,000 keys với TTL=3600s (đúng 1 giờ)
-  T=3600: TẤT CẢ 100,000 keys expire cùng lúc
-          → 100,000 requests đồng loạt đi thẳng vào DB
-          → DB overload → timeout → cascading failure
+    jitter["Jittered TTL<br/>Phân tán thời điểm expire"] --> prevent["Giảm avalanche"]
+    warm["Pre-warming<br/>Refresh trước khi expire"] --> prevent
+    cb["DB circuit breaker<br/>Giới hạn concurrent queries"] --> prevent
 
-        Requests
-        ▲
-        │     ████ Cache avalanche!
-        │     ████
-        │     ████
-  Normal│─────████──────────────────
-        │     ████
-        └─────┴───────────────────► Time
-              T=3600
-
-Prevention:
-  1. Jittered TTL: TTL = base_ttl + random(0, jitter_range)
-     → Keys expire rải rác, không cùng lúc
-  2. Pre-warming: Background job refresh sắp-expire keys
-  3. Circuit breaker trên DB: limit concurrent queries
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    classDef safe fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class expire,miss,db,timeout danger
+    class jitter,warm,cb,prevent safe
 ```
 
 ### 21.2 Cache Stampede (Thundering Herd on Cache)
 
-```
-Scenario: 1 hot key expire → N concurrent requests cùng query DB
+```mermaid
+flowchart LR
+    expire["Một hot key expire"] --> miss["100 concurrent cache MISS"]
+    miss --> t1["Thread 1 → DB query 500 ms"]
+    miss --> t2["Thread 2 → duplicate query"]
+    miss --> tn["Thread 3…100 → duplicate query"]
+    t1 --> load["100 query giống hệt nhau<br/>Thundering herd"]
+    t2 --> load
+    tn --> load
 
-  Thread 1: GET key → MISS → query DB (slow, 500ms)
-  Thread 2: GET key → MISS → query DB (đang chạy, duplicate!)
-  Thread 3: GET key → MISS → query DB (duplicate!)
-  ...
-  Thread 100: GET key → MISS → query DB (100 identical queries!)
+    per["Probabilistic early expiration"] --> safe["Chỉ một refresh"]
+    mutex["Mutex / single-flight"] --> safe
+    stale["Stale-while-revalidate"] --> safe
 
-Prevention:
-  1. Probabilistic early expiration (PER):
-     Trước khi key thực sự expire, random 1 thread refresh
-     
-  2. Mutex/Lock:
-     Thread 1: MISS → acquire lock → query DB → set cache → release lock
-     Thread 2-100: MISS → lock taken → wait hoặc return stale data
-     
-  3. Stale-while-revalidate:
-     Return stale value immediately + async refresh in background
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    classDef safe fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class miss,t1,t2,tn,load danger
+    class per,mutex,stale,safe safe
 ```
 
 ### 21.3 Cache Penetration
 
-```
-Scenario: Requests cho keys không tồn tại (cả trong cache lẫn DB)
+```mermaid
+flowchart LR
+    request["Attacker / bug<br/>GET user_id không tồn tại"] --> cache[("Cache")]
+    cache -->|MISS| db[("Database")]
+    db -->|Empty result không được cache| repeat["Request kế tiếp lại MISS<br/>Mọi request bypass cache"]
+    repeat --> cache
 
-  Attacker/Bug: GET user_id=999999999 (không tồn tại)
-  Cache: MISS
-  DB: SELECT ... WHERE id=999999999 → empty result
-  → Không cache empty result → next request: MISS again → DB again
-  → Mọi request cho non-existent data đều bypass cache
+    validate["Validate ID tại API Gateway"] --> blocked["Reject sớm"]
+    bloom["Bloom filter · O(1)"] -->|Definitely absent| blocked
+    null["Cache NULL<br/>TTL ngắn 60 s"] --> cached["Không query DB lặp lại"]
 
-Prevention:
-  1. Cache null/empty results (với short TTL):
-     Cache SET "user:999999999" → NULL, TTL=60s
-     
-  2. Bloom Filter trước cache:
-     Check bloom filter → key definitely not exists → return 404 immediately
-     → Bloom filter check: O(1), few KB memory
-     
-  3. Request validation:
-     Reject obviously invalid IDs at API Gateway level
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef safe fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class repeat danger
+    class validate,bloom,null,blocked,cached safe
 ```
 
 > [!WARNING]
@@ -1544,57 +1525,38 @@ Prevention:
 
 ### 22.1 Connection lifecycle
 
-```
-┌────────────────────────────────────────────────────────────┐
-│              Database Connection Lifecycle                  │
-│                                                            │
-│  App start → Create connection pool (min_idle connections)  │
-│                     │                                      │
-│                     ▼                                      │
-│  Request arrives → Borrow connection from pool             │
-│                     │                                      │
-│            ┌────────┤                                      │
-│            │ Available │ Yes → Execute query               │
-│            │ connection?│       │                           │
-│            └────────┤   │       ▼                          │
-│               No    │   │  Return connection to pool       │
-│               │     │   │                                  │
-│               ▼     │   │                                  │
-│         Pool max    │   │                                  │
-│         reached?    │   │                                  │
-│          │    │     │   │                                  │
-│         Yes   No    │   │                                  │
-│          │    │     │   │                                  │
-│          ▼    ▼     │   │                                  │
-│        WAIT  Create │   │                                  │
-│        (timeout     │   │                                  │
-│         or reject)  │   │                                  │
-└────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    start(["App start"]) --> init["Tạo connection pool<br/>min_idle connections"]
+    init --> request["Request đến<br/>Borrow connection"]
+    request --> available{"Có connection rảnh?"}
+    available -->|Có| query["Execute query"]
+    query --> release["Return connection về pool"]
+    release --> request
+    available -->|Không| max{"Pool đã chạm max?"}
+    max -->|Chưa| create["Tạo connection mới"] --> query
+    max -->|Rồi| wait["Wait → timeout hoặc reject"]
+
+    classDef ok fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    class query,release ok
+    class wait danger
 ```
 
 ### 22.2 Connection starvation patterns
 
-```
-Pattern 1: Slow query consumes connection quá lâu
-  Connection pool: max=20
-  Normal: query 10ms → 1 connection handles 100 queries/sec
-  Slow query: 5 seconds → connection occupied 500x longer
-  → 20 connections × 5s = max 4 queries/sec throughput
-  → Queue builds → timeout → 503
+```mermaid
+flowchart TB
+    pool[("Connection pool<br/>max = 20")]
+    pool --> slow["Slow query 5 s<br/>Connection bận lâu hơn 500×"]
+    slow --> qps["Throughput tối đa 4 query/s"] --> timeout1["Queue → timeout → 503"]
+    pool --> leak["Connection leak<br/>Không close() khi exception"]
+    leak --> decline["Available giảm dần"] --> timeout2["Pool exhausted<br/>Mọi request timeout"]
+    scale["Scale 5 → 20 pods<br/>100 → 400 connections"] --> dbmax["DB max_connections = 200"]
+    dbmax --> refused["Connection refused"] --> loop["Health-check fail<br/>scale-down / scale-up loop"]
 
-Pattern 2: Connection leak
-  Code: conn = pool.getConnection()
-        try { query(conn) } catch (e) { throw e }
-        // BUG: không close() trong catch → connection leak
-  
-  Over time: available connections decrease monotonically
-  → Eventually: pool exhausted → all requests timeout
-
-Pattern 3: Scaling event connection storm
-  5 pods × max_pool=20 = 100 DB connections
-  Auto-scale to 20 pods × max_pool=20 = 400 DB connections
-  → DB max_connections=200 → CONNECTION REFUSED for new pods
-  → New pods fail health check → scale-down → scale-up loop
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    class timeout1,timeout2,refused,loop danger
 ```
 
 **Metrics:**
@@ -1618,47 +1580,42 @@ hikaricp_connections_timeout_total > 0   → Connection starvation
 
 ### 23.1 Slow query anatomy
 
-```
-Query execution flow:
-  SQL text → Parser → Optimizer → Execution Plan → Storage Engine → Result
-                          │
-                    ┌─────┴─────┐
-                    │ Optimizer │
-                    │ decides:  │
-                    │ • Index?  │ ← Wrong index → full table scan
-                    │ • Join?   │ ← Nested loop vs hash join
-                    │ • Sort?   │ ← In-memory vs disk sort
-                    └───────────┘
+```mermaid
+flowchart LR
+    sql["SQL text"] --> parser["Parser"] --> optimizer["Optimizer"]
+    optimizer --> plan["Execution plan"] --> storage["Storage engine"] --> result["Result"]
+    optimizer --> index{"Access path?"}
+    optimizer --> join{"Join strategy?"}
+    optimizer --> sort{"Sort strategy?"}
+    index -->|Sai / thiếu index| full["Full table scan · O(n)<br/>1M × 1 KB ≈ 1 GB · vài giây"]
+    index -->|B-tree index| indexed["Index scan · O(log n)<br/>khoảng 20 disk reads · milliseconds"]
+    join --> joins["Nested loop / hash join"]
+    sort --> sorts["In-memory / disk sort"]
 
-Full table scan: O(n) — đọc mọi row
-  1M rows × 1KB = 1GB data read = ~seconds
-
-Index scan: O(log n) — đọc qua B-tree index
-  1M rows → ~20 levels → ~20 disk reads = ~milliseconds
-
-→ Thiếu index biến query 5ms thành 5 giây (1000x chậm hơn)
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    classDef ok fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class full danger
+    class indexed ok
 ```
 
 ### 23.2 Lock contention
 
-```
-Deadlock scenario:
-
-  Transaction A:                Transaction B:
-  BEGIN                         BEGIN
-  UPDATE accounts SET           UPDATE orders SET
-    balance=100                   status='shipped'
-    WHERE id=1                    WHERE id=99
-    (locks row id=1)              (locks row id=99)
-        │                              │
-        ▼                              ▼
-  UPDATE orders SET             UPDATE accounts SET
-    status='paid'                 balance=200
-    WHERE id=99                   WHERE id=1
-    (wants lock on id=99)         (wants lock on id=1)
-    → BLOCKED (B holds it)        → BLOCKED (A holds it)
-    
-  → DEADLOCK! DB detects → kills one transaction → retry
+```mermaid
+sequenceDiagram
+    participant A as Transaction A
+    participant DB as Database lock manager
+    participant B as Transaction B
+    A->>DB: BEGIN · UPDATE accounts id=1
+    DB-->>A: Lock account row 1
+    B->>DB: BEGIN · UPDATE orders id=99
+    DB-->>B: Lock order row 99
+    A->>DB: UPDATE orders id=99
+    DB--xA: BLOCKED · B giữ lock
+    B->>DB: UPDATE accounts id=1
+    DB--xB: BLOCKED · A giữ lock
+    Note over A,B: DEADLOCK cycle
+    DB-->>B: Kill một transaction
+    B->>DB: Retry với lock order nhất quán
 ```
 
 **Metrics cho query performance:**
@@ -1679,53 +1636,41 @@ Deadlock scenario:
 
 ### 24.1 Async replication lag
 
-```
-Primary-Replica Replication:
-
-  Primary DB ────── WAL/Binlog ────► Replica DB
-  (writes here)     (async ship)      (reads here)
-       │                                   │
-       │  Write: UPDATE user SET name='B'  │
-       │  Commit at T=100ms                │
-       │                                   │
-       │              shipping delay       │
-       │              + apply delay        │
-       │                                   │
-       │                    Applied at T=350ms
-       │                                   │
-       │  Replication lag = 250ms          │
-       │                                   │
-  Client writes      Client reads from     │
-  to primary         replica immediately:  │
-       │              → Gets OLD value!     │
-       │              → "Read-after-write   │
-       │                 inconsistency"     │
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant P as Primary DB
+    participant R as Replica DB
+    C->>P: UPDATE user SET name = B
+    P-->>C: Commit · T = 100 ms
+    C->>R: Read ngay sau write
+    R-->>C: Giá trị CŨ
+    Note over C,R: Read-after-write inconsistency
+    P-->>R: WAL / Binlog · async ship + apply
+    Note right of R: Applied · T = 350 ms<br/>Replication lag = 250 ms
+    C->>R: Read lại
+    R-->>C: Giá trị MỚI
 ```
 
 ### 24.2 Replication lag impact trên AIOps
 
-```
-Scenario: E-commerce checkout
+```mermaid
+flowchart LR
+    order["User đặt order"] --> primary["Primary<br/>order_status = created"]
+    primary -. "Replication lag 500 ms" .-> replica[("Replica")]
+    payment["Payment service"] -->|Read ngay| replica
+    replica -->|Chưa apply| missing["Order not found"]
+    missing --> alert["Error spike alert"]
+    missing -->|Retry sau 1 giây| success["Order found · success"]
+    root["<b>Root cause</b><br/>Replication lag<br/>không phải app bug"] -.-> missing
 
-  1. User places order → write to Primary: order_status = "created"
-  2. Payment service reads from Replica: SELECT order WHERE id=123
-  3. Replica lag = 500ms → order not found yet → "Order not found" error!
-  4. Retry 1 second later → order found → success
-  
-  Kết quả: Intermittent "order not found" errors
-  → Anomaly detector flags as error spike
-  → Nhưng root cause là replication lag, không phải application bug
-
-Metrics:
-  PostgreSQL: pg_stat_replication.replay_lag
-  MySQL: Seconds_Behind_Master
-  
-  Ngưỡng:
-  < 100ms:  Acceptable for most reads
-  100ms-1s: Careful with read-after-write patterns
-  > 1s:     Risk of data inconsistency, investigate immediately
-  > 10s:    Critical — replica may be broken
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef ok fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class missing,alert danger
+    class success ok
 ```
+
+Ngưỡng vận hành: `< 100 ms` thường chấp nhận được; `100 ms–1 s` cần thận trọng với read-after-write; `> 1 s` cần điều tra ngay; `> 10 s` là mức critical. Theo dõi `pg_stat_replication.replay_lag` (PostgreSQL) hoặc `Seconds_Behind_Master` (MySQL).
 
 ---
 
@@ -1733,31 +1678,18 @@ Metrics:
 
 ### 25.1 Ba chiều của storage performance
 
-```
-Storage performance có 3 dimensions KHÔNG thay thế nhau:
+```mermaid
+flowchart TB
+    perf(["Storage performance"])
+    perf --> iops["<b>IOPS</b><br/>Operations / giây<br/>Random read · KV lookup<br/>Index · metadata"]
+    perf --> throughput["<b>Throughput</b><br/>MB / giây<br/>Sequential I/O · backup<br/>Log shipping · analytics scan"]
+    perf --> latency["<b>Latency</b><br/>Thời gian / operation<br/>Commit · cache miss<br/>User-facing query"]
+    iops --> relation["Latency ≈ f(IOPS, queue depth, device capability)"]
+    throughput --> relation
+    latency --> relation
 
-  ┌───────────────────────────────────────────────────────────┐
-  │                                                           │
-  │  IOPS (I/O Operations Per Second)                         │
-  │  = Số operations có thể thực hiện mỗi giây                │
-  │  → Quan trọng cho: random reads, key-value lookups,       │
-  │    database index access, metadata operations             │
-  │                                                           │
-  │  Throughput (MB/s)                                        │
-  │  = Lượng data truyền mỗi giây                             │
-  │  → Quan trọng cho: sequential reads/writes, backup,       │
-  │    log shipping, data loading, analytics scan              │
-  │                                                           │
-  │  Latency (ms hoặc μs)                                     │
-  │  = Thời gian hoàn thành 1 operation                       │
-  │  → Quan trọng cho: transaction commit, cache miss,        │
-  │    user-facing query response time                        │
-  │                                                           │
-  └───────────────────────────────────────────────────────────┘
-
-Quan hệ: Latency ≈ f(IOPS, queue_depth, device_capability)
-  Queue depth 1: latency ≈ 1/IOPS
-  Queue depth N: latency tăng khi queue tăng (queuing theory)
+    classDef dimension fill:#eef2ff,stroke:#6366f1,color:#312e81
+    class iops,throughput,latency dimension
 ```
 
 ### 25.2 AWS EBS storage tiers
@@ -1771,28 +1703,21 @@ Quan hệ: Latency ≈ f(IOPS, queue_depth, device_capability)
 
 ### 25.3 I/O Saturation detection
 
-```
-I/O Wait và Queue Depth:
+```mermaid
+flowchart LR
+    low["0–80% utilization<br/>Vùng gần tuyến tính"] --> threshold{"Vượt khoảng 80%?"}
+    threshold -->|Không| stable["Queue depth ổn định<br/>Latency kiểm soát được"]
+    threshold -->|Có| queue["Queue depth tăng nhanh"]
+    queue --> latency["I/O latency bùng nổ"]
+    latency --> app["Application latency tăng phi tuyến<br/><b>Hockey-stick effect</b>"]
+    example["Capacity 3.000 IOPS<br/>Demand 2.500 IOPS = 83%"] --> threshold
 
-Device capacity: 3000 IOPS
-Current demand: 2500 IOPS → utilization 83% → OK
-
-  │ Latency
-  │           ╱── Saturation!
-  │          ╱    Queue builds up
-  │         ╱     Latency explodes
-  │        ╱
-  │      ╱
-  │    ╱
-  │──╱────────────────── Linear region
-  │╱
-  └────────────────────── IOPS
-  0%          80%   100%
-
-Khi utilization > ~80%:
-  Queue depth tăng → latency tăng exponentially (queuing theory)
-  → "Hockey stick" effect
-  → Application latency tăng nhanh hơn nhiều so với tuyến tính
+    classDef ok fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef warning fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    class stable ok
+    class threshold,queue warning
+    class latency,app danger
 ```
 
 **Metrics:**
@@ -1828,63 +1753,49 @@ rate(node_disk_read_time_seconds_total[5m])
 
 ### 26.1 Context Propagation — cơ chế nối trace
 
-```
-                      TraceID: abc-123 (shared across all spans)
-                      
-Service A (Frontend)
-  Span: "GET /checkout"
-  TraceID: abc-123
-  SpanID: span-001
-  ParentSpanID: none
-  │
-  ├── HTTP Header propagation:
-  │   traceparent: 00-abc123-span001-01
-  │   (W3C Trace Context standard)
-  │
-  ▼
-Service B (Order Service)
-  Span: "CreateOrder"
-  TraceID: abc-123        ← SAME trace ID
-  SpanID: span-002
-  ParentSpanID: span-001  ← Parent = A's span
-  │
-  ├── gRPC metadata propagation
-  │
-  ▼
-Service C (Payment Service)
-  Span: "ProcessPayment"
-  TraceID: abc-123        ← SAME trace ID
-  SpanID: span-003
-  ParentSpanID: span-002  ← Parent = B's span
-  │
-  ▼
-Service D (Database)
-  Span: "INSERT payment"
-  TraceID: abc-123
-  SpanID: span-004
-  ParentSpanID: span-003
+```mermaid
+flowchart LR
+    a["<b>Frontend</b><br/>GET /checkout<br/>Trace abc-123 · Span 001<br/>Parent: none"]
+    b["<b>Order Service</b><br/>CreateOrder<br/>Trace abc-123 · Span 002<br/>Parent: span-001"]
+    c["<b>Payment Service</b><br/>ProcessPayment<br/>Trace abc-123 · Span 003<br/>Parent: span-002"]
+    d[("<b>Database</b><br/>INSERT payment<br/>Trace abc-123 · Span 004<br/>Parent: span-003")]
+    a -->|W3C traceparent header| b
+    b -->|gRPC metadata| c
+    c -->|Context propagation| d
+
+    trace["TraceID abc-123<br/>được giữ xuyên suốt"] -.-> a
+    trace -.-> b
+    trace -.-> c
+    trace -.-> d
+
+    classDef span fill:#eef2ff,stroke:#6366f1,color:#312e81
+    class a,b,c,d span
 ```
 
 ### 26.2 Span relationships và Critical Path Analysis
 
-```
-Waterfall view (trace visualization):
+```mermaid
+flowchart LR
+    a["Service A<br/>GET /checkout · 450 ms"]
+    b["Service B<br/>CreateOrder · 200 ms"]
+    insert["DB INSERT<br/>15 ms"]
+    kafka["Kafka publish<br/>5 ms"]
+    c["Service C<br/>ProcessPayment · 380 ms"]
+    fraud["FraudCheck<br/>50 ms"]
+    charge["ChargeCard<br/>300 ms"]
+    stripe["Stripe API<br/>280 ms"]
+    update["DB UPDATE<br/>20 ms"]
+    a --> b
+    b --> insert
+    b --> kafka
+    a ==> c
+    c --> fraud
+    c ==> charge ==> stripe
+    c --> update
 
-|-- Service A: GET /checkout (450ms total) ──────────────────────|
-    |-- Service B: CreateOrder (200ms) ─────────|
-        |-- DB: INSERT order (15ms) ─|
-        |-- Kafka: publish event (5ms)|
-    |-- Service C: ProcessPayment (380ms) ─────────────────────|
-        |-- Service D: FraudCheck (50ms) ──|
-        |-- Service E: ChargeCard (300ms) ─────────────────|
-            |-- External API: stripe (280ms) ─────────────|
-        |-- DB: UPDATE payment (20ms) ─|
-
-Critical Path (longest dependency chain):
-A → C → E → Stripe API = 380ms out of 450ms total
-
-→ Optimizing DB INSERT in Service B (15ms) sẽ KHÔNG giúp
-→ Phải optimize Stripe API call hoặc parallelize C & B
+    critical["<b>Critical path: 380 / 450 ms</b><br/>A → C → ChargeCard → Stripe"] -.-> stripe
+    classDef criticalPath fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    class a,c,charge,stripe,critical criticalPath
 ```
 
 > [!TIP]
@@ -1892,32 +1803,21 @@ A → C → E → Stripe API = 380ms out of 450ms total
 
 ### 26.3 Trace sampling challenges
 
-```
-Sampling strategies:
+```mermaid
+flowchart LR
+    trace(["Trace bắt đầu"]) --> choice{"Sampling ở đâu?"}
+    choice -->|Entry point| head["<b>Head-based</b><br/>Đơn giản · consistent<br/>Sample bình thường 1%"]
+    head --> miss["Có thể miss rare errors<br/>Thiếu evidence cho RCA"]
+    choice -->|Sau khi trace hoàn tất| tail["<b>Tail-based</b><br/>Buffer toàn bộ spans<br/>Tốn memory / collector capacity"]
+    tail --> rules{"error=true<br/>latency &gt; P99<br/>status ≥ 500?"}
+    rules -->|Có| keepAll["Keep 100%"]
+    rules -->|Không| keepSample["Keep khoảng 1%"]
+    keepAll --> evidence["Luôn có failure trace cho RCA"]
 
-Head-based sampling (quyết định ở entry point):
-  ✓ Đơn giản, consistent
-  ✗ Miss rare errors (nếu sample 1%, chỉ thấy 1% errors)
-  
-Tail-based sampling (quyết định sau khi trace complete):
-  ✓ Keep 100% error/slow traces
-  ✓ Sample bình thường traces
-  ✗ Phải buffer toàn bộ spans tạm thời
-  ✗ Phức tạp, tốn memory (OpenTelemetry Collector cần buffer)
-  
-Ví dụ tail-based rules:
-  - error=true → keep 100%
-  - latency > P99 → keep 100%
-  - status_code >= 500 → keep 100%
-  - bình thường → keep 1%
-  
-AIOps implication:
-  Head sampling 1% → anomaly detector có thể miss
-  error chỉ ảnh hưởng 0.1% requests → expect ~1 trace per 1000 errors
-  → Thiếu evidence → RCA sai hoặc không confident
-  
-  Tail sampling 100% errors → RCA luôn có trace cho mọi failure
-  → Chi phí: buffer memory, collector scaling
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef ok fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class miss danger
+    class keepAll,evidence ok
 ```
 
 ---
@@ -1926,94 +1826,64 @@ AIOps implication:
 
 ### 27.1 Cascading failure mechanics
 
-```
-Cascade chain typical:
+```mermaid
+flowchart TB
+    db["1 · DB chậm<br/>Disk I/O saturation"] --> cpool["2 · Query Service C chậm<br/>Connection pool đầy"]
+    cpool --> cslow["3 · C trả lời B chậm"]
+    cslow --> bpool["4 · Thread pool B exhausted"]
+    bpool --> retry["5 · A timeout → retry<br/>Load bị khuếch đại"]
+    retry --> bcrash["6 · B overload → crash / restart"]
+    bcrash --> reroute["7 · A dồn traffic vào B còn lại"]
+    reroute --> outage["8 · Các B còn lại crash<br/>Full outage"]
+    outage --> impact["9 · Service A fail<br/>User impact"]
 
-  Step 1: DB slow (disk I/O saturation)
-     │
-     ▼
-  Step 2: Service C queries slow → connection pool filling up
-     │     (connections held longer → fewer available)
-     ▼
-  Step 3: Service C responds slow to Service B
-     │     (B's threads blocked waiting for C)
-     ▼
-  Step 4: Service B's thread pool exhausted
-     │     (no threads for new requests from A)
-     ▼
-  Step 5: Service A timeout waiting for B → retry
-     │     (retry amplifies load → B gets MORE requests)
-     ▼
-  Step 6: Service B overloaded → crash/restart
-     │
-     ▼
-  Step 7: Service A routes to remaining B instances
-     │     (fewer instances, same load → each gets MORE)
-     ▼
-  Step 8: Remaining B instances crash → full outage
-     │
-     ▼
-  Step 9: Service A also fails → user impact
+    classDef origin fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    class db origin
+    class retry,bcrash,reroute,outage,impact danger
 ```
 
 ### 27.2 Retry Storm
 
-```
-Normal: 100 requests/sec to downstream
+```mermaid
+flowchart LR
+    base["Baseline<br/>100 req/s"] --> r1["30% lỗi<br/>+30 retry = 130"]
+    r1 --> r2["40% lỗi<br/>+52 retry = 182"]
+    r2 --> r3["50% lỗi<br/>+91 retry = 273"]
+    r3 --> r4["70% lỗi<br/>+191 retry = 464"]
+    r4 --> failure["Downstream overwhelmed<br/>100% failure"]
 
-Downstream partially fails (30% errors):
-  100 original + 30 retries (1st attempt) = 130 requests
-  → downstream error rate increases to 40%
-  130 original + 52 retries = 182 requests
-  → error rate 50%
-  182 + 91 retries = 273 requests
-  → error rate 70%
-  273 + 191 = 464 requests
-  → downstream completely overwhelmed → 100% failure!
+    budget["Retry budget ≤ 20%"] --> mitigation["Chặn runaway amplification"]
+    backoff["Exponential backoff + jitter"] --> mitigation
+    breaker["Circuit breaker"] --> mitigation
+    deadline["Deadline propagation"] --> mitigation
 
-Timeline:
-  Requests ▲
-           │        ╱── Runaway amplification!
-           │      ╱
-           │    ╱ 
-   464 ────│──╱─────── Complete failure
-           │╱
-   273 ────│──────────
-           │
-   182 ────│──────────  
-           │
-   100 ────│────────── Original baseline
-           └──────────────────────► Time (seconds)
-
-Mitigation:
-  1. Retry budget: max 20% extra traffic (100 base + 20 retries max)
-  2. Exponential backoff with jitter: 100ms → 200ms → 400ms ± random
-  3. Circuit breaker: stop retrying after N consecutive failures
-  4. Deadline propagation: if original timeout almost reached, don't retry
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    classDef safe fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class r2,r3,r4,failure danger
+    class budget,backoff,breaker,deadline,mitigation safe
 ```
 
 ### 27.3 Thundering Herd
 
-```
-Scenario: Cache server restart / cold cache + high traffic
+```mermaid
+flowchart LR
+    restart["Cache restart<br/>Mất toàn bộ data"] --> miss["10.000 concurrent cache MISS"]
+    miss --> db["DB: 500 → 10.000 query/s"]
+    db --> timeout["Slow query → timeout"]
+    timeout --> retry["Retry → 20.000 requests"]
+    retry --> crash["Database crash"]
 
-  1. Cache restart: ALL data lost
-  2. 10,000 concurrent requests → ALL cache miss
-  3. ALL 10,000 hit database simultaneously
-  4. Database: normal load 500 queries/sec → suddenly 10,000
-  5. Database overloaded → slow queries → timeouts
-  6. Timeouts → retries → 20,000 requests → DB crash
+    rolling["Staggered restart"] --> protection["Phòng ngừa thundering herd"]
+    warm["Cache warming"] --> protection
+    single["Single-flight<br/>10.000 request → 1 query"] --> protection
+    limit["Rate limit miss path"] --> protection
+    breaker["DB circuit breaker"] --> protection
 
-  Similar: DNS TTL expire + popular domain
-  Similar: New deployment + all pods cold start simultaneously
-
-Prevention:
-  1. Staggered restarts (rolling, not all-at-once)
-  2. Cache warming before traffic shift
-  3. Request coalescing (singleflight pattern):
-     10,000 requests for key "X" → 1 DB query → share result
-  4. Rate limiting on cache miss path
-  5. Circuit breaker on database
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    classDef safe fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class miss,db,timeout,retry,crash danger
+    class rolling,warm,single,limit,breaker,protection safe
 ```
 
 > [!WARNING]
@@ -2025,22 +1895,26 @@ Prevention:
 
 ### 28.1 Gray failure — loại lỗi khó detect nhất
 
-```
-Black failure (dễ detect):
-  Service hoàn toàn down → connection refused → health check fail
-  → Detector thấy ngay, load balancer remove, traffic re-route
+```mermaid
+flowchart LR
+    subgraph black["Black failure · dễ phát hiện"]
+        direction LR
+        down["Service down hoàn toàn"] --> refused["Connection refused"]
+        refused --> health["Health check fail"] --> reroute["LB remove + reroute"]
+    end
+    subgraph gray["Gray failure · khó phát hiện"]
+        direction LR
+        degraded["Service vẫn up<br/>5% timeout · sai data 200<br/>P99 tăng 10× · P50 bình thường<br/>chỉ một region / tenant"]
+        degraded --> pass["Health check vẫn pass"]
+        pass --> routed["LB tiếp tục route"]
+        routed --> silent["Overall metric bình thường<br/>Subset users chịu ảnh hưởng"]
+    end
+    health ~~~ pass
 
-Gray failure (khó detect):
-  Service "hoạt động" nhưng degraded:
-  - 5% requests timeout (95% OK)
-  - Trả kết quả sai nhưng status 200
-  - Latency P99 tăng 10x nhưng P50 bình thường
-  - Chỉ fail cho 1 region/tenant
-  - Health check pass (checks / endpoint, not business logic)
-  
-  → Load balancer vẫn route traffic
-  → Simple threshold alert không fire (overall error < 1%)
-  → Chỉ subset users bị ảnh hưởng → escalation chậm
+    classDef clear fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef hidden fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    class down,refused,health clear
+    class degraded,pass,routed,silent hidden
 ```
 
 ### 28.2 Differential observability cho gray failures
@@ -2069,56 +1943,45 @@ Gray failure (khó detect):
 
 ### 29.1 GPU architecture cho operations engineers
 
-```
-NVIDIA GPU Architecture (simplified):
+```mermaid
+flowchart TB
+    host["Host CPU / RAM"] -->|PCIe Gen5 · 128 GB/s| gpu
+    subgraph gpu["NVIDIA GPU · A100 / H100 / H200"]
+        direction TB
+        subgraph sm["Streaming Multiprocessors · H100: 108 SM"]
+            cores["CUDA / Tensor cores<br/>khoảng 128 cores mỗi SM"]
+            cache["Shared memory + L1<br/>228 KB mỗi SM"]
+            cores <--> cache
+        end
+        hbm[("HBM3 VRAM<br/>H100: 80 GB · 3,35 TB/s<br/>H200: 141 GB · 4,8 TB/s")]
+        link["NVLink / NVSwitch<br/>GPU ↔ GPU · 900 GB/s"]
+        sm <--> hbm
+        sm <--> link
+    end
+    link -->|Nhanh hơn PCIe| peer["Peer GPU"]
 
-┌────────────────────────────────────────────────────────┐
-│  GPU (e.g., A100/H100/H200)                           │
-│                                                        │
-│  ┌──── Streaming Multiprocessor (SM) ────┐            │
-│  │  ┌────┐ ┌────┐ ┌────┐ ┌────┐        │            │
-│  │  │Core│ │Core│ │Core│ │Core│ ...×128 │ ×108 SMs   │
-│  │  └────┘ └────┘ └────┘ └────┘        │ (H100)     │
-│  │  ┌─────────────────────────┐        │            │
-│  │  │ Shared Memory / L1 cache│ 228KB  │            │
-│  │  └─────────────────────────┘        │            │
-│  └───────────────────────────────────────┘            │
-│                                                        │
-│  ┌─────────────────────────────────────┐              │
-│  │  HBM3 Memory (GPU VRAM)             │              │
-│  │  H100: 80GB, bandwidth 3.35 TB/s    │              │
-│  │  H200: 141GB, bandwidth 4.8 TB/s    │              │
-│  └─────────────────────────────────────┘              │
-│                                                        │
-│  ┌─────────────────────────────────────┐              │
-│  │  NVLink / NVSwitch                  │              │
-│  │  GPU-to-GPU: 900 GB/s (H100)       │              │
-│  └─────────────────────────────────────┘              │
-│                                                        │
-│  Host connection: PCIe Gen5 (128 GB/s) << NVLink      │
-└────────────────────────────────────────────────────────┘
+    classDef compute fill:#eef2ff,stroke:#6366f1,color:#312e81
+    classDef memory fill:#ecfeff,stroke:#0891b2,color:#164e63
+    class cores,cache compute
+    class hbm,link memory
 ```
 
 ### 29.2 GPU utilization — không giống CPU utilization
 
-```
-GPU "utilization" metric (nvidia-smi):
-  GPU-Util = % thời gian ít nhất 1 kernel đang chạy trên GPU
-  
-  NHƯNG:
-  GPU-Util = 100% KHÔNG nghĩa GPU đang được tận dụng hết!
-  → 1 kernel nhỏ chạy trên 1 SM = 100% utilization
-  → 107 SM còn lại idle!
+```mermaid
+flowchart LR
+    util["nvidia-smi GPU-Util = 100%"] --> meaning["Chỉ có nghĩa:<br/>ít nhất 1 kernel đang chạy"]
+    meaning --> trap["Có thể chỉ 1 SM bận<br/>107 SM còn lại idle"]
+    trap --> better["Cần đọc thêm metrics"]
+    better --> occupancy["SM occupancy<br/>Active warps / maximum"]
+    better --> bandwidth["Memory bandwidth<br/>Actual / peak"]
+    better --> tensor["Tensor Core utilization"]
+    bandwidth --> llm["LLM inference thường memory-bound<br/>Compute thấp nhưng throughput đã max"]
 
-Metrics đúng hơn:
-  SM Occupancy = % warps active / max warps per SM
-  Memory bandwidth utilization = actual / peak
-  Tensor Core utilization = % time tensor cores active
-  
-Cho LLM inference:
-  Memory bandwidth thường là bottleneck, KHÔNG phải compute
-  → "Memory-bound" workload
-  → GPU compute utilization thấp nhưng performance đã max
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef metric fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class trap danger
+    class occupancy,bandwidth,tensor metric
 ```
 
 ### 29.3 GPU monitoring metrics cho AIOps
@@ -2138,33 +2001,21 @@ Cho LLM inference:
 
 ### 29.4 Multi-GPU scheduling trong Kubernetes
 
-```
-GPU sharing strategies:
+```mermaid
+flowchart TB
+    gpu(["Một GPU vật lý"]) --> exclusive["<b>Exclusive</b><br/>1 GPU / Pod<br/>Isolation tốt · có thể lãng phí"]
+    gpu --> mig["<b>MIG</b><br/>Tối đa 7 instances<br/>Hard isolation · không resize runtime"]
+    gpu --> mps["<b>MPS</b><br/>Nhiều process dùng chung<br/>Linh hoạt · failure có thể lan"]
+    gpu --> slicing["<b>Time-slicing</b><br/>Context switch khoảng 1 ms<br/>Không memory isolation · OOM risk"]
+    mig --> attribution["Metrics theo đúng partition / process"]
+    mps --> attribution
+    slicing --> attribution
+    attribution --> aiops["DCGM per-instance monitoring<br/>Baseline phải hiểu sharing mode"]
 
-1. Exclusive (1 GPU per pod):
-   resources:
-     limits:
-       nvidia.com/gpu: 1
-   → Đơn giản, isolation tốt, nhưng lãng phí GPU cho workload nhỏ
-
-2. MIG (Multi-Instance GPU) — H100/A100:
-   Chia 1 GPU thành 7 independent instances
-   → Hard isolation (separate memory, SMs)
-   → Không thể resize runtime
-   
-3. MPS (Multi-Process Service):
-   Multiple processes share 1 GPU
-   → Flexible, nhưng 1 process crash có thể ảnh hưởng others
-   
-4. Time-slicing:
-   GPU context switch giữa pods
-   → No memory isolation → OOM nếu tổng vượt VRAM
-   → Context switch overhead ~1ms
-
-AIOps challenge:
-  Với MIG/MPS, metrics phải attribute đúng từng GPU partition
-  DCGM exporter cần config per-instance monitoring
-  Anomaly detection phải hiểu sharing mode để set baseline đúng
+    classDef safe fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef warn fill:#fef3c7,stroke:#d97706,color:#78350f
+    class exclusive,mig safe
+    class mps,slicing warn
 ```
 
 ---
@@ -2173,71 +2024,36 @@ AIOps challenge:
 
 ### 30.1 Inference pipeline
 
-```
-LLM Inference có 2 phases:
+```mermaid
+flowchart LR
+    prompt["Prompt tokens"] --> prefill["<b>1 · PREFILL</b><br/>Xử lý mọi token song song<br/>Tạo KV cache<br/>Compute-bound · GPU cao<br/>Metric: TTFT"]
+    prefill --> first["First token<br/>TTFT ≈ 100 ms"]
+    first --> decode["<b>2 · DECODE</b><br/>Sinh từng token tuần tự<br/>Đọc KV cache<br/>Memory-bandwidth-bound<br/>Metrics: TPOT · TPS"]
+    decode --> output["200 output tokens<br/>TPOT ≈ 20 ms/token"]
+    output --> total["Total latency<br/>TTFT + tokens × TPOT<br/>100 ms + 200 × 20 ms = 4,1 s"]
 
-Phase 1: PREFILL (Prompt Processing)
-  Input: "Translate this to French: Hello world"
-  → Tokenize → Process ALL tokens in parallel
-  → Compute KV Cache for each token
-  → Output: first token prediction + KV Cache stored
-  
-  Characteristics:
-  - Compute-bound (matrix multiplication)
-  - High GPU utilization
-  - Latency depends on prompt length
-  - Metric: TTFT (Time To First Token)
-
-Phase 2: DECODE (Token Generation)  
-  → Generate 1 token at a time (autoregressive)
-  → Each new token attends to ALL previous tokens via KV Cache
-  → Repeat until EOS or max_tokens
-  
-  Characteristics:
-  - Memory-bandwidth-bound (reading KV cache from VRAM)
-  - Low GPU compute utilization (small batch per step)
-  - Latency per token relatively constant
-  - Metric: TPOT (Time Per Output Token), TPS (Tokens Per Second)
-
-┌──────────────┐    ┌──────────────────────────────────┐
-│   PREFILL    │    │           DECODE                  │
-│  ████████    │    │  █ █ █ █ █ █ █ █ █ █ █ █ █      │
-│  (parallel)  │    │  (sequential, 1 token at a time) │
-│  Compute-    │    │  Memory-bandwidth-bound           │
-│  bound       │    │                                   │
-│  TTFT:100ms  │    │  TPOT: 20ms/token                │
-└──────────────┘    └──────────────────────────────────┘
-                    
-Total latency = TTFT + (num_output_tokens × TPOT)
-Example: 100ms + (200 tokens × 20ms) = 4.1 seconds
+    classDef compute fill:#eef2ff,stroke:#6366f1,color:#312e81
+    classDef memory fill:#ecfeff,stroke:#0891b2,color:#164e63
+    class prefill,first compute
+    class decode,output memory
 ```
 
 ### 30.2 KV Cache — memory killer
 
-```
-KV Cache size per request:
+```mermaid
+flowchart LR
+    formula["KV cache = 2 × layers × hidden dim<br/>× context length × precision bytes"]
+    formula --> request["Llama 3.1 70B · FP16<br/>80 × 8.192 × 4.096<br/><b>10,7 GB / request</b>"]
+    request --> concurrent["32 concurrent requests<br/><b>342 GB KV cache</b>"]
+    weights["Model weights<br/>140 GB"] --> total["Tổng VRAM ≈ 482 GB<br/>Cần nhiều GPU"]
+    concurrent --> total
+    dynamic["KV cache động<br/>Tăng theo context · riêng mỗi request"] --> paged["PagedAttention · vLLM<br/>Allocate theo page<br/>Giảm fragmentation · share prefix"]
+    paged --> gain["Throughput cao hơn 2–4×"]
 
-KV Cache = 2 × num_layers × hidden_dim × context_length × precision_bytes
-
-Example (Llama 3.1 70B, FP16):
-  = 2 × 80 layers × 8192 dim × 4096 context × 2 bytes
-  = 10.7 GB per request!
-
-With 32 concurrent requests:
-  = 10.7 × 32 = 342 GB KV Cache alone
-  + 140 GB model weights
-  = 482 GB total VRAM needed → multiple GPUs!
-
-KV Cache is DYNAMIC:
-  - Grows as context grows (more input + output tokens)
-  - Must be allocated per-request
-  - Freed when request completes
-  
-Memory management strategies:
-  PagedAttention (vLLM): Allocate KV cache in pages (like OS virtual memory)
-    → Eliminates fragmentation
-    → Allows sharing prefix KV cache between requests
-    → Improves throughput 2-4x vs naive allocation
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    classDef safe fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class total danger
+    class paged,gain safe
 ```
 
 ### 30.3 LLM inference metrics cho AIOps
@@ -2257,27 +2073,24 @@ Memory management strategies:
 
 ### 30.4 Inference optimization — Continuous batching
 
-```
-Static Batching (naive):
-  Wait for batch_size requests → process together → return all
-  Problem: fast requests wait for slow ones (padding waste)
-  
-  Batch: [req1(10 tokens), req2(100 tokens), req3(50 tokens)]
-  → ALL wait until req2 (longest) finishes
-  → req1 waited 90 extra tokens of time → wasted GPU cycles
+```mermaid
+flowchart LR
+    subgraph static["Static batching"]
+        direction TB
+        sb["req1: 10 · req2: 100 · req3: 50 tokens"] --> wait["Cả batch chờ req2<br/>Padding waste · GPU cycles lãng phí"]
+    end
+    subgraph continuous["Continuous batching · vLLM / TRT-LLM"]
+        direction TB
+        i1["Iteration 1<br/>req1 · req2 · req3"] -->|req1 xong; thêm req4| i2["Iteration 2<br/>req2 · req3 · req4"]
+        i2 -->|req3 xong; thêm request mới| i3["Iteration 3<br/>req2 · req4 · req5"]
+        i3 --> gain["Không padding waste<br/>Throughput 2–4× · TTFT thấp hơn"]
+    end
+    wait ~~~ gain
 
-Continuous Batching (vLLM, TRT-LLM):
-  - Process each iteration: all active requests
-  - When req1 finishes → immediately add req4 to batch
-  - No padding waste → GPU always maximally utilized
-  
-  Iteration 1: [req1, req2, req3] → req1 done, remove
-  Iteration 2: [req2, req3, req4] → req4 just joined!
-  Iteration 3: [req2, req3, req4] → req3 done, remove
-  ...
-  
-  → 2-4x higher throughput than static batching
-  → Lower TTFT for new requests (join immediately)
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef safe fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class wait danger
+    class i1,i2,i3,gain safe
 ```
 
 > [!IMPORTANT]
@@ -2289,19 +2102,28 @@ Continuous Batching (vLLM, TRT-LLM):
 
 ### 31.1 Vector search internals
 
-```
-Vector Database flow (RAG use case):
+```mermaid
+flowchart LR
+    subgraph indexing["Indexing · offline"]
+        direction LR
+        docs["Documents"] --> embed1["Embedding model"]
+        embed1 --> vectors["Vectors<br/>768–3.072 dimensions"]
+        vectors --> index[("Vector index<br/>HNSW · IVF · Flat")]
+    end
+    subgraph querying["Querying · online"]
+        direction LR
+        query["User query"] --> embed2["Embedding model"]
+        embed2 --> qvector["Query vector"]
+        qvector --> knn["K-NN search"]
+        knn --> topk["Top-K documents + scores"]
+        topk --> llm["LLM context"] --> answer["Generated answer"]
+    end
+    index --> knn
 
-  1. INDEXING (offline):
-     Document → Embedding Model → Vector [0.12, -0.45, ..., 0.88]
-                                   (768–3072 dimensions)
-     → Store in vector index (HNSW, IVF, etc.)
-
-  2. QUERYING (online):
-     User query → Embedding Model → Query Vector
-     → Search index for K nearest neighbors (K-NN)
-     → Return top-K similar documents + scores
-     → Feed to LLM as context → Generate answer
+    classDef offline fill:#eef2ff,stroke:#6366f1,color:#312e81
+    classDef online fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class docs,embed1,vectors,index offline
+    class query,embed2,qvector,knn,topk,llm,answer online
 ```
 
 ### 31.2 Index types và trade-offs
@@ -2328,31 +2150,18 @@ Vector Database flow (RAG use case):
 
 ### 31.4 RAG pipeline bottlenecks
 
-```
-RAG Pipeline stages:
+```mermaid
+flowchart LR
+    query["User query"] --> embedding["Embedding<br/>5–20 ms<br/><small>GPU contention · batching</small>"]
+    embedding --> search["Vector search<br/>10–50 ms<br/><small>Cold segments · dimensions</small>"]
+    search --> rerank["Reranking<br/>50–200 ms<br/><small>Cross-encoder · O(N)</small>"]
+    rerank --> llm["LLM inference<br/>100 ms–5 s<br/><small>Context size · prefill · TTFT</small>"]
+    llm --> total["End-to-end<br/>5 + 30 + 100 + 2.000<br/><b>≈ 2.135 ms</b>"]
 
-User Query → [Embedding] → [Vector Search] → [Reranking] → [LLM]
-               5-20ms        10-50ms          50-200ms     100ms-5s
-               
-Typical bottlenecks:
-1. Embedding model: 
-   Batching helps, but GPU memory shared with LLM
-   
-2. Vector search:
-   Cold segments → disk access → latency spike
-   High dimensionality (3072 dims) → slower than 768 dims
-   
-3. Reranking:
-   Cross-encoder model → O(N) where N = retrieved docs
-   20 docs × 10ms each = 200ms
-   
-4. LLM inference:
-   Context size = system prompt + retrieved chunks + user query
-   More chunks → longer prefill → higher TTFT
-   
-5. End-to-end:
-   All stages sequential → total latency = sum of all stages
-   → 5 + 30 + 100 + 2000 = 2135ms for full RAG response
+    classDef stage fill:#eef2ff,stroke:#6366f1,color:#312e81
+    classDef dominant fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px
+    class embedding,search,rerank stage
+    class llm,total dominant
 ```
 
 > [!TIP]
@@ -2395,24 +2204,18 @@ Typical bottlenecks:
 
 ### 32.3 Combined approach
 
-```
-Khi incident xảy ra, kỹ sư AIOps (và AIOps engine) nên:
+```mermaid
+flowchart LR
+    alert(["Incident alert"]) --> red["<b>1 · RED</b><br/>Rate · Errors · Duration<br/><i>Service gặp vấn đề gì?</i>"]
+    red --> tracing["<b>2 · Tracing</b><br/>Critical path analysis<br/><i>Request chậm ở đâu?</i>"]
+    tracing --> use["<b>3 · USE</b><br/>Utilization · Saturation · Errors<br/><i>Resource nào bottleneck?</i>"]
+    use --> change["<b>4 · Change correlation</b><br/>Deploy · config · traffic shift<br/><i>Xác nhận hoặc loại trừ</i>"]
+    change --> root["Root cause<br/>có evidence"]
 
-1. RED: "Service X có vấn đề gì?"
-   → Rate thay đổi? Errors tăng? Duration tăng?
-   → XÁC ĐỊNH có vấn đề
-
-2. Tracing: "Request chậm ở đâu?"
-   → Critical path analysis
-   → XÁC ĐỊNH layer nào gây vấn đề
-
-3. USE: "Resource nào ở layer đó bị bottleneck?"
-   → CPU saturated? Memory pressure? I/O queue full?
-   → XÁC ĐỊNH nguyên nhân gốc
-   
-4. Change correlation: "Có gì vừa thay đổi?"
-   → Deploy? Config change? Traffic shift?
-   → XÁC NHẬN nguyên nhân hoặc loại trừ
+    classDef method fill:#eef2ff,stroke:#6366f1,color:#312e81
+    classDef outcome fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px
+    class red,tracing,use,change method
+    class root outcome
 ```
 
 ---
@@ -2421,66 +2224,71 @@ Khi incident xảy ra, kỹ sư AIOps (và AIOps engine) nên:
 
 ### 33.1 Mental model: tầng nào gây vấn đề?
 
-```
-Cross-Layer Decision Tree:
+```mermaid
+flowchart TB
+    alert(["HIGH LATENCY ALERT"])
+    alert --> cpuHigh["CPU cao"]
+    alert --> cpuLow["CPU thấp · latency cao"]
+    alert --> memory["Memory pressure"]
+    alert --> network["Network signals"]
+    alert --> storage["Storage signals"]
 
-  HIGH LATENCY ALERT
-      │
-      ├── CPU high + CPU utilization high?
-      │     ├── user% high → app logic (hot loop, regex, serialization)
-      │     ├── system% high → too many syscalls / context switches
-      │     ├── iowait% high → DISK bottleneck, NOT CPU
-      │     └── steal% high → VM/cloud noisy neighbor
-      │
-      ├── CPU LOW but latency high?
-      │     ├── Thread pool exhausted → threads blocked on downstream
-      │     ├── Connection pool exhausted → waiting for DB/cache connection
-      │     ├── Lock contention → threads waiting for mutex/row lock
-      │     ├── DNS resolution slow → 5s timeout per external call
-      │     └── GC pause → stop-the-world collection
-      │
-      ├── Memory pressure?
-      │     ├── OOMKilled → container memory limit too low
-      │     ├── High major page faults → swapping
-      │     ├── Working set growing monotonically → memory leak
-      │     └── High memory but low RSS → page cache (probably OK)
-      │
-      ├── Network issue?
-      │     ├── TCP retransmits > 1% → packet loss
-      │     ├── TIME_WAIT count high → port exhaustion
-      │     ├── Connection refused → target overloaded/down
-      │     └── DNS NXDOMAIN → misconfigured service discovery
-      │
-      └── Storage issue?
-            ├── IOPS near limit → scale storage or add caching
-            ├── I/O queue depth > 4 → disk saturated
-            ├── EBS burst balance depleted → IOPS cliff
-            └── Replication lag → read inconsistency
+    cpuHigh --> user["user% cao → hot loop · regex · serialization"]
+    cpuHigh --> system["system% cao → syscall / context switch"]
+    cpuHigh --> iowait["iowait% cao → disk bottleneck, không phải CPU"]
+    cpuHigh --> steal["steal% cao → noisy neighbor"]
+
+    cpuLow --> threads["Thread pool exhausted → blocked downstream"]
+    cpuLow --> conns["Connection pool exhausted → chờ DB/cache"]
+    cpuLow --> locks["Lock contention → mutex / row lock"]
+    cpuLow --> dns["DNS chậm → timeout external call"]
+    cpuLow --> gc["GC pause → stop-the-world"]
+
+    memory --> oom["OOMKilled → container limit thấp"]
+    memory --> faults["Major page faults cao → swapping"]
+    memory --> leak["Working set tăng đều → memory leak"]
+    memory --> cache["Memory cao · RSS thấp → page cache"]
+
+    network --> retransmit["TCP retransmits &gt; 1% → packet loss"]
+    network --> timewait["TIME_WAIT cao → port exhaustion"]
+    network --> refused["Connection refused → target down/overload"]
+    network --> nxdomain["DNS NXDOMAIN → service discovery sai"]
+
+    storage --> iops["IOPS gần limit → scale / cache"]
+    storage --> queue["I/O queue depth &gt; 4 → disk saturated"]
+    storage --> burst["EBS burst cạn → IOPS cliff"]
+    storage --> lag["Replication lag → read inconsistency"]
+
+    classDef category fill:#eef2ff,stroke:#6366f1,color:#312e81,stroke-width:2px
+    classDef warning fill:#fef3c7,stroke:#d97706,color:#78350f
+    class cpuHigh,cpuLow,memory,network,storage category
+    class iowait,oom,faults,leak,retransmit,timewait,refused,nxdomain,iops,queue,burst,lag warning
 ```
 
 ### 33.2 Temporal correlation — sequence matters
 
-```
-Typical incident timeline (DB connection pool exhaustion):
+```mermaid
+flowchart LR
+    t5["<b>T−5 min · ROOT CAUSE</b><br/>Slow query xuất hiện<br/>Query plan đổi sau table growth"]
+    t3["T−3 min<br/>Connection hold<br/>10 → 500 ms"]
+    t2["T−2 min · LEADING SIGNAL<br/>Pool utilization<br/>30% → 80%"]
+    t1["T−1 min<br/>Pool wait<br/>0 → 200 ms"]
+    t0["T = 0<br/>Pool exhausted 100%<br/>Request timeout"]
+    tp1["T+1 min<br/>HTTP 503 spike"]
+    tp2["T+2 min<br/>LB health fail → 502"]
+    tp3["<b>T+3 min · ALERT</b><br/>High error rate"]
+    tp4["T+4 min<br/>Autoscaler thêm Pod<br/>DB càng overload"]
+    t5 --> t3 --> t2 --> t1 --> t0 --> tp1 --> tp2 --> tp3 --> tp4
 
-T-5min:  DB slow query appears (query plan changed after table growth)
-T-3min:  DB connection hold time increases (10ms → 500ms)
-T-2min:  App connection pool utilization: 30% → 80%
-T-1min:  App connection pool wait time: 0ms → 200ms
-T=0:     App connection pool exhausted (100%), new requests timeout
-T+1min:  App error rate spikes (503s)
-T+2min:  Load balancer health check fails → 502 to clients
-T+3min:  Alert fires: "High error rate on Service X"
-T+4min:  Auto-scaler adds pods → MORE connections to DB → DB overloaded!
+    evidence["Cause → alert: 8 phút<br/>AIOps nên detect từ T−5 hoặc T−2"] -.-> t5
+    evidence -.-> t2
 
-Nguyên nhân gốc: Slow query (T-5min)
-Triệu chứng cuối: High error rate alert (T+3min)
-Thời gian từ cause → alert: 8 PHÚT
-
-AIOps detection tốt: Phát hiện slow query pattern tại T-5min
-                      hoặc connection pool trend tại T-2min
-AIOps RCA tốt: Trace từ 503 → pool exhausted → long hold time
-                → slow query → query plan change → table growth
+    classDef cause fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    classDef signal fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class t5 cause
+    class t0,tp1,tp2,tp3,tp4 danger
+    class t2,evidence signal
 ```
 
 ---
