@@ -2,6 +2,18 @@
 
 All notable changes to this handbook are documented here.
 
+## [1.2.0] — 2026-08-03
+
+### Added
+
+- **Ch.S System Architecture Fundamentals** (VI + EN) — 6 major sections: Compute & Runtime (process model, cgroups v2, container internals, K8s pod lifecycle, CPU throttling, OOMKilled, eBPF), Networking (request lifecycle, TCP internals, DNS, service mesh, connection pools, circuit breaking), Data & Storage (caching dynamics, cache failure patterns, DB connections, replication lag, I/O fundamentals), Distributed Systems (tracing internals, cascading failures, gray failures), AI/ML Infrastructure 2026 (GPU saturation, LLM inference mechanics, KV cache, vector DB), Synthesis (USE/RED methods, cross-layer correlation, anti-patterns)
+
+### Changed
+
+- `mkdocs.yml`: new "Nền tảng hệ thống / System Fundamentals" nav section
+- README: updated TOC, roadmap, dependency graph, chapter count
+- CURRICULUM: added System Fundamentals entry
+
 ## [1.1.0] — 2026-07-22
 
 ### Added

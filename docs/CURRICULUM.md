@@ -12,6 +12,8 @@ Local: `pip install -r requirements-docs.txt && mkdocs serve`
 ## Pipeline mental model
 
 ```
+System Fundamentals (S): compute · network · storage · distributed · AI/ML infra
+    ↓
 Collect (02–05)
     → Data plane (06): normalize · enrich · validate · store · feature
     → Transport (07): Kafka / MSK
@@ -44,6 +46,7 @@ graph TD
 
 | # | Folder | Title (short) | Role |
 |---|--------|---------------|------|
+| S | `system-fundamentals` | System Architecture Fundamentals | Compute, network, storage, distributed systems, AI/ML infra |
 | 00 | `00-introduction` | Introduction to AIOps | Philosophy, ROI, full pipeline map |
 | 01 | `01-observability` | Observability | Pillars, SLO, cardinality |
 | 02 | `02-opentelemetry` | OpenTelemetry | Collection pipeline |

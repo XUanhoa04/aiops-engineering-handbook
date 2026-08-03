@@ -105,6 +105,8 @@ nav:
       - Bắt đầu:
           - 00 Từ sự cố đến AIOps: vi/00-introduction.vi.md
           - Acceptance Template: vi/acceptance-template.vi.md
+      - Nền tảng hệ thống:
+          - System Architecture Fundamentals: vi/system-fundamentals/README.vi.md
       - Nền tảng evidence:
           - 01 Observability: vi/01-observability/README.vi.md
           - 02 Telemetry contract: vi/02-opentelemetry/README.vi.md
@@ -129,6 +131,8 @@ nav:
           - 19 Incident Operations: vi/19-incident-operations/README.vi.md
           - 20 Governance & Model Risk: vi/20-aiops-governance/README.vi.md
   - English:
+      - System Fundamentals:
+          - System Architecture Fundamentals: en/system-fundamentals/README.md
       - Foundations:
           - 00 Introduction: en/00-introduction.md
           - 01 Observability: en/01-observability/README.md
