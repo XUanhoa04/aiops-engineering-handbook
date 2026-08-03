@@ -96,24 +96,24 @@ When an anomaly detector reports "CPU utilization spike on pod X", the first que
 
 A Linux process exists in one of several states:
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                    Linux Process States                          │
-│                                                                  │
-│  TASK_RUNNING (R) ──── running or ready to run on CPU           │
-│         │                                                        │
-│         ├──→ TASK_INTERRUPTIBLE (S) ── waiting for I/O, signal  │
-│         │         │                                              │
-│         │         └──→ wake up ──→ back to R (runqueue)          │
-│         │                                                        │
-│         ├──→ TASK_UNINTERRUPTIBLE (D) ── waiting for disk I/O   │
-│         │         │                  (cannot be killed by signal)│
-│         │         └──→ I/O complete ──→ back to R                │
-│         │                                                        │
-│         ├──→ TASK_STOPPED (T) ── hit SIGSTOP or debugger        │
-│         │                                                        │
-│         └──→ TASK_ZOMBIE (Z) ── exited, parent hasn't wait()   │
-└──────────────────────────────────────────────────────────────────┘
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Running
+    state "TASK_RUNNING (R)\nRunning or ready on the runqueue" as Running
+    state "TASK_INTERRUPTIBLE (S)\nWaiting for I/O or a signal" as Interruptible
+    state "TASK_UNINTERRUPTIBLE (D)\nWaiting for disk I/O; signals cannot interrupt" as Uninterruptible
+    state "TASK_STOPPED (T)\nStopped by SIGSTOP or a debugger" as Stopped
+    state "TASK_ZOMBIE (Z)\nExited; parent has not called wait()" as Zombie
+
+    Running --> Interruptible: wait for I/O or signal
+    Interruptible --> Running: wake up
+    Running --> Uninterruptible: blocking disk I/O
+    Uninterruptible --> Running: I/O completes
+    Running --> Stopped: SIGSTOP / debugger
+    Stopped --> Running: SIGCONT
+    Running --> Zombie: process exits
+    Zombie --> [*]: parent reaps process
 ```
 
 **CPU time breaks down into:**
@@ -261,13 +261,23 @@ A container is a **group of processes** isolated by two kernel mechanisms:
 
 Container images use a **layered filesystem** (OverlayFS):
 
-```
-Container writable layer (upperdir)  ← container writes go here
-        │
-        ▼ (union mount)
-Image Layer 3: app binary             ← read-only
-Image Layer 2: dependencies            ← read-only
-Image Layer 1: base OS (debian:slim)   ← read-only
+```mermaid
+flowchart TB
+    app["Container process"] -->|writes| upper["Writable layer · upperdir"]
+    app -->|reads| union["OverlayFS union mount"]
+    upper --> union
+    union --> binary["Image layer 3 · application binary"]
+    binary --> deps["Image layer 2 · dependencies"]
+    deps --> base["Image layer 1 · base OS (debian:slim)"]
+
+    classDef process fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef writable fill:#fef3c7,stroke:#d97706,color:#451a03
+    classDef mount fill:#ede9fe,stroke:#7c3aed,color:#2e1065
+    classDef readonly fill:#ecfdf5,stroke:#059669,color:#052e16
+    class app process
+    class upper writable
+    class union mount
+    class binary,deps,base readonly
 ```
 
 **AIOps impact:** Write-heavy containers create large `upperdir` → disk I/O increases → may trigger node eviction (`imagefs.available` pressure). The metrics `container_fs_writes_bytes_total` (cAdvisor) and `io.stat` (cgroup) detect this.
@@ -314,23 +324,24 @@ stateDiagram-v2
 
 ### 5.2 Probe types and impact on traffic
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                    Kubernetes Probes                          │
-│                                                              │
-│  startupProbe ──── "Has the container started?"              │
-│       │             Runs first, disables liveness/readiness  │
-│       │             Use for: slow-starting apps (JVM, ML)    │
-│       ▼                                                      │
-│  livenessProbe ─── "Is the container alive?"                 │
-│       │             Fail → kubelet RESTARTS container         │
-│       │             ⚠️ Does NOT remove from Service endpoints│
-│       ▼                                                      │
-│  readinessProbe ── "Is the container ready for traffic?"     │
-│                     Fail → removed from Service endpoints    │
-│                     Recover → added back to endpoints        │
-│                     ⚠️ Does NOT restart container            │
-└──────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    start["Container starts"] --> startup{"startupProbe<br/>Has startup completed?"}
+    startup -->|not yet| startup
+    startup -->|success| live{"livenessProbe<br/>Is the process alive?"}
+    startup -->|failure threshold| restart["Kubelet restarts container"]
+    live -->|failed| restart
+    live -->|healthy| ready{"readinessProbe<br/>Ready for traffic?"}
+    ready -->|yes| endpoints["Included in Service endpoints"]
+    ready -->|no| removed["Removed from Service endpoints"]
+    removed -->|recovers| endpoints
+
+    classDef check fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef healthy fill:#dcfce7,stroke:#16a34a,color:#052e16
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#450a0a
+    class startup,live,ready check
+    class endpoints healthy
+    class restart,removed danger
 ```
 
 > [!CAUTION]
@@ -340,18 +351,25 @@ stateDiagram-v2
 
 When a pod is deleted (rolling update), two paths happen **in parallel**:
 
-```
-            ┌─── Path A: kube-proxy/iptables removes pod IP from Service
-            │    (async, may take 1-5 seconds)
-            │
-Pod delete ─┤
-            │
-            └─── Path B: kubelet sends preStop → SIGTERM → countdown
-                 (starts immediately)
+```mermaid
+flowchart LR
+    delete["Pod deletion requested"] --> route["Path A · Update routing<br/>kube-proxy / iptables / Envoy"]
+    delete --> terminate["Path B · Kubelet termination<br/>preStop → SIGTERM → countdown"]
+    route -->|asynchronous · 1–5 s| removed["Pod IP removed from traffic"]
+    terminate -->|starts immediately| shutdown["Application begins shutdown"]
+    shutdown --> race{"Routing update complete?"}
+    race -->|no| errors["Requests reach a shutting-down pod<br/>502 / 503"]
+    race -->|yes| clean["Graceful termination"]
+    delay["preStop delay · 5–10 s"] -.->|gives routing time to converge| terminate
 
-Problem: If preStop has no delay, the container receives SIGTERM
-         and begins shutdown BEFORE iptables/Envoy finishes updating.
-         → Requests still routed to the shutting-down pod → 502/503
+    classDef event fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef safe fill:#dcfce7,stroke:#16a34a,color:#052e16
+    classDef risk fill:#fee2e2,stroke:#dc2626,color:#450a0a
+    classDef mitigation fill:#fef3c7,stroke:#d97706,color:#451a03
+    class delete,route,terminate event
+    class removed,clean safe
+    class shutdown,race,errors risk
+    class delay mitigation
 ```
 
 **Fix:** Add a `preStop` hook with `sleep 5–10s` to wait for endpoint propagation.
@@ -432,16 +450,22 @@ rate(container_cpu_cfs_periods_total[5m])
 
 Especially dangerous: JVM/Go runtimes have many threads (GC, compilation, app threads). All threads **share** the container's CPU quota:
 
-```
-Container limit: 2 CPU (200ms per 100ms period)
-Application: 8 threads (4 app + 2 GC + 1 compiler + 1 runtime)
+```mermaid
+flowchart LR
+    quota["CPU limit<br/>200 ms quota per 100 ms period"] --> threads["8 runtime threads<br/>4 app · 2 GC · compiler · runtime"]
+    threads --> gc["Parallel GC burst<br/>80 ms quota used in 20 ms wall time"]
+    threads --> app["Application threads<br/>consume 120 ms"]
+    gc --> spent["Full 200 ms quota exhausted<br/>after only 50 ms wall time"]
+    app --> spent
+    spent --> frozen["Cgroup throttled<br/>container frozen for 50 ms"]
+    frozen --> impact["New requests wait or time out"]
 
-Burst scenario:
-- Parallel GC runs → 4 GC threads active simultaneously → burn 80ms in 20ms wall-time
-- App threads consume 120ms
-- Total: 200ms quota exhausted after 50ms wall-time
-- Container frozen for remaining 50ms
-- Every request arriving in those 50ms → timeout/delay
+    classDef input fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef work fill:#ede9fe,stroke:#7c3aed,color:#2e1065
+    classDef risk fill:#fee2e2,stroke:#dc2626,color:#450a0a
+    class quota,threads input
+    class gc,app work
+    class spent,frozen,impact risk
 ```
 
 > [!WARNING]
@@ -459,38 +483,51 @@ Burst scenario:
 
 ### 8.2 Memory metric anatomy
 
-```
-Container memory.current =
-    RSS (anonymous pages — heap, stack)         ← "real" app usage
-  + Page Cache (file-backed pages — disk reads) ← kernel auto-caches
-  + Kernel memory (socket buffers, etc.)        ← overhead
-  + Swap (if enabled)
+```mermaid
+flowchart TB
+    rss["RSS<br/>heap · stack · anonymous pages"] --> current["memory.current"]
+    cache["Page cache<br/>file-backed · reclaimable"] --> current
+    kernel["Kernel memory<br/>socket buffers · overhead"] --> current
+    swap["Swap<br/>when enabled"] --> current
+    current --> limit{"Near memory.max?"}
+    limit -->|mostly page cache| misleading["Usage can look high<br/>without real pressure"]
+    limit -->|small RSS spike| oom["Cgroup OOMKill risk"]
+    current --> working["Working set ≈<br/>memory.current − inactive_file"]
+    working --> metric["container_memory_working_set_bytes"]
 
-Problem:
-- memory.current includes page cache
-- Page cache is reclaimable (freed automatically when needed)
-- But cgroup OOM killer looks at memory.current, DOESN'T distinguish
-- → I/O-heavy container may show 95% usage, mostly page cache, fine
-- → But if memory.max is too tight → OOMKill on small RSS spike
-
-Correct metric for real memory pressure:
-  memory.current - inactive_file ≈ "working set"
-  Or: container_memory_working_set_bytes (kubelet/cAdvisor)
+    classDef component fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef aggregate fill:#ede9fe,stroke:#7c3aed,color:#2e1065
+    classDef warning fill:#fef3c7,stroke:#d97706,color:#451a03
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#450a0a
+    classDef correct fill:#dcfce7,stroke:#16a34a,color:#052e16
+    class rss,cache,kernel,swap component
+    class current,limit aggregate
+    class misleading warning
+    class oom danger
+    class working,metric correct
 ```
 
 ### 8.3 Memory leak detection for AIOps
 
-```
-Memory leak signature — sawtooth pattern:
-  Linear growth → OOMKill → restart → growth again
+```mermaid
+flowchart LR
+    growth["Working set grows linearly"] --> oom["OOMKill"]
+    oom --> restart["Container restarts"]
+    restart --> growth
 
-Detection:
-- Slope detection: Linear regression on container_memory_working_set_bytes
-  over 1h/6h/24h window. Slope > 0 consistently with R² > 0.9
-  → high probability memory leak
-- Restart correlation: restartCount increasing + reason OOMKilled → confirm
-- Time-to-exhaustion: (memory.max - current) / slope = estimated time to next OOMKill
-  → predictive alert
+    growth -.-> slope["Slope stays positive<br/>R² &gt; 0.9 across 1 h / 6 h / 24 h"]
+    oom -.-> correlation["restartCount rises<br/>reason = OOMKilled"]
+    slope --> confidence["High-confidence memory leak"]
+    correlation --> confidence
+    confidence --> forecast["Time to exhaustion<br/>(memory.max − current) / slope"]
+    forecast --> alert["Predictive alert before next OOMKill"]
+
+    classDef cycle fill:#fee2e2,stroke:#dc2626,color:#450a0a
+    classDef evidence fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef outcome fill:#dcfce7,stroke:#16a34a,color:#052e16
+    class growth,oom,restart cycle
+    class slope,correlation evidence
+    class confidence,forecast,alert outcome
 ```
 
 ---
@@ -611,16 +648,23 @@ Every TCP connection goes through a complex state machine. AIOps engineers need 
 
 **Problem:** Every closed connection stays in `TIME_WAIT` for 60 seconds on Linux. During that time, the tuple (src_ip, src_port, dst_ip, dst_port) cannot be reused.
 
-```
-High-traffic service closing 10,000 connections/second:
-→ 10,000 × 60s = 600,000 sockets in TIME_WAIT
-→ Ephemeral port range: 32768–60999 = 28,232 ports
-→ If connecting to the same destination: PORT EXHAUSTION!
+```mermaid
+flowchart LR
+    rate["10,000 connections closed / second"] --> wait["TIME_WAIT lasts 60 seconds"]
+    wait --> sockets["≈ 600,000 TIME_WAIT sockets"]
+    ports["Ephemeral range<br/>32768–60999 · 28,232 ports"] --> exhaustion{"Same destination tuple?"}
+    sockets --> exhaustion
+    exhaustion -->|yes| fail["Ephemeral port exhaustion"]
+    fail --> addr["connect() → EADDRNOTAVAIL"]
+    fail --> logs["Cannot assign requested address"]
+    fail --> scoped["Destination X fails<br/>while destination Y still works"]
 
-Symptoms:
-- connect() returns EADDRNOTAVAIL
-- "Cannot assign requested address" in logs
-- All requests to destination X fail, but Y is fine
+    classDef input fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef pressure fill:#fef3c7,stroke:#d97706,color:#451a03
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#450a0a
+    class rate,ports input
+    class wait,sockets,exhaustion pressure
+    class fail,addr,logs,scoped danger
 ```
 
 > [!WARNING]
@@ -630,19 +674,23 @@ Symptoms:
 
 Retransmissions occur when TCP segments are lost (network congestion, packet drops, interface errors):
 
-```
-Retransmission Timeout (RTO) escalation:
-  Attempt 1: RTO = ~200ms (initial)
-  Attempt 2: RTO = ~400ms (doubled)
-  Attempt 3: RTO = ~800ms
-  ...
-  After net.ipv4.tcp_retries2 (default 15) attempts:
-  → Connection reset → application sees "Connection timed out"
+```mermaid
+flowchart LR
+    lost["TCP segment lost"] --> a1["Attempt 1<br/>RTO ≈ 200 ms"]
+    a1 --> a2["Attempt 2<br/>RTO ≈ 400 ms"]
+    a2 --> a3["Attempt 3<br/>RTO ≈ 800 ms"]
+    a3 --> more["Exponential backoff continues"]
+    more --> limit["tcp_retries2 reached<br/>default: 15 attempts"]
+    limit --> timeout["Connection timed out"]
+    a1 -.->|1 retransmit: +200 ms| p99["P99 latency spike"]
+    a2 -.->|2 retransmits: +600 ms| p99
 
-Impact on application latency:
-  1 retransmit = +200ms minimum delay
-  2 retransmits = +600ms
-  → P99 latency spike with no obvious cause
+    classDef network fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef delay fill:#fef3c7,stroke:#d97706,color:#451a03
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#450a0a
+    class lost network
+    class a1,a2,a3,more delay
+    class limit,timeout,p99 danger
 ```
 
 ```promql
@@ -718,16 +766,23 @@ Each layer checks health independently with different intervals and timeouts. Wh
 
 ### 15.1 Retry budget — preventing retry storms
 
-```
-Retry Storm:
-  Service A ──retry 3x──► Service B ──retry 3x──► Service C (down)
+```mermaid
+flowchart LR
+    users["1,000 concurrent requests"] --> a["Service A"]
+    a -->|retry ×3| b["Service B"]
+    b -->|retry ×3| c["Service C · down"]
+    c --> amplified["9,000 attempts hit C"]
+    amplified --> cascade["C cannot recover<br/>B overloads · cascading failure"]
 
-  1 request from A → 3 × 3 = 9 requests to C
-  1000 concurrent users from A → 9,000 requests to C (already down!)
-  → C can never recover → B also overloads → cascading failure
+    budget["Retry budget · max 20% extra traffic"] --> capped["1,000 baseline + 200 retries<br/>1,200 total attempts"]
+    capped --> recovery["C gets room to recover"]
 
-Fix: Retry budget = max 20% extra traffic
-     1000 baseline + 200 retries max = 1200 total → C can recover
+    classDef service fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef danger fill:#fee2e2,stroke:#dc2626,color:#450a0a
+    classDef mitigation fill:#dcfce7,stroke:#16a34a,color:#052e16
+    class users,a,b service
+    class c,amplified,cascade danger
+    class budget,capped,recovery mitigation
 ```
 
 ### 15.2 Envoy metrics for AIOps
@@ -1057,23 +1112,25 @@ Key components: Streaming Multiprocessors (SMs) with CUDA/Tensor Cores, HBM memo
 
 ### 29.2 GPU utilization ≠ CPU utilization
 
-```
-GPU "utilization" (nvidia-smi):
-  GPU-Util = % of time at least 1 kernel is running on the GPU
-  
-  BUT: GPU-Util = 100% does NOT mean the GPU is fully utilized!
-  → 1 small kernel running on 1 SM = 100% utilization
-  → 107 other SMs idle!
+```mermaid
+flowchart TB
+    util["nvidia-smi GPU-Util = 100%"] --> meaning["At least one kernel was active<br/>during the sampling window"]
+    meaning --> trap["One small kernel may use one SM<br/>while 107 SMs remain idle"]
+    trap --> better["Use complementary saturation signals"]
+    better --> sm["SM occupancy<br/>active warps / maximum warps"]
+    better --> bandwidth["Memory bandwidth<br/>actual / peak"]
+    better --> tensor["Tensor Core activity"]
+    bandwidth --> llm["LLM decode is commonly memory-bound"]
+    llm --> conclusion["Low compute utilization can still mean<br/>the workload has reached peak throughput"]
 
-Better metrics:
-  SM Occupancy = % active warps / max warps per SM
-  Memory bandwidth utilization = actual / peak
-  Tensor Core utilization = % time tensor cores active
-  
-For LLM inference:
-  Memory bandwidth is usually the bottleneck, NOT compute
-  → "Memory-bound" workload
-  → GPU compute utilization may be low but performance is maxed out
+    classDef signal fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef warning fill:#fef3c7,stroke:#d97706,color:#451a03
+    classDef metric fill:#ede9fe,stroke:#7c3aed,color:#2e1065
+    classDef insight fill:#dcfce7,stroke:#16a34a,color:#052e16
+    class util,meaning signal
+    class trap warning
+    class better,sm,bandwidth,tensor metric
+    class llm,conclusion insight
 ```
 
 ### 29.3 GPU monitoring metrics
@@ -1097,34 +1154,44 @@ GPU sharing strategies: Exclusive (1 GPU per pod), MIG (Multi-Instance GPU — h
 
 ### 30.1 Two-phase inference pipeline
 
-```
-Phase 1: PREFILL (Prompt Processing)
-  - Process ALL input tokens in parallel
-  - Compute-bound (matrix multiplication)
-  - Metric: TTFT (Time To First Token)
+```mermaid
+flowchart LR
+    prompt["Input prompt"] --> prefill["Phase 1 · PREFILL<br/>all input tokens in parallel<br/>compute-bound"]
+    prefill -->|TTFT · time to first token| first["First output token"]
+    first --> decode["Phase 2 · DECODE<br/>one token at a time<br/>memory-bandwidth-bound"]
+    decode -->|TPOT per token| output["Generated response"]
+    formula["Total latency = TTFT +<br/>(output tokens × TPOT)"] -.-> output
 
-Phase 2: DECODE (Token Generation)  
-  - Generate 1 token at a time (autoregressive)
-  - Memory-bandwidth-bound (reading KV cache)
-  - Metric: TPOT (Time Per Output Token)
-
-Total latency = TTFT + (num_output_tokens × TPOT)
+    classDef input fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef phase fill:#ede9fe,stroke:#7c3aed,color:#2e1065
+    classDef result fill:#dcfce7,stroke:#16a34a,color:#052e16
+    classDef formulaStyle fill:#fef3c7,stroke:#d97706,color:#451a03
+    class prompt input
+    class prefill,decode phase
+    class first,output result
+    class formula formulaStyle
 ```
 
 ### 30.2 KV Cache — the memory killer
 
-```
-KV Cache size per request:
-  = 2 × num_layers × hidden_dim × context_length × precision_bytes
+```mermaid
+flowchart LR
+    formula["KV cache / request<br/>2 × layers × hidden dimension<br/>× context length × precision bytes"]
+    formula --> example["Llama 3.1 70B · FP16<br/>≈ 10.7 GB per request"]
+    example --> concurrency["32 concurrent requests<br/>342 GB KV cache + 140 GB model"]
+    concurrency --> pressure["≈ 482 GB VRAM required"]
 
-Example (Llama 3.1 70B, FP16):
-  = 2 × 80 × 8192 × 4096 × 2 = 10.7 GB per request!
+    paged["PagedAttention · vLLM<br/>page-based allocation"] --> fragmentation["Less fragmentation"]
+    paged --> sharing["Prefix sharing"]
+    fragmentation --> throughput["2–4× throughput vs. naive allocation"]
+    sharing --> throughput
 
-32 concurrent requests = 342 GB KV cache + 140 GB model = 482 GB VRAM!
-
-PagedAttention (vLLM): Allocates KV cache in pages like OS virtual memory
-  → Eliminates fragmentation, enables prefix sharing
-  → 2-4x throughput improvement over naive allocation
+    classDef calc fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef risk fill:#fee2e2,stroke:#dc2626,color:#450a0a
+    classDef solution fill:#dcfce7,stroke:#16a34a,color:#052e16
+    class formula,example,concurrency calc
+    class pressure risk
+    class paged,fragmentation,sharing,throughput solution
 ```
 
 ### 30.3 LLM inference metrics for AIOps
@@ -1164,14 +1231,21 @@ In a RAG pipeline: documents are embedded into vectors → stored in an index �
 
 ### 31.3 RAG pipeline bottleneck analysis
 
-```
-User Query → [Embedding] → [Vector Search] → [Reranking] → [LLM]
-               5-20ms        10-50ms          50-200ms     100ms-5s
+```mermaid
+flowchart LR
+    query["User query"] --> embed["Embedding<br/>5–20 ms"]
+    embed --> search["Vector search<br/>10–50 ms"]
+    search --> rerank["Reranking<br/>50–200 ms"]
+    rerank --> llm["LLM generation<br/>100 ms–5 s"]
 
-Bottleneck identification via distributed tracing:
-- Embedding latency up → GPU contention
-- Vector search up → index update running or cache eviction
-- LLM up → context too long or batch size too high
+    embed -.-> gpu["Latency rises → GPU contention"]
+    search -.-> index["Latency rises → index update<br/>or cache eviction"]
+    llm -.-> context["Latency rises → long context<br/>or oversized batch"]
+
+    classDef stage fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef cause fill:#fef3c7,stroke:#d97706,color:#451a03
+    class query,embed,search,rerank,llm stage
+    class gpu,index,context cause
 ```
 
 > [!TIP]
@@ -1225,60 +1299,75 @@ When an incident occurs:
 
 ### 33.1 Decision tree: which layer is causing the problem?
 
-```
-HIGH LATENCY ALERT
-    │
-    ├── CPU high?
-    │     ├── user% high → app logic
-    │     ├── system% high → syscall overhead
-    │     ├── iowait% high → DISK bottleneck
-    │     └── steal% high → noisy neighbor
-    │
-    ├── CPU LOW but latency high?
-    │     ├── Thread pool exhausted → blocked on downstream
-    │     ├── Connection pool exhausted → waiting for DB
-    │     ├── Lock contention → mutex/row lock wait
-    │     ├── DNS slow → 5s timeout per external call
-    │     └── GC pause → stop-the-world collection
-    │
-    ├── Memory pressure?
-    │     ├── OOMKilled → memory limit too low
-    │     ├── Major page faults → swapping
-    │     ├── Working set growing → memory leak
-    │     └── High total memory but low RSS → page cache (OK)
-    │
-    ├── Network issue?
-    │     ├── Retransmits > 1% → packet loss
-    │     ├── TIME_WAIT high → port exhaustion
-    │     ├── Connection refused → target overloaded
-    │     └── DNS NXDOMAIN → service discovery misconfigured
-    │
-    └── Storage issue?
-          ├── IOPS near limit → scale or cache
-          ├── Queue depth > 4 → disk saturated
-          ├── EBS burst balance depleted → IOPS cliff
-          └── Replication lag → read inconsistency
+```mermaid
+flowchart LR
+    alert["HIGH LATENCY ALERT"]
+    alert --> cpu{"CPU high?"}
+    alert --> lowcpu{"CPU low but latency high?"}
+    alert --> memory{"Memory pressure?"}
+    alert --> network{"Network issue?"}
+    alert --> storage{"Storage issue?"}
+
+    cpu --> user["user% high → application logic"]
+    cpu --> system["system% high → syscall overhead"]
+    cpu --> iowait["iowait% high → disk bottleneck"]
+    cpu --> steal["steal% high → noisy neighbor"]
+
+    lowcpu --> threadpool["Thread pool exhausted<br/>blocked on downstream"]
+    lowcpu --> connpool["Connection pool exhausted<br/>waiting for database"]
+    lowcpu --> lock["Lock contention<br/>mutex or row-lock wait"]
+    lowcpu --> dns["Slow DNS<br/>5 s timeout per external call"]
+    lowcpu --> gc["GC pause<br/>stop-the-world collection"]
+
+    memory --> oom["OOMKilled → memory limit too low"]
+    memory --> faults["Major page faults → swapping"]
+    memory --> leak["Growing working set → memory leak"]
+    memory --> pagecache["High total · low RSS → page cache"]
+
+    network --> retransmit["Retransmits &gt; 1% → packet loss"]
+    network --> timewait["High TIME_WAIT → port exhaustion"]
+    network --> refused["Connection refused → target overloaded"]
+    network --> nxdomain["DNS NXDOMAIN → discovery misconfigured"]
+
+    storage --> iops["IOPS near limit → scale or cache"]
+    storage --> queue["Queue depth &gt; 4 → disk saturated"]
+    storage --> burst["EBS burst balance depleted → IOPS cliff"]
+    storage --> lag["Replication lag → read inconsistency"]
+
+    classDef alertStyle fill:#fee2e2,stroke:#dc2626,color:#450a0a,stroke-width:2px
+    classDef decision fill:#fef3c7,stroke:#d97706,color:#451a03
+    classDef cause fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef benign fill:#dcfce7,stroke:#16a34a,color:#052e16
+    class alert alertStyle
+    class cpu,lowcpu,memory,network,storage decision
+    class user,system,iowait,steal,threadpool,connpool,lock,dns,gc,oom,faults,leak,retransmit,timewait,refused,nxdomain,iops,queue,burst,lag cause
+    class pagecache benign
 ```
 
 ### 33.2 Temporal correlation — sequence matters
 
-```
-Typical incident timeline (DB connection pool exhaustion):
+```mermaid
+flowchart LR
+    root["T−5 min · Slow DB query appears<br/>plan changes after table growth"]
+    root --> hold["T−3 min · Connection hold time<br/>10 ms → 500 ms"]
+    hold --> pool["T−2 min · Pool utilization<br/>30% → 80%"]
+    pool --> exhausted["T=0 · Pool exhausted<br/>new requests time out"]
+    exhausted --> errors["T+1 min · 503 rate spikes"]
+    errors --> alert["T+3 min · High error-rate alert"]
+    alert --> scale["T+4 min · Autoscaler adds pods<br/>more connections overload the DB"]
 
-T-5min:  DB slow query appears (plan change after table growth)
-T-3min:  Connection hold time: 10ms → 500ms
-T-2min:  Pool utilization: 30% → 80%
-T=0:     Pool exhausted (100%), new requests timeout
-T+1min:  Error rate spikes (503s)
-T+3min:  Alert fires: "High error rate on Service X"
-T+4min:  Auto-scaler adds pods → MORE connections → DB overloaded!
+    early["Good AIOps<br/>detects the query at T−5 or pool trend at T−2"] -.-> root
+    rca["Good RCA<br/>503 → pool → hold time → slow query"] -.-> root
+    gap["Cause-to-alert delay: 8 minutes"] -.-> alert
 
-Root cause: Slow query (T-5min)
-Final symptom: High error rate alert (T+3min)
-Time from cause → alert: 8 MINUTES
-
-Good AIOps: Detects slow query at T-5min or pool trend at T-2min
-Good RCA: Traces 503 → pool exhausted → long hold time → slow query
+    classDef cause fill:#fef3c7,stroke:#d97706,color:#451a03
+    classDef progression fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef incident fill:#fee2e2,stroke:#dc2626,color:#450a0a
+    classDef aiops fill:#dcfce7,stroke:#16a34a,color:#052e16
+    class root cause
+    class hold,pool progression
+    class exhausted,errors,alert,scale,gap incident
+    class early,rca aiops
 ```
 
 ---
