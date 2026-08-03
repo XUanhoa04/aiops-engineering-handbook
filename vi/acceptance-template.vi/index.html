@@ -1,0 +1,4178 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Production-grade AIOps handbook — observability to remediation (Vietnamese + English)">
+      
+      
+        <meta name="author" content="XUanhoa04">
+      
+      
+        <link rel="canonical" href="https://xuanhoa04.github.io/aiops-engineering-handbook/vi/acceptance-template.vi/">
+      
+      
+        <link rel="prev" href="../00-introduction.vi/">
+      
+      
+        <link rel="next" href="../system-fundamentals/README.vi/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Acceptance Template - AIOps Engineering Handbook</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#acceptance-template-chung-cho-aiops-engineering-handbook" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AIOps Engineering Handbook" class="md-header__button md-logo" aria-label="AIOps Engineering Handbook" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AIOps Engineering Handbook
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Acceptance Template
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    XUanhoa04/aiops-engineering-handbook
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../CURRICULUM/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Curriculum
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../00-introduction.vi/" class="md-tabs__link">
+          
+  
+  
+  Tiếng Việt
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../en/system-fundamentals/" class="md-tabs__link">
+          
+  
+  
+  English
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../assets/diagrams/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Diagrams
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AIOps Engineering Handbook" class="md-nav__button md-logo" aria-label="AIOps Engineering Handbook" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AIOps Engineering Handbook
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    XUanhoa04/aiops-engineering-handbook
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CURRICULUM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tiếng Việt
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tiếng Việt
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bắt đầu
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bắt đầu
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../00-introduction.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    00 Từ sự cố đến AIOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acceptance Template
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acceptance Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-vi-sao-toan-sach-can-mot-template-chung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Vì sao toàn sách cần một template chung?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-nam-nguyen-tac-khong-thuong-luong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Năm nguyên tắc không thương lượng
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Năm nguyên tắc không thương lượng">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-outcome-truoc-component" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Outcome trước component
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-timeline-truoc-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Timeline trước snapshot
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-negative-control-truoc-ket-luan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Negative control trước kết luận
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-hard-gate-truoc-weighted-score" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Hard gate trước weighted score
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-evidence-truoc-loi-khang-inh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Evidence trước lời khẳng định
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-acceptance-card-mot-trang" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Acceptance Card một trang
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Acceptance Card một trang">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-capability-phai-la-hanh-vi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Capability phải là hành vi
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-out-of-scope-bat-buoc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Out of scope bắt buộc
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-scenario-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Scenario Template
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Scenario Template">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Identity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#system-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fault-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fault model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delivery-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delivery model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expected-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oracle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Oracle
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-input-quality-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Input Quality Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-output-quality-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Output Quality Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-bo-scenario-toi-thieu-cho-moi-capability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Bộ scenario tối thiểu cho mọi capability
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Bộ scenario tối thiểu cho mọi capability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#positive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Positive
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#negative-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Negative control
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#long-duration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Long duration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concurrent-fault" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concurrent fault
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#partialcohort-fault" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Partial/cohort fault
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#missingdegraded-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Missing/degraded data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#restartrecovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Restart/recovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adversarial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adversarial
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rollbackfailure-of-the-capability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rollback/failure of the capability
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-metrics-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Metrics Template
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Metrics Template">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#metrics-xuyen-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metrics xuyên pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-hard-gate-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Hard Gate Template
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-threshold-va-verdict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Threshold và verdict
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Threshold và verdict">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pass
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conditional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conditional
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shadow-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shadow Only
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fail
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-evidence-pack-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Evidence Pack Template
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-chapter-acceptance-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Chapter Acceptance Matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-cach-dung-template-khi-viet-chapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Cách dùng template khi viết chapter
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-cach-dung-template-khi-review-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Cách dùng template khi review PR
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-cach-dung-template-sau-incident" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Cách dùng template sau incident
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-definition-of-done-toan-sach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Definition of Done toàn sách
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ket-luan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kết luận
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lien-ket-nhanh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Liên kết nhanh
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nền tảng hệ thống
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Nền tảng hệ thống
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../system-fundamentals/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nền tảng evidence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Nền tảng evidence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01-observability/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02-opentelemetry/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 Telemetry contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03-prometheus/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 Metric evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04-loki/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 Log evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05-tempo/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 Trace causality
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06-data-plane/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 Data & Feature Plane
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07-kafka/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 Event Transport
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08-topology-change/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 Topology & Change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligence engines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Intelligence engines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09-anomaly-detection/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 Persistent Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10-alert-correlation/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 Alert Correlation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11-root-cause-analysis/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 Root Cause Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../12-investigation-engine/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12 Investigation Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../13-remediation-safety-engine/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13 Remediation Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production, learning & governance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Production, learning & governance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../14-production-engine/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14 Production Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../15-aiops-pattern-library/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15 Pattern Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../16-aiops-domain-packs/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16 Domain Packs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../17-aiops-benchmark-replay/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17 Benchmark Replay
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../18-predictive-operations/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18 Predictive Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../19-incident-operations/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19 Incident Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../20-aiops-governance/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20 Governance & Model Risk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    English
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    English
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    System Fundamentals
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/system-fundamentals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Foundations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Foundations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/00-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    00 Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/01-observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/02-opentelemetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 OpenTelemetry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/03-prometheus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 Prometheus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/04-loki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 Loki
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/05-tempo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 Tempo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/06-data-plane/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 Data Plane
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/07-kafka/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 Kafka
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/08-topology-change/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 Topology & Change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Intelligence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/09-anomaly-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 Anomaly Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/10-alert-correlation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 Alert Correlation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/11-root-cause-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 Root Cause Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/12-investigation-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12 Investigation Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/13-remediation-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13 Remediation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production & cases
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Production & cases
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/14-production-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14 Production
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/15-bigtech-aiops/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15 Big Tech AIOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/16-ecommerce-banking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16 E-commerce & Banking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../en/17-famous-incidents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17 Famous Incidents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../assets/diagrams/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Diagrams
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-vi-sao-toan-sach-can-mot-template-chung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Vì sao toàn sách cần một template chung?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-nam-nguyen-tac-khong-thuong-luong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Năm nguyên tắc không thương lượng
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Năm nguyên tắc không thương lượng">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-outcome-truoc-component" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Outcome trước component
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-timeline-truoc-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Timeline trước snapshot
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-negative-control-truoc-ket-luan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Negative control trước kết luận
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-hard-gate-truoc-weighted-score" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Hard gate trước weighted score
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-evidence-truoc-loi-khang-inh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Evidence trước lời khẳng định
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-acceptance-card-mot-trang" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Acceptance Card một trang
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Acceptance Card một trang">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-capability-phai-la-hanh-vi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Capability phải là hành vi
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-out-of-scope-bat-buoc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Out of scope bắt buộc
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-scenario-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Scenario Template
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Scenario Template">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Identity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#system-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fault-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fault model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delivery-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delivery model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expected-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oracle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Oracle
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-input-quality-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Input Quality Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-output-quality-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Output Quality Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-bo-scenario-toi-thieu-cho-moi-capability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Bộ scenario tối thiểu cho mọi capability
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Bộ scenario tối thiểu cho mọi capability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#positive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Positive
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#negative-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Negative control
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#long-duration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Long duration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concurrent-fault" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concurrent fault
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#partialcohort-fault" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Partial/cohort fault
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#missingdegraded-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Missing/degraded data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#restartrecovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Restart/recovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adversarial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adversarial
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rollbackfailure-of-the-capability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rollback/failure of the capability
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-metrics-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Metrics Template
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Metrics Template">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#metrics-xuyen-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metrics xuyên pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-hard-gate-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Hard Gate Template
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-threshold-va-verdict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Threshold và verdict
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Threshold và verdict">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pass
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#conditional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conditional
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shadow-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shadow Only
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fail
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-evidence-pack-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Evidence Pack Template
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-chapter-acceptance-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Chapter Acceptance Matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-cach-dung-template-khi-viet-chapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Cách dùng template khi viết chapter
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-cach-dung-template-khi-review-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Cách dùng template khi review PR
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-cach-dung-template-sau-incident" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Cách dùng template sau incident
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-definition-of-done-toan-sach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Definition of Done toàn sách
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ket-luan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kết luận
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lien-ket-nhanh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Liên kết nhanh
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="acceptance-template-chung-cho-aiops-engineering-handbook">Acceptance Template chung cho AIOps Engineering Handbook<a class="headerlink" href="#acceptance-template-chung-cho-aiops-engineering-handbook" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Mọi capability trong handbook chỉ được coi là hoàn tất khi có một contract kiểm chứng được: scope rõ, input có chất lượng, scenario có timeline, output có schema, hard gate không thể bù, metric có threshold và evidence artifact tái tạo được. “Đã cài”, “dashboard xanh” hoặc “demo chạy” không phải acceptance.</strong></p>
+</blockquote>
+<hr />
+<h2 id="1-vi-sao-toan-sach-can-mot-template-chung">1. Vì sao toàn sách cần một template chung?<a class="headerlink" href="#1-vi-sao-toan-sach-can-mot-template-chung" title="Permanent link">&para;</a></h2>
+<p>Nếu mỗi chapter dùng một kiểu checklist, đội kỹ thuật gặp ba vấn đề:</p>
+<ul>
+<li>“Pass” ở Data Plane có thể chỉ nghĩa message tới Kafka, trong khi Detection cần event-time và provenance.</li>
+<li>“RCA accuracy cao” có thể bỏ qua concurrent fault hoặc telemetry thiếu.</li>
+<li>“Remediation thành công” có thể chỉ nhìn metric target, không nhìn customer outcome và harm.</li>
+</ul>
+<p>Template chung tạo ngôn ngữ xuyên pipeline. Output của chapter trước trở thành input kiểm chứng được của chapter sau; một hard safety violation không bị điểm tổng che.</p>
+<hr />
+<h2 id="2-nam-nguyen-tac-khong-thuong-luong">2. Năm nguyên tắc không thương lượng<a class="headerlink" href="#2-nam-nguyen-tac-khong-thuong-luong" title="Permanent link">&para;</a></h2>
+<h3 id="21-outcome-truoc-component">2.1 Outcome trước component<a class="headerlink" href="#21-outcome-truoc-component" title="Permanent link">&para;</a></h3>
+<p>Đo lời hứa với khách hàng/on-call trước uptime của tool. Collector, Kafka và model đều xanh không chứng minh incident được page đúng.</p>
+<h3 id="22-timeline-truoc-snapshot">2.2 Timeline trước snapshot<a class="headerlink" href="#22-timeline-truoc-snapshot" title="Permanent link">&para;</a></h3>
+<p>AIOps xử lý lifecycle. Acceptance phải có event-time, duration, transition, dữ liệu trễ và recovery; một ảnh dashboard không đủ.</p>
+<h3 id="23-negative-control-truoc-ket-luan">2.3 Negative control trước kết luận<a class="headerlink" href="#23-negative-control-truoc-ket-luan" title="Permanent link">&para;</a></h3>
+<p>Mỗi scenario dương cần control hoặc confounder: campaign khỏe, deploy vô tội, service dùng cùng dependency nhưng không lỗi. Không có negative control, engine có thể luôn page và luôn tìm “root cause”.</p>
+<h3 id="24-hard-gate-truoc-weighted-score">2.4 Hard gate trước weighted score<a class="headerlink" href="#24-hard-gate-truoc-weighted-score" title="Permanent link">&para;</a></h3>
+<p>Data leakage, unauthorized action, missing-as-recovery và duplicate economic effect là fail tuyệt đối. Không dùng accuracy cao để bù.</p>
+<h3 id="25-evidence-truoc-loi-khang-inh">2.5 Evidence trước lời khẳng định<a class="headerlink" href="#25-evidence-truoc-loi-khang-inh" title="Permanent link">&para;</a></h3>
+<p>Mọi verdict lưu artifact, version và query/output đủ để tái tạo. “Team đã kiểm tra” không phải evidence.</p>
+<hr />
+<h2 id="3-acceptance-card-mot-trang">3. Acceptance Card một trang<a class="headerlink" href="#3-acceptance-card-mot-trang" title="Permanent link">&para;</a></h2>
+<p>Mỗi capability/change điền các trường sau.</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-2" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Trường</th>
+<th>Nội dung cần ghi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Capability</td>
+<td>Hành vi cụ thể đang được chấp nhận</td>
+</tr>
+<tr>
+<td>Decision owner</td>
+<td>Người chịu trách nhiệm cho go/no-go</td>
+</tr>
+<tr>
+<td>Scope</td>
+<td>Service, tenant, region, journey, environment</td>
+</tr>
+<tr>
+<td>Out of scope</td>
+<td>Điều chưa được chứng minh</td>
+</tr>
+<tr>
+<td>User outcome</td>
+<td>Khách hàng/on-call nhận giá trị gì</td>
+</tr>
+<tr>
+<td>Inputs</td>
+<td>Signal, schema, source, freshness và coverage</td>
+</tr>
+<tr>
+<td>Preconditions</td>
+<td>State/topology/policy phải đúng trước test</td>
+</tr>
+<tr>
+<td>Scenario set</td>
+<td>Positive, negative, edge và degraded cases</td>
+</tr>
+<tr>
+<td>Fault timeline</td>
+<td>Trigger, propagation, duration, recovery</td>
+</tr>
+<tr>
+<td>Expected outputs</td>
+<td>Event/decision/lifecycle theo deadline</td>
+</tr>
+<tr>
+<td>Ground truth</td>
+<td>Cause, impact, cohort, uncertainty, safe action</td>
+</tr>
+<tr>
+<td>Metrics</td>
+<td>Công thức, denominator, window và slices</td>
+</tr>
+<tr>
+<td>Hard gates</td>
+<td>Điều xảy ra một lần cũng fail</td>
+</tr>
+<tr>
+<td>Thresholds</td>
+<td>Mức pass và lý do</td>
+</tr>
+<tr>
+<td>Evidence artifacts</td>
+<td>File/report/event chain lưu ở đâu</td>
+</tr>
+<tr>
+<td>Reproducibility</td>
+<td>Version/seed/environment để chạy lại</td>
+</tr>
+<tr>
+<td>Rollback</td>
+<td>Nếu rollout fail thì trở lại thế nào</td>
+</tr>
+<tr>
+<td>Expiry</td>
+<td>Khi nào acceptance không còn hiệu lực</td>
+</tr>
+<tr>
+<td>Verdict</td>
+<td>Pass, Conditional, Shadow Only hoặc Fail</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="31-capability-phai-la-hanh-vi">3.1 Capability phải là hành vi<a class="headerlink" href="#31-capability-phai-la-hanh-vi" title="Permanent link">&para;</a></h3>
+<p>Không viết “triển khai Prometheus”. Viết “customer-impact SLO được tính đúng khi counter reset, traffic giảm và một shard mất scrape”.</p>
+<h3 id="32-out-of-scope-bat-buoc">3.2 Out of scope bắt buộc<a class="headerlink" href="#32-out-of-scope-bat-buoc" title="Permanent link">&para;</a></h3>
+<p>Nếu chỉ benchmark stateless service, không được suy rộng sang ledger. Out of scope giúp ngăn một pass nhỏ biến thành quyền tự động hóa rộng.</p>
+<hr />
+<h2 id="4-scenario-template">4. Scenario Template<a class="headerlink" href="#4-scenario-template" title="Permanent link">&para;</a></h2>
+<h3 id="identity">Identity<a class="headerlink" href="#identity" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Scenario ID và version.</li>
+<li>Owner/reviewer.</li>
+<li>Domain pack và service tier.</li>
+<li>Created/reviewed/expiry date.</li>
+</ul>
+<h3 id="system-model">System model<a class="headerlink" href="#system-model" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Customer journey.</li>
+<li>Services/dependencies/shared resource.</li>
+<li>Traffic/cohort model.</li>
+<li>Initial baseline, topology và engine versions.</li>
+</ul>
+<h3 id="fault-model">Fault model<a class="headerlink" href="#fault-model" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Trigger và causal mechanism.</li>
+<li>Start/end theo event-time.</li>
+<li>Propagation path.</li>
+<li>Affected/unaffected cohort.</li>
+<li>Legitimate change/confounder.</li>
+</ul>
+<h3 id="delivery-model">Delivery model<a class="headerlink" href="#delivery-model" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Event loss.</li>
+<li>Delay/reorder.</li>
+<li>Duplicate.</li>
+<li>Clock skew.</li>
+<li>Sampling/coverage change.</li>
+</ul>
+<h3 id="expected-lifecycle">Expected lifecycle<a class="headerlink" href="#expected-lifecycle" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Khi nào detector Pending/Firing/Recovered.</li>
+<li>Incident merge/split relation.</li>
+<li>RCA ranking theo phase.</li>
+<li>Investigation confidence/abstention.</li>
+<li>Action eligibility/lifecycle.</li>
+<li>Degraded mode/recovery state.</li>
+</ul>
+<h3 id="oracle">Oracle<a class="headerlink" href="#oracle" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Fact nào đúng tại từng thời điểm.</li>
+<li>Fact nào chưa thể biết.</li>
+<li>Safe/dangerous action.</li>
+<li>Customer recovery criteria.</li>
+</ul>
+<hr />
+<h2 id="5-input-quality-contract">5. Input Quality Contract<a class="headerlink" href="#5-input-quality-contract" title="Permanent link">&para;</a></h2>
+<p>Mỗi input cần:</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-2" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Thuộc tính</th>
+<th>Acceptance question</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Identity</td>
+<td>Source/service/tenant có xác định không?</td>
+</tr>
+<tr>
+<td>Schema</td>
+<td>Version và semantic có rõ không?</td>
+</tr>
+<tr>
+<td>Event-time</td>
+<td>Có clock/skew state không?</td>
+</tr>
+<tr>
+<td>Freshness</td>
+<td>Quyết định còn dùng được không?</td>
+</tr>
+<tr>
+<td>Coverage</td>
+<td>Bao nhiêu population được quan sát?</td>
+</tr>
+<tr>
+<td>Provenance</td>
+<td>Có tái tạo fact không?</td>
+</tr>
+<tr>
+<td>Cardinality</td>
+<td>Có nằm trong budget không?</td>
+</tr>
+<tr>
+<td>Privacy</td>
+<td>PII/secret đã redact không?</td>
+</tr>
+<tr>
+<td>Missingness</td>
+<td>Source mất được biểu diễn hay biến thành zero?</td>
+</tr>
+<tr>
+<td>Ownership</td>
+<td>Ai sửa khi contract hỏng?</td>
+</tr>
+</tbody>
+</table></div>
+<p>Không pass input contract thì capability downstream phải degrade, không âm thầm tiếp tục với confidence cũ.</p>
+<hr />
+<h2 id="6-output-quality-contract">6. Output Quality Contract<a class="headerlink" href="#6-output-quality-contract" title="Permanent link">&para;</a></h2>
+<p>Output phải có:</p>
+<ul>
+<li>Stable identity và revision.</li>
+<li>Event-time và processing-time.</li>
+<li>Scope/cohort.</li>
+<li>Decision/state transition.</li>
+<li>Confidence đã calibration nếu có.</li>
+<li>Evidence provenance.</li>
+<li>Reason/contradiction.</li>
+<li>Policy/model/rule/topology version.</li>
+<li>Expiry/TTL nếu output dùng cho action.</li>
+<li>Idempotency/dedup identity.</li>
+</ul>
+<p>Văn bản tự do có thể là presentation layer; không được là output contract duy nhất.</p>
+<hr />
+<h2 id="7-bo-scenario-toi-thieu-cho-moi-capability">7. Bộ scenario tối thiểu cho mọi capability<a class="headerlink" href="#7-bo-scenario-toi-thieu-cho-moi-capability" title="Permanent link">&para;</a></h2>
+<h3 id="positive">Positive<a class="headerlink" href="#positive" title="Permanent link">&para;</a></h3>
+<p>Failure thật mà capability phải phát hiện/xử lý.</p>
+<h3 id="negative-control">Negative control<a class="headerlink" href="#negative-control" title="Permanent link">&para;</a></h3>
+<p>Tín hiệu giống failure nhưng customer outcome khỏe: campaign, deploy vô tội, high utilization hợp lệ.</p>
+<h3 id="long-duration">Long duration<a class="headerlink" href="#long-duration" title="Permanent link">&para;</a></h3>
+<p>Incident kéo dài đủ lâu để lộ baseline drift, TTL, state loss và alert fatigue.</p>
+<h3 id="concurrent-fault">Concurrent fault<a class="headerlink" href="#concurrent-fault" title="Permanent link">&para;</a></h3>
+<p>Fault B nổ khi A chưa resolve.</p>
+<h3 id="partialcohort-fault">Partial/cohort fault<a class="headerlink" href="#partialcohort-fault" title="Permanent link">&para;</a></h3>
+<p>Global aggregate có thể khỏe nhưng slice nhỏ lỗi nặng.</p>
+<h3 id="missingdegraded-data">Missing/degraded data<a class="headerlink" href="#missingdegraded-data" title="Permanent link">&para;</a></h3>
+<p>Mất một signal, lag, duplicate, reorder hoặc schema mismatch.</p>
+<h3 id="restartrecovery">Restart/recovery<a class="headerlink" href="#restartrecovery" title="Permanent link">&para;</a></h3>
+<p>Worker/state dependency restart giữa lifecycle.</p>
+<h3 id="adversarial">Adversarial<a class="headerlink" href="#adversarial" title="Permanent link">&para;</a></h3>
+<p>Prompt/data injection, cardinality abuse, cross-tenant request hoặc stale action.</p>
+<h3 id="rollbackfailure-of-the-capability">Rollback/failure of the capability<a class="headerlink" href="#rollbackfailure-of-the-capability" title="Permanent link">&para;</a></h3>
+<p>Chính detector/model/executor/verifier hỏng.</p>
+<p>Không phải chapter nào cũng thực thi action, nhưng mọi chapter phải có failure-of-the-capability scenario.</p>
+<hr />
+<h2 id="8-metrics-template">8. Metrics Template<a class="headerlink" href="#8-metrics-template" title="Permanent link">&para;</a></h2>
+<p>Mỗi metric ghi rõ:</p>
+<ul>
+<li>Tên và mục đích.</li>
+<li>Numerator/denominator.</li>
+<li>Event-time window.</li>
+<li>Population/cohort.</li>
+<li>Missing-data behavior.</li>
+<li>Threshold.</li>
+<li>Slice bắt buộc.</li>
+<li>Trade-off metric.</li>
+</ul>
+<p>Ví dụ precision-at-page phải đi cùng recall-at-deadline. Giảm page bằng cách suppress tất cả có precision không có nghĩa.</p>
+<h3 id="metrics-xuyen-pipeline">Metrics xuyên pipeline<a class="headerlink" href="#metrics-xuyen-pipeline" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Primary metrics</th>
+<th>Guard metrics</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Telemetry</td>
+<td>Coverage, freshness, causal continuity</td>
+<td>Cost, cardinality, privacy</td>
+</tr>
+<tr>
+<td>Data plane</td>
+<td>Loss, duplicate, lag, replay</td>
+<td>Ordering, schema, RPO</td>
+</tr>
+<tr>
+<td>Detection</td>
+<td>Recall-at-deadline, precision-at-page</td>
+<td>Silent gap, recovery precision</td>
+</tr>
+<tr>
+<td>Correlation</td>
+<td>False merge/split, compression</td>
+<td>Concurrent-fault recall</td>
+</tr>
+<tr>
+<td>RCA</td>
+<td>Top-k, time-to-candidate</td>
+<td>Calibration, contradiction recall</td>
+</tr>
+<tr>
+<td>Investigation</td>
+<td>Fact precision, provenance</td>
+<td>Query budget, abstention quality</td>
+</tr>
+<tr>
+<td>Remediation</td>
+<td>Time-to-safe-mitigation</td>
+<td>Harm, false success, rollback</td>
+</tr>
+<tr>
+<td>Production</td>
+<td>End-to-end SLO, convergence</td>
+<td>Degraded-mode correctness</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="9-hard-gate-template">9. Hard Gate Template<a class="headerlink" href="#9-hard-gate-template" title="Permanent link">&para;</a></h2>
+<p>Hard gates chung:</p>
+<ul>
+<li>Không cross-tenant leakage.</li>
+<li>Không secret/PII xuất hiện ngoài policy.</li>
+<li>Không unauthorized/freeform action.</li>
+<li>Không stale action execution.</li>
+<li>Không missing telemetry bị coi recovery.</li>
+<li>Không duplicate production/economic effect.</li>
+<li>Không làm mất incident active qua restart.</li>
+<li>Không bỏ fault concurrent critical.</li>
+<li>Không tuyên bố success khi customer outcome chưa đạt.</li>
+<li>Mọi action có audit chain tái dựng được.</li>
+</ul>
+<p>Domain Pack thêm hard gate riêng: ledger balance, inventory correctness, settlement completeness hoặc data residency.</p>
+<hr />
+<h2 id="10-threshold-va-verdict">10. Threshold và verdict<a class="headerlink" href="#10-threshold-va-verdict" title="Permanent link">&para;</a></h2>
+<h3 id="pass">Pass<a class="headerlink" href="#pass" title="Permanent link">&para;</a></h3>
+<p>Mọi hard gate pass; primary/guard metrics đạt trên tất cả mandatory slices; evidence và reproducibility đầy đủ.</p>
+<h3 id="conditional">Conditional<a class="headerlink" href="#conditional" title="Permanent link">&para;</a></h3>
+<p>Hard gates pass nhưng một non-critical slice hoặc performance target chưa đạt. Rollout chỉ trong scope đã chứng minh, có expiry và owner.</p>
+<h3 id="shadow-only">Shadow Only<a class="headerlink" href="#shadow-only" title="Permanent link">&para;</a></h3>
+<p>Capability có ích để quan sát nhưng chưa đủ calibration/safety để tác động decision hoặc production.</p>
+<h3 id="fail">Fail<a class="headerlink" href="#fail" title="Permanent link">&para;</a></h3>
+<p>Bất kỳ hard gate fail, evidence không tái tạo được hoặc regression so incumbent vượt tolerance.</p>
+<p>Không dùng “pass with known hard safety issue”.</p>
+<hr />
+<h2 id="11-evidence-pack-template">11. Evidence Pack Template<a class="headerlink" href="#11-evidence-pack-template" title="Permanent link">&para;</a></h2>
+<p>Mỗi acceptance run xuất một evidence pack:</p>
+<ol>
+<li>Acceptance Card đã điền.</li>
+<li>Scenario/version/seed.</li>
+<li>Engine và dependency artifact versions.</li>
+<li>Input quality summary.</li>
+<li>Decision timeline.</li>
+<li>Metric/hard-gate report theo slice.</li>
+<li>Diff với incumbent.</li>
+<li>Failure drill-down.</li>
+<li>Audit/provenance links.</li>
+<li>Reviewer verdict và expiry.</li>
+</ol>
+<p>Evidence pack là immutable snapshot. Dashboard live có thể thay đổi và không thay thế artifact.</p>
+<hr />
+<h2 id="12-chapter-acceptance-matrix">12. Chapter Acceptance Matrix<a class="headerlink" href="#12-chapter-acceptance-matrix" title="Permanent link">&para;</a></h2>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Chapter</th>
+<th>Capability phải chứng minh</th>
+<th>Scenario bắt buộc</th>
+<th>Evidence chính</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>00 Introduction</td>
+<td>Luồng end-to-end và boundary đúng</td>
+<td>Payment 65 phút + auth chồng</td>
+<td>Stage contract và verdict</td>
+</tr>
+<tr>
+<td>01 Observability</td>
+<td>Question → signal → decision</td>
+<td>Customer impact vs infra-only</td>
+<td>SLI coverage map</td>
+</tr>
+<tr>
+<td>02 OpenTelemetry</td>
+<td>Causal context liên tục</td>
+<td>Orphan spans, sampling loss, skew</td>
+<td>Trace coverage/provenance</td>
+</tr>
+<tr>
+<td>03 Prometheus</td>
+<td>SLO/metric semantics đúng</td>
+<td>Counter reset, missing shard, volume drop</td>
+<td>Query result + denominator</td>
+</tr>
+<tr>
+<td>04 Loki</td>
+<td>Log signature hữu dụng/an toàn</td>
+<td>Duplicate, rate limit, PII</td>
+<td>Signature/coverage/redaction</td>
+</tr>
+<tr>
+<td>05 Tempo</td>
+<td>Trace path và error propagation</td>
+<td>Partial sampling, async boundary</td>
+<td>Span path/cohort comparison</td>
+</tr>
+<tr>
+<td>06 Data Plane</td>
+<td>Event contract bền</td>
+<td>Late, duplicate, schema evolution</td>
+<td>Loss/lag/replay report</td>
+</tr>
+<tr>
+<td>07 Kafka</td>
+<td>Transport không làm mất semantics</td>
+<td>Lag, rebalance, DLQ, restart</td>
+<td>Offset/watermark/convergence</td>
+</tr>
+<tr>
+<td>08 Topology &amp; Change</td>
+<td>Graph/change fresh và có ownership</td>
+<td>Missing edge, stale graph, innocent deploy</td>
+<td>Graph revision/coverage</td>
+</tr>
+<tr>
+<td>09 Persistent Detection</td>
+<td>Detect dài hạn không nhiễu</td>
+<td>Freeze baseline, regime shift</td>
+<td>Recall/silent gap/precision</td>
+</tr>
+<tr>
+<td>10 Alert Correlation</td>
+<td>Nén storm, giữ fault mới</td>
+<td>Duplicate + concurrent fault</td>
+<td>False merge/split/member trail</td>
+</tr>
+<tr>
+<td>11 RCA</td>
+<td>Rank cause, loại correlation</td>
+<td>Temporal confounder, missing trace</td>
+<td>Top-k/calibration/evidence</td>
+</tr>
+<tr>
+<td>12 Investigation</td>
+<td>Fact/hypothesis có kỷ luật</td>
+<td>Contradiction, injection, abstain</td>
+<td>Ledger/provenance/query trace</td>
+</tr>
+<tr>
+<td>13 Remediation</td>
+<td>Action giới hạn và verified</td>
+<td>Stale, duplicate, false recovery, rollback fail</td>
+<td>Action/audit/verification chain</td>
+</tr>
+<tr>
+<td>14 Production</td>
+<td>AIOps tự degrade/recover</td>
+<td>Dependency loss + state restart</td>
+<td>Mode transition/convergence</td>
+</tr>
+<tr>
+<td>15 Pattern Library</td>
+<td>Pattern có context và do-not-use</td>
+<td>Pattern composition/failure</td>
+<td>Pattern card acceptance</td>
+</tr>
+<tr>
+<td>16 Domain Packs</td>
+<td>Domain invariant được giữ</td>
+<td>Peak, ledger, partial PSP</td>
+<td>Domain conformance report</td>
+</tr>
+<tr>
+<td>17 Benchmark Replay</td>
+<td>Regression chạy lặp lại</td>
+<td>Full mandatory suite</td>
+<td>Reproducible benchmark pack</td>
+</tr>
+<tr>
+<td>18 Predictive Operations</td>
+<td>Báo capacity risk trước impact</td>
+<td>Peak hợp lệ + hidden bottleneck</td>
+<td>Lead time/calibration/risk timeline</td>
+</tr>
+<tr>
+<td>19 Incident Operations</td>
+<td>Điều phối không mất state</td>
+<td>Incident dài + fault chồng + handoff</td>
+<td>Incident/action/decision ledger</td>
+</tr>
+<tr>
+<td>20 Governance</td>
+<td>Quyền và acceptance còn hiệu lực</td>
+<td>Drift, injection, stale policy, revoke</td>
+<td>Decision envelope/policy audit</td>
+</tr>
+</tbody>
+</table></div>
+<p>Matrix là minimum. Chapter hoặc domain có thể thêm scenario nhưng không được bỏ hard gates chung.</p>
+<hr />
+<h2 id="13-cach-dung-template-khi-viet-chapter">13. Cách dùng template khi viết chapter<a class="headerlink" href="#13-cach-dung-template-khi-viet-chapter" title="Permanent link">&para;</a></h2>
+<p>Mỗi claim quan trọng nên dẫn đến một acceptance statement:</p>
+<ul>
+<li>Claim: “Freeze baseline ngăn detector tự nuốt anomaly.”</li>
+<li>Scenario: incident error rate 65 phút, daily load vẫn đổi.</li>
+<li>Expected: alert Firing liên tục, baseline đúng scope không trôi.</li>
+<li>Metric: silent-gap duration và false page ở control.</li>
+<li>Hard gate: missing window không được tạo recovery.</li>
+<li>Evidence: incident timeline + baseline revisions.</li>
+</ul>
+<p>Nếu không viết được scenario và expected output, claim đang quá mơ hồ.</p>
+<hr />
+<h2 id="14-cach-dung-template-khi-review-pr">14. Cách dùng template khi review PR<a class="headerlink" href="#14-cach-dung-template-khi-review-pr" title="Permanent link">&para;</a></h2>
+<p>Reviewer hỏi theo thứ tự:</p>
+<ol>
+<li>Capability/decision nào thay đổi?</li>
+<li>Scenario nào có thể regression?</li>
+<li>Ground truth có hindsight leakage không?</li>
+<li>Negative control và missing-data case có chưa?</li>
+<li>Hard gate nào liên quan?</li>
+<li>Metric có denominator/window/slice rõ không?</li>
+<li>Candidate so với incumbent thế nào?</li>
+<li>Evidence pack có tái tạo được không?</li>
+<li>Rollout scope có vượt acceptance scope không?</li>
+<li>Expiry/review owner là ai?</li>
+</ol>
+<p>Không review chỉ bằng diff code hoặc ảnh dashboard.</p>
+<hr />
+<h2 id="15-cach-dung-template-sau-incident">15. Cách dùng template sau incident<a class="headerlink" href="#15-cach-dung-template-sau-incident" title="Permanent link">&para;</a></h2>
+<p>Postmortem chuyển bài học thành benchmark:</p>
+<ul>
+<li>Failure mechanism mới → scenario mới.</li>
+<li>Detector im lặng → long-duration/missing case.</li>
+<li>Correlation merge sai → fault partition ground truth.</li>
+<li>RCA đổ lỗi deploy vô tội → negative control.</li>
+<li>Action làm hại → hard gate/guardrail.</li>
+<li>Recovery mất state → convergence scenario.</li>
+</ul>
+<p>Action item “cải thiện monitoring” không hoàn tất cho tới khi scenario mới fail trên incumbent, pass trên candidate và được đưa vào regression suite.</p>
+<hr />
+<h2 id="16-definition-of-done-toan-sach">16. Definition of Done toàn sách<a class="headerlink" href="#16-definition-of-done-toan-sach" title="Permanent link">&para;</a></h2>
+<p>Một chapter/capability chỉ đạt chuẩn production khi:</p>
+<ul>
+<li>Giải thích vấn đề bằng failure thật, không chỉ lợi ích.</li>
+<li>Có input semantics và quality contract.</li>
+<li>Có decision/lifecycle rõ.</li>
+<li>Có dãy số hoặc timeline worked example.</li>
+<li>Nêu khi nào không dùng.</li>
+<li>Nêu failure mode của chính giải pháp.</li>
+<li>Có positive, negative, long, concurrent và degraded scenario phù hợp.</li>
+<li>Có outcome metric và trade-off metric.</li>
+<li>Có hard gate.</li>
+<li>Có evidence pack và reproducibility.</li>
+<li>Có owner, scope và expiry.</li>
+<li>Có rollout/rollback hoặc handoff boundary.</li>
+</ul>
+<p>Đây là chuẩn chung cho toàn bộ handbook, không phụ thuộc implementation hay vendor.</p>
+<hr />
+<h2 id="ket-luan">Kết luận<a class="headerlink" href="#ket-luan" title="Permanent link">&para;</a></h2>
+<p>Acceptance Template biến toàn bộ sách từ nội dung “nên làm gì” thành hệ thống “chứng minh đã làm đúng”. Nó nối telemetry quality tới detection, incident state tới RCA, evidence tới action và production recovery tới benchmark.</p>
+<p>Khi một capability pass template, người review biết chính xác phạm vi nào đã được chứng minh, artifact nào tái tạo được và điều gì vẫn ngoài scope. Khi fail, đội biết failure nằm ở input, decision, safety hay recovery — thay vì tranh luận bằng cảm giác.</p>
+<h2 id="lien-ket-nhanh">Liên kết nhanh<a class="headerlink" href="#lien-ket-nhanh" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../15-aiops-pattern-library/README.vi/">15 — Pattern Library</a></li>
+<li><a href="../16-aiops-domain-packs/README.vi/">16 — Domain Packs</a></li>
+<li><a href="../17-aiops-benchmark-replay/README.vi/">17 — Benchmark Replay</a></li>
+<li><a href="../18-predictive-operations/README.vi/">18 — Predictive Operations</a></li>
+<li><a href="../19-incident-operations/README.vi/">19 — Incident Operations</a></li>
+<li><a href="../20-aiops-governance/README.vi/">20 — Governance &amp; Model Risk</a></li>
+<li><a href="../14-production-engine/README.vi/">14 — Production Engine</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../00-introduction.vi/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 00 Từ sự cố đến AIOps">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                00 Từ sự cố đến AIOps
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../system-fundamentals/README.vi/" class="md-footer__link md-footer__link--next" aria-label="Next: System Architecture Fundamentals">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                System Architecture Fundamentals
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/mermaid-zoom.js"></script>
+      
+    
+  </body>
+</html>

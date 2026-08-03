@@ -1,0 +1,5283 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Production-grade AIOps handbook — observability to remediation (Vietnamese + English)">
+      
+      
+        <meta name="author" content="XUanhoa04">
+      
+      
+        <link rel="canonical" href="https://xuanhoa04.github.io/aiops-engineering-handbook/vi/16-aiops-domain-packs/README.vi/">
+      
+      
+        <link rel="prev" href="../../15-aiops-pattern-library/README.vi/">
+      
+      
+        <link rel="next" href="../../17-aiops-benchmark-replay/README.vi/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>16 Domain Packs - AIOps Engineering Handbook</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#chapter-16-aiops-domain-packs-e-commerce-banking-va-payment" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="AIOps Engineering Handbook" class="md-header__button md-logo" aria-label="AIOps Engineering Handbook" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AIOps Engineering Handbook
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              16 Domain Packs
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    XUanhoa04/aiops-engineering-handbook
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../CURRICULUM/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Curriculum
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../00-introduction.vi/" class="md-tabs__link">
+          
+  
+  
+  Tiếng Việt
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../en/system-fundamentals/" class="md-tabs__link">
+          
+  
+  
+  English
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../assets/diagrams/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Diagrams
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="AIOps Engineering Handbook" class="md-nav__button md-logo" aria-label="AIOps Engineering Handbook" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AIOps Engineering Handbook
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    XUanhoa04/aiops-engineering-handbook
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../CURRICULUM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tiếng Việt
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tiếng Việt
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bắt đầu
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bắt đầu
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../00-introduction.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    00 Từ sự cố đến AIOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../acceptance-template.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acceptance Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nền tảng hệ thống
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Nền tảng hệ thống
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../system-fundamentals/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nền tảng evidence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Nền tảng evidence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-observability/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02-opentelemetry/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 Telemetry contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-prometheus/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 Metric evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04-loki/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 Log evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-tempo/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 Trace causality
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-data-plane/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 Data & Feature Plane
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-kafka/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 Event Transport
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-topology-change/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 Topology & Change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligence engines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Intelligence engines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-anomaly-detection/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 Persistent Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-alert-correlation/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 Alert Correlation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../11-root-cause-analysis/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 Root Cause Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../12-investigation-engine/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12 Investigation Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../13-remediation-safety-engine/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13 Remediation Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production, learning & governance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Production, learning & governance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../14-production-engine/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14 Production Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../15-aiops-pattern-library/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15 Pattern Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16 Domain Packs
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16 Domain Packs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-domain-pack-la-gi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Domain Pack là gì?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Domain Pack là gì?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-cau-truc-chuan-cua-mot-domain-pack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Cấu trúc chuẩn của một Domain Pack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-core-engine-va-domain-pack-phan-quyen-ra-sao" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Core engine và Domain Pack phân quyền ra sao?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-ban-o-domain-cai-gi-dung-chung-cai-gi-khong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Bản đồ domain: cái gì dùng chung, cái gì không?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-pack-a-e-commerce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Pack A — E-commerce
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Pack A — E-commerce">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-business-journeys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Business journeys
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-outcome-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Outcome contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-regime-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Regime catalog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-worked-case-traffic-tang-hop-le-va-overload-that" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Worked case: traffic tăng hợp lệ và overload thật
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-fault-taxonomy-e-commerce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 Fault taxonomy e-commerce
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3.5 Fault taxonomy e-commerce">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#flash-sale-thundering-herd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flash-sale thundering herd
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cache-stampede" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cache stampede
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inventory-oversell" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inventory oversell
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#webhook-retry-storm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Webhook retry storm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#partial-psp-outage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Partial PSP outage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-correlation-va-rca-overlay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.6 Correlation và RCA overlay
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#37-remediation-policy-e-commerce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7 Remediation policy e-commerce
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#38-e-commerce-golden-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.8 E-commerce golden scenarios
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#39-acceptance-e-commerce-pack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.9 Acceptance E-commerce Pack
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-pack-b-banking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Pack B — Banking
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Pack B — Banking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-money-path-truoc-infrastructure-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Money path trước infrastructure path
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-invariants-khong-uoc-thuong-luong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Invariants không được thương lượng
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-outcome-contract-banking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Outcome contract banking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-worked-case-authorization-xanh-ledger-o" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Worked case: authorization xanh, ledger đỏ
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-fault-taxonomy-banking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Fault taxonomy banking
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.5 Fault taxonomy banking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#partial-posting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Partial posting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ghost-transaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ghost transaction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reconciliation-break" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reconciliation break
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cutoffbatch-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cutoff/batch failure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clocktimezone-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clock/timezone error
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fraud-model-confounder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fraud-model confounder
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-correlation-va-rca-overlay-banking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Correlation và RCA overlay banking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#47-detection-policy-banking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.7 Detection policy banking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#48-remediation-boundary-banking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.8 Remediation boundary banking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#49-audit-va-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.9 Audit và evidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#410-banking-golden-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.10 Banking golden scenarios
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#411-acceptance-banking-pack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.11 Acceptance Banking Pack
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-pack-c-payment-processor-va-fintech" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Pack C — Payment processor và fintech
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Pack C — Payment processor và fintech">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-journeys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Journeys
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-idempotency-la-business-invariant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Idempotency là business invariant
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-worked-case-partial-psp-outage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Worked case: partial PSP outage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-smart-routing-khong-phai-remediation-on-gian" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Smart routing không phải remediation đơn giản
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-fault-taxonomy-payment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Fault taxonomy payment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-remediation-policy-payment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 Remediation policy payment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#57-payment-golden-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.7 Payment golden scenarios
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#58-acceptance-payment-pack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.8 Acceptance Payment Pack
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-cross-domain-overlays" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Cross-domain overlays
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Cross-domain overlays">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-data-classification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Data classification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-external-dependency-overlay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 External dependency overlay
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-change-calendar-overlay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Change calendar overlay
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-ownership-overlay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Ownership overlay
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-domain-pack-inheritance-va-override" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Domain Pack inheritance và override
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-domain-intake-truoc-khi-bat-aiops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Domain intake trước khi bật AIOps
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Domain intake trước khi bật AIOps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#business" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Business
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Topology
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#benchmark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benchmark
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-domain-pack-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Domain Pack lifecycle
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Domain Pack lifecycle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#draft" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Draft
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#replay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Replay
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shadow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shadow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#canary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Canary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#active" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Active
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#retired" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retired
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-domain-pack-acceptance-scorecard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Domain Pack acceptance scorecard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-anti-patterns-domain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Anti-patterns domain
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Anti-patterns domain">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mot-slo-global-cho-moi-journey" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Một SLO global cho mọi journey
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#infra-metric-thay-business-outcome" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Infra metric thay business outcome
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#calendar-suppress-moi-alert" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Calendar suppress mọi alert
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tu-ong-hoa-theo-ten-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tự động hóa theo tên action
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#global-average" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global average
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#domain-logic-trong-prompt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Domain logic trong prompt
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#copy-pack-ma-khong-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Copy pack mà không version
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ket-luan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kết luận
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oc-tiep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Đọc tiếp
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-contract-cua-chapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance contract của chapter
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../17-aiops-benchmark-replay/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17 Benchmark Replay
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../18-predictive-operations/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18 Predictive Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../19-incident-operations/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19 Incident Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../20-aiops-governance/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20 Governance & Model Risk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    English
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    English
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    System Fundamentals
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/system-fundamentals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Foundations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Foundations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/00-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    00 Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/01-observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/02-opentelemetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 OpenTelemetry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/03-prometheus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 Prometheus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/04-loki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 Loki
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/05-tempo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 Tempo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/06-data-plane/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 Data Plane
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/07-kafka/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 Kafka
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/08-topology-change/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 Topology & Change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Intelligence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/09-anomaly-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 Anomaly Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/10-alert-correlation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 Alert Correlation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/11-root-cause-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 Root Cause Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/12-investigation-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12 Investigation Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/13-remediation-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13 Remediation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production & cases
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Production & cases
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/14-production-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14 Production
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/15-bigtech-aiops/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15 Big Tech AIOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/16-ecommerce-banking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16 E-commerce & Banking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/17-famous-incidents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17 Famous Incidents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../assets/diagrams/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Diagrams
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-domain-pack-la-gi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Domain Pack là gì?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Domain Pack là gì?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-cau-truc-chuan-cua-mot-domain-pack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Cấu trúc chuẩn của một Domain Pack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-core-engine-va-domain-pack-phan-quyen-ra-sao" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Core engine và Domain Pack phân quyền ra sao?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-ban-o-domain-cai-gi-dung-chung-cai-gi-khong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Bản đồ domain: cái gì dùng chung, cái gì không?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-pack-a-e-commerce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Pack A — E-commerce
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Pack A — E-commerce">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-business-journeys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Business journeys
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-outcome-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Outcome contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-regime-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Regime catalog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-worked-case-traffic-tang-hop-le-va-overload-that" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Worked case: traffic tăng hợp lệ và overload thật
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-fault-taxonomy-e-commerce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 Fault taxonomy e-commerce
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3.5 Fault taxonomy e-commerce">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#flash-sale-thundering-herd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flash-sale thundering herd
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cache-stampede" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cache stampede
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inventory-oversell" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inventory oversell
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#webhook-retry-storm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Webhook retry storm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#partial-psp-outage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Partial PSP outage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-correlation-va-rca-overlay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.6 Correlation và RCA overlay
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#37-remediation-policy-e-commerce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7 Remediation policy e-commerce
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#38-e-commerce-golden-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.8 E-commerce golden scenarios
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#39-acceptance-e-commerce-pack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.9 Acceptance E-commerce Pack
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-pack-b-banking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Pack B — Banking
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Pack B — Banking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-money-path-truoc-infrastructure-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Money path trước infrastructure path
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-invariants-khong-uoc-thuong-luong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Invariants không được thương lượng
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-outcome-contract-banking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Outcome contract banking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-worked-case-authorization-xanh-ledger-o" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Worked case: authorization xanh, ledger đỏ
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-fault-taxonomy-banking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Fault taxonomy banking
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.5 Fault taxonomy banking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#partial-posting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Partial posting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ghost-transaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ghost transaction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reconciliation-break" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reconciliation break
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cutoffbatch-failure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cutoff/batch failure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clocktimezone-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clock/timezone error
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fraud-model-confounder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fraud-model confounder
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-correlation-va-rca-overlay-banking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Correlation và RCA overlay banking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#47-detection-policy-banking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.7 Detection policy banking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#48-remediation-boundary-banking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.8 Remediation boundary banking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#49-audit-va-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.9 Audit và evidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#410-banking-golden-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.10 Banking golden scenarios
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#411-acceptance-banking-pack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.11 Acceptance Banking Pack
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-pack-c-payment-processor-va-fintech" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Pack C — Payment processor và fintech
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Pack C — Payment processor và fintech">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-journeys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Journeys
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-idempotency-la-business-invariant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Idempotency là business invariant
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-worked-case-partial-psp-outage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Worked case: partial PSP outage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-smart-routing-khong-phai-remediation-on-gian" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Smart routing không phải remediation đơn giản
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-fault-taxonomy-payment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Fault taxonomy payment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-remediation-policy-payment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 Remediation policy payment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#57-payment-golden-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.7 Payment golden scenarios
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#58-acceptance-payment-pack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.8 Acceptance Payment Pack
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-cross-domain-overlays" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Cross-domain overlays
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Cross-domain overlays">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-data-classification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Data classification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-external-dependency-overlay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 External dependency overlay
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-change-calendar-overlay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Change calendar overlay
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-ownership-overlay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Ownership overlay
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-domain-pack-inheritance-va-override" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Domain Pack inheritance và override
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-domain-intake-truoc-khi-bat-aiops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Domain intake trước khi bật AIOps
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Domain intake trước khi bật AIOps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#business" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Business
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Topology
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#benchmark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benchmark
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-domain-pack-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Domain Pack lifecycle
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Domain Pack lifecycle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#draft" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Draft
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#replay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Replay
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shadow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shadow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#canary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Canary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#active" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Active
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#retired" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retired
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-domain-pack-acceptance-scorecard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Domain Pack acceptance scorecard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-anti-patterns-domain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Anti-patterns domain
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Anti-patterns domain">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mot-slo-global-cho-moi-journey" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Một SLO global cho mọi journey
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#infra-metric-thay-business-outcome" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Infra metric thay business outcome
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#calendar-suppress-moi-alert" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Calendar suppress mọi alert
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tu-ong-hoa-theo-ten-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tự động hóa theo tên action
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#global-average" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global average
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#domain-logic-trong-prompt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Domain logic trong prompt
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#copy-pack-ma-khong-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Copy pack mà không version
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ket-luan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kết luận
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oc-tiep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Đọc tiếp
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-contract-cua-chapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance contract của chapter
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="chapter-16-aiops-domain-packs-e-commerce-banking-va-payment">Chapter 16 — AIOps Domain Packs: e-commerce, banking và payment<a class="headerlink" href="#chapter-16-aiops-domain-packs-e-commerce-banking-va-payment" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Core AIOps engine không nên được viết lại cho từng ngành, nhưng policy, business invariant, seasonality, topology, evidence và remediation boundary phải thay đổi theo domain. Domain Pack là lớp cấu hình về semantics và acceptance: nó nói “healthy” nghĩa là gì, fault nào nguy hiểm, dữ liệu nào được phép dùng và action nào tuyệt đối không tự động.</strong></p>
+</blockquote>
+<p><img alt="Payment critical path and invariants" src="../../../assets/diagrams/08-payment-critical-path.png" /></p>
+<p><em>Poster: domain pack payment gắn critical path với business invariant, idempotency, fraud boundary và remediation policy.</em></p>
+<hr />
+<h2 id="1-domain-pack-la-gi">1. Domain Pack là gì?<a class="headerlink" href="#1-domain-pack-la-gi" title="Permanent link">&para;</a></h2>
+<p>Một nền tảng AIOps chung có thể detect, correlate, RCA, investigate và remediate. Nhưng cùng một metric có ý nghĩa khác nhau:</p>
+<ul>
+<li>Traffic tăng 4× trong flash sale có thể là thành công của e-commerce.</li>
+<li>Transaction volume giảm trong đêm có thể bình thường ở card acquiring nhưng bất thường ở instant payment.</li>
+<li>Latency thấp không có ý nghĩa nếu ledger ghi sai.</li>
+<li>Payment authorization thành công không chứng minh settlement và reconciliation hoàn tất.</li>
+</ul>
+<p>Domain Pack bổ sung các semantics mà engine tổng quát không thể tự suy ra.</p>
+<h3 id="11-cau-truc-chuan-cua-mot-domain-pack">1.1 Cấu trúc chuẩn của một Domain Pack<a class="headerlink" href="#11-cau-truc-chuan-cua-mot-domain-pack" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-2" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Thành phần</th>
+<th>Nội dung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Business journeys</td>
+<td>Những hành trình khách hàng và money path quan trọng</td>
+</tr>
+<tr>
+<td>Outcome SLO</td>
+<td>Success, latency, correctness, freshness và completeness</td>
+</tr>
+<tr>
+<td>Regimes</td>
+<td>Peak, campaign, cutoff, holiday, batch và maintenance</td>
+</tr>
+<tr>
+<td>Topology overlays</td>
+<td>Critical path, shared dependency, external provider</td>
+</tr>
+<tr>
+<td>Fault taxonomy</td>
+<td>Failure mode đặc thù và cách tách fault</td>
+</tr>
+<tr>
+<td>Detection policy</td>
+<td>Baseline, burn windows, cohort và missing-data rule</td>
+</tr>
+<tr>
+<td>Correlation/RCA policy</td>
+<td>Causal path, negative control và domain priors</td>
+</tr>
+<tr>
+<td>Remediation boundary</td>
+<td>Action auto, human, dual-control hoặc prohibited</td>
+</tr>
+<tr>
+<td>Data policy</td>
+<td>PII, payment data, retention, residency và redaction</td>
+</tr>
+<tr>
+<td>Domain golden set</td>
+<td>Replay scenarios và ground truth</td>
+</tr>
+<tr>
+<td>Ownership</td>
+<td>Business, platform, risk, security và operations</td>
+</tr>
+<tr>
+<td>Acceptance</td>
+<td>Hard gates và thresholds trước rollout</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="12-core-engine-va-domain-pack-phan-quyen-ra-sao">1.2 Core engine và Domain Pack phân quyền ra sao?<a class="headerlink" href="#12-core-engine-va-domain-pack-phan-quyen-ra-sao" title="Permanent link">&para;</a></h3>
+<p>Core engine chịu trách nhiệm state, event-time, evidence provenance, scoring, idempotency, verifier và audit. Domain Pack không thay thuật toán engine; nó cung cấp:</p>
+<ul>
+<li>Tên journey và business outcome.</li>
+<li>Threshold/policy theo risk.</li>
+<li>Calendar/regime context.</li>
+<li>Invariant và action class.</li>
+<li>Dataset slice và acceptance gate.</li>
+</ul>
+<p>Nếu Domain Pack chứa một bản sao detector hoặc remediation engine riêng, tổ chức sẽ tạo nhiều semantics lệch nhau và không thể benchmark chung.</p>
+<hr />
+<h2 id="2-ban-o-domain-cai-gi-dung-chung-cai-gi-khong">2. Bản đồ domain: cái gì dùng chung, cái gì không?<a class="headerlink" href="#2-ban-o-domain-cai-gi-dung-chung-cai-gi-khong" title="Permanent link">&para;</a></h2>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Trục</th>
+<th>E-commerce</th>
+<th>Banking</th>
+<th>Payment processor/fintech</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Availability shape</td>
+<td>Peak/campaign cực mạnh</td>
+<td>Luôn-on + cutoff/batch</td>
+<td>Luôn-on, provider-dependent</td>
+</tr>
+<tr>
+<td>Correctness</td>
+<td>Cart/catalog có thể eventual; order/payment chặt</td>
+<td>Ledger/reconciliation tuyệt đối quan trọng</td>
+<td>Idempotency, routing và settlement</td>
+</tr>
+<tr>
+<td>External dependencies</td>
+<td>PSP, inventory, shipping</td>
+<td>Clearing, core banking, HSM</td>
+<td>Nhiều PSP/acquirer/network</td>
+</tr>
+<tr>
+<td>False positive cost</td>
+<td>Page fatigue, bỏ lỡ campaign</td>
+<td>Operational risk, change restriction</td>
+<td>Route flapping, fee và decline</td>
+</tr>
+<tr>
+<td>False negative cost</td>
+<td>Mất GMV/chuyển đổi</td>
+<td>Mất tiền, sai sổ, vi phạm</td>
+<td>Mất doanh thu, duplicate charge</td>
+</tr>
+<tr>
+<td>Safe automation</td>
+<td>Cache, stateless capacity, retry policy có guard</td>
+<td>Rất hạn chế trên money path</td>
+<td>Routing/circuit breaker có quota chặt</td>
+</tr>
+<tr>
+<td>Data sensitivity</td>
+<td>PII, order, address</td>
+<td>PII, account, transaction, audit</td>
+<td>PAN/token/BIN, transaction metadata</td>
+</tr>
+<tr>
+<td>Recovery proof</td>
+<td>Conversion + order completion</td>
+<td>Ledger correctness + reconciliation</td>
+<td>Authorization + capture/settlement</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="3-pack-a-e-commerce">3. Pack A — E-commerce<a class="headerlink" href="#3-pack-a-e-commerce" title="Permanent link">&para;</a></h2>
+<h3 id="31-business-journeys">3.1 Business journeys<a class="headerlink" href="#31-business-journeys" title="Permanent link">&para;</a></h3>
+<p>E-commerce pack khai báo ít nhất:</p>
+<ol>
+<li>Browse/search.</li>
+<li>Product detail và pricing.</li>
+<li>Add-to-cart.</li>
+<li>Checkout.</li>
+<li>Inventory reservation.</li>
+<li>Payment authorization/capture.</li>
+<li>Order creation.</li>
+<li>Fulfillment/webhook.</li>
+</ol>
+<p>Không gộp tất cả thành “website availability”. Browse có thể degrade mà checkout vẫn giữ; payment khỏe nhưng order creation lỗi vẫn mất đơn.</p>
+<h3 id="32-outcome-contract">3.2 Outcome contract<a class="headerlink" href="#32-outcome-contract" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Journey</th>
+<th>Success</th>
+<th>Latency</th>
+<th>Correctness/completeness</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Browse</td>
+<td>Page/result trả được</td>
+<td>p95 theo region/device</td>
+<td>Giá/availability không quá stale</td>
+</tr>
+<tr>
+<td>Cart</td>
+<td>Add/update thành công</td>
+<td>p95</td>
+<td>Không mất item/session</td>
+</tr>
+<tr>
+<td>Checkout</td>
+<td>Order intent hoàn tất</td>
+<td>p95/p99</td>
+<td>Tổng tiền, promotion đúng</td>
+</tr>
+<tr>
+<td>Inventory</td>
+<td>Reservation thành công</td>
+<td>deadline</td>
+<td>Không oversell vượt policy</td>
+</tr>
+<tr>
+<td>Payment</td>
+<td>Auth/capture đúng</td>
+<td>p95</td>
+<td>Không duplicate charge</td>
+</tr>
+<tr>
+<td>Fulfillment</td>
+<td>Event được xử lý</td>
+<td>age/backlog</td>
+<td>Không mất/nhân webhook</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="33-regime-catalog">3.3 Regime catalog<a class="headerlink" href="#33-regime-catalog" title="Permanent link">&para;</a></h3>
+<p>E-commerce có regime thay đổi nhanh:</p>
+<ul>
+<li>Daily/weekly seasonality.</li>
+<li>Flash sale.</li>
+<li>Black Friday, 11.11, Tết.</li>
+<li>Influencer/campaign traffic.</li>
+<li>New-product launch.</li>
+<li>Bot/scraper wave.</li>
+<li>Inventory drop.</li>
+<li>PSP maintenance.</li>
+</ul>
+<p>Mỗi regime có expected traffic range, tenant/product cohort, capacity plan, valid time window và owner. Campaign flag không được suppress customer outcome.</p>
+<h3 id="34-worked-case-traffic-tang-hop-le-va-overload-that">3.4 Worked case: traffic tăng hợp lệ và overload thật<a class="headerlink" href="#34-worked-case-traffic-tang-hop-le-va-overload-that" title="Permanent link">&para;</a></h3>
+<p>Lúc 20:00, traffic từ 8.000 lên 30.000 request/phút.</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Tín hiệu</th>
+<th style="text-align: right;">Campaign khỏe</th>
+<th style="text-align: right;">Overload thật</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Browse volume</td>
+<td style="text-align: right;">30.000/min</td>
+<td style="text-align: right;">30.000/min</td>
+</tr>
+<tr>
+<td>Checkout success</td>
+<td style="text-align: right;">98,9%</td>
+<td style="text-align: right;">86,2%</td>
+</tr>
+<tr>
+<td>Cart p95</td>
+<td style="text-align: right;">310 ms</td>
+<td style="text-align: right;">2.900 ms</td>
+</tr>
+<tr>
+<td>Inventory queue age</td>
+<td style="text-align: right;">12 s</td>
+<td style="text-align: right;">8 phút</td>
+</tr>
+<tr>
+<td>DB pool wait</td>
+<td style="text-align: right;">24 ms</td>
+<td style="text-align: right;">1.430 ms</td>
+</tr>
+<tr>
+<td>Campaign context</td>
+<td style="text-align: right;">Hợp lệ</td>
+<td style="text-align: right;">Hợp lệ</td>
+</tr>
+</tbody>
+</table></div>
+<p>Volume anomaly ở cả hai case không đủ page. Outcome, queue và saturation tách chúng. Campaign khỏe được ghi contextual event; overload page theo checkout journey. Đây là Regime-aware baseline kết hợp Multi-window burn.</p>
+<h3 id="35-fault-taxonomy-e-commerce">3.5 Fault taxonomy e-commerce<a class="headerlink" href="#35-fault-taxonomy-e-commerce" title="Permanent link">&para;</a></h3>
+<h4 id="flash-sale-thundering-herd">Flash-sale thundering herd<a class="headerlink" href="#flash-sale-thundering-herd" title="Permanent link">&para;</a></h4>
+<p>Nhiều client cùng truy cập SKU, cache miss, inventory lock và retry tạo feedback loop. Root không nhất thiết là database; có thể là cache invalidation hoặc retry policy.</p>
+<p>Evidence cần:</p>
+<ul>
+<li>Request amplification trên mỗi customer action.</li>
+<li>Cache hit/miss theo SKU cohort.</li>
+<li>Inventory lock/queue.</li>
+<li>DB acquire và query timing.</li>
+<li>Success/count theo SKU.</li>
+</ul>
+<p>Không auto scale toàn hệ thống nếu downstream headroom không đủ.</p>
+<h4 id="cache-stampede">Cache stampede<a class="headerlink" href="#cache-stampede" title="Permanent link">&para;</a></h4>
+<p>Latency origin tăng ngay sau expiry đồng loạt. Pattern phù hợp là single-flight, jittered expiry hoặc stale-while-revalidate; AIOps action chỉ an toàn nếu có catalog và verifier origin load.</p>
+<h4 id="inventory-oversell">Inventory oversell<a class="headerlink" href="#inventory-oversell" title="Permanent link">&para;</a></h4>
+<p>Success kỹ thuật có thể xanh trong khi business correctness hỏng. Detection phải so reservation, order và stock ledger; remediation không tự sửa stock counts.</p>
+<h4 id="webhook-retry-storm">Webhook retry storm<a class="headerlink" href="#webhook-retry-storm" title="Permanent link">&para;</a></h4>
+<p>Provider/client retry nhân event. Metric request rate tăng nhưng unique business event không tăng. Correlation theo idempotency/business key, không theo HTTP count.</p>
+<h4 id="partial-psp-outage">Partial PSP outage<a class="headerlink" href="#partial-psp-outage" title="Permanent link">&para;</a></h4>
+<p>Chỉ một BIN, payment method hoặc region lỗi. Global success có thể vẫn 97%; cohort affected chỉ 55%. Pack bắt buộc slice theo provider, method, region và BIN range đã bảo vệ privacy.</p>
+<h3 id="36-correlation-va-rca-overlay">3.6 Correlation và RCA overlay<a class="headerlink" href="#36-correlation-va-rca-overlay" title="Permanent link">&para;</a></h3>
+<p>E-commerce pack ưu tiên journey graph:</p>
+<ul>
+<li>Browse/search symptoms không tự merge với checkout nếu không có shared cause.</li>
+<li>Payment timeout có thể lan tới checkout, inventory release và webhook retry.</li>
+<li>Product campaign deploy chỉ là candidate khi affected cohort khớp.</li>
+<li>External PSP health phải có control theo method/provider.</li>
+</ul>
+<p>Business impact weighting dùng lost successful checkouts và affected GMV band, không dùng raw alert count.</p>
+<h3 id="37-remediation-policy-e-commerce">3.7 Remediation policy e-commerce<a class="headerlink" href="#37-remediation-policy-e-commerce" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Default tier</th>
+<th>Hard guard</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Scale stateless browse/search</td>
+<td>Auto-canary có điều kiện</td>
+<td>Downstream headroom, cost, sample</td>
+</tr>
+<tr>
+<td>Enable stale cache</td>
+<td>Human/auto-canary theo catalog</td>
+<td>Price/inventory freshness</td>
+</tr>
+<tr>
+<td>Reduce retry</td>
+<td>Human-approved canary</td>
+<td>Order completion, permanent error</td>
+</tr>
+<tr>
+<td>Shed bot/non-critical traffic</td>
+<td>Auto-canary</td>
+<td>Không chặn checkout/customer</td>
+</tr>
+<tr>
+<td>Shift PSP traffic</td>
+<td>Human-approved progressive</td>
+<td>Provider capacity, fee, decline</td>
+</tr>
+<tr>
+<td>Change inventory count</td>
+<td>Prohibited autonomous</td>
+<td>Business correctness/audit</td>
+</tr>
+<tr>
+<td>Re-run fulfillment webhook</td>
+<td>Human/catalog bounded</td>
+<td>Idempotency và duplicate shipment</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="38-e-commerce-golden-scenarios">3.8 E-commerce golden scenarios<a class="headerlink" href="#38-e-commerce-golden-scenarios" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Flash sale khỏe: không page volume-only.</li>
+<li>Flash sale overload: page customer journey trong deadline.</li>
+<li>Cache stampede: RCA cache expiry trước database CPU symptom.</li>
+<li>Partial PSP outage: cohort detection không bị global average che.</li>
+<li>Inventory oversell: correctness alert dù latency xanh.</li>
+<li>Webhook duplication: business event dedup đúng.</li>
+<li>Retry storm 65 phút: không silent gap.</li>
+<li>Auth fault nổ chồng: tách incident.</li>
+</ol>
+<h3 id="39-acceptance-e-commerce-pack">3.9 Acceptance E-commerce Pack<a class="headerlink" href="#39-acceptance-e-commerce-pack" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Campaign context không suppress customer-impact SLO.</li>
+<li>Checkout/GMV count được đo cùng success ratio.</li>
+<li>Partial provider/method fault recall đạt ngưỡng theo cohort.</li>
+<li>Duplicate order/charge/shipment guardrail không bao giờ missing-as-zero.</li>
+<li>Action scale/retry/cache có downstream và correctness verification.</li>
+<li>Inventory/data mutation không nằm trong autonomous catalog.</li>
+</ul>
+<hr />
+<h2 id="4-pack-b-banking">4. Pack B — Banking<a class="headerlink" href="#4-pack-b-banking" title="Permanent link">&para;</a></h2>
+<h3 id="41-money-path-truoc-infrastructure-path">4.1 Money path trước infrastructure path<a class="headerlink" href="#41-money-path-truoc-infrastructure-path" title="Permanent link">&para;</a></h3>
+<p>Banking pack bắt đầu từ lifecycle nghiệp vụ:</p>
+<p>Initiation → Authentication → Authorization → Posting → Clearing → Settlement → Reconciliation</p>
+<p>Một giao dịch có thể trả “accepted” nhưng chưa post ledger, hoặc post nhưng chưa settlement. Availability không thể đại diện correctness/completeness.</p>
+<h3 id="42-invariants-khong-uoc-thuong-luong">4.2 Invariants không được thương lượng<a class="headerlink" href="#42-invariants-khong-uoc-thuong-luong" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Tổng debit và credit cân bằng theo ledger rule.</li>
+<li>Một business instruction không tạo nhiều economic effect.</li>
+<li>Transaction state tiến theo transition hợp lệ.</li>
+<li>Reconciliation difference nằm trong threshold và deadline.</li>
+<li>Audit chain đầy đủ, không sửa/xóa tùy ý.</li>
+<li>Data residency và access policy được giữ.</li>
+<li>Time/cutoff semantics chính xác.</li>
+</ul>
+<p>Nếu invariant fail, hệ thống có thể vẫn trả HTTP 200 nhưng incident severity cao.</p>
+<h3 id="43-outcome-contract-banking">4.3 Outcome contract banking<a class="headerlink" href="#43-outcome-contract-banking" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Availability</th>
+<th>Correctness</th>
+<th>Timeliness</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Initiation</td>
+<td>Request accepted</td>
+<td>Payload/identity đúng</td>
+<td>Response deadline</td>
+</tr>
+<tr>
+<td>Authorization</td>
+<td>Decision trả được</td>
+<td>Rule, balance, limit đúng</td>
+<td>Network SLA</td>
+</tr>
+<tr>
+<td>Posting</td>
+<td>Ledger entry tạo</td>
+<td>Double-entry/invariant</td>
+<td>Posting lag</td>
+</tr>
+<tr>
+<td>Clearing</td>
+<td>File/message đầy đủ</td>
+<td>Count/amount control total</td>
+<td>Cutoff</td>
+</tr>
+<tr>
+<td>Settlement</td>
+<td>Obligation hoàn tất</td>
+<td>Amount/currency đúng</td>
+<td>Settlement window</td>
+</tr>
+<tr>
+<td>Reconciliation</td>
+<td>Compare hoàn tất</td>
+<td>Break được phân loại</td>
+<td>End-of-day deadline</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="44-worked-case-authorization-xanh-ledger-o">4.4 Worked case: authorization xanh, ledger đỏ<a class="headerlink" href="#44-worked-case-authorization-xanh-ledger-o" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Tín hiệu</th>
+<th style="text-align: right;">10:00</th>
+<th style="text-align: right;">10:20</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Authorization success</td>
+<td style="text-align: right;">99,3%</td>
+<td style="text-align: right;">99,1%</td>
+</tr>
+<tr>
+<td>Posting success</td>
+<td style="text-align: right;">99,2%</td>
+<td style="text-align: right;">96,0%</td>
+</tr>
+<tr>
+<td>Posting lag p95</td>
+<td style="text-align: right;">2 s</td>
+<td style="text-align: right;">11 phút</td>
+</tr>
+<tr>
+<td>Accepted-but-unposted</td>
+<td style="text-align: right;">120</td>
+<td style="text-align: right;">18.400</td>
+</tr>
+<tr>
+<td>Ledger imbalance</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td>Reconciliation backlog</td>
+<td style="text-align: right;">300</td>
+<td style="text-align: right;">19.100</td>
+</tr>
+</tbody>
+</table></div>
+<p>HTTP/auth dashboard gần xanh nhưng money-path completeness đang hỏng. Incident phải page theo accepted-but-unposted và posting lag. Auto retry có thể tạo duplicate economic effect nếu idempotency semantics không chắc; remediation mặc định Human Only.</p>
+<h3 id="45-fault-taxonomy-banking">4.5 Fault taxonomy banking<a class="headerlink" href="#45-fault-taxonomy-banking" title="Permanent link">&para;</a></h3>
+<h4 id="partial-posting">Partial posting<a class="headerlink" href="#partial-posting" title="Permanent link">&para;</a></h4>
+<p>Một bên debit/credit hoặc downstream journal chưa hoàn tất. Engine cần transaction-state graph, không chỉ service topology.</p>
+<h4 id="ghost-transaction">Ghost transaction<a class="headerlink" href="#ghost-transaction" title="Permanent link">&para;</a></h4>
+<p>Client timeout nhưng backend đã commit. Retrying từ transport layer có thể duplicate. Evidence phải nối idempotency key, authorization ID, ledger reference và response state.</p>
+<h4 id="reconciliation-break">Reconciliation break<a class="headerlink" href="#reconciliation-break" title="Permanent link">&para;</a></h4>
+<p>Count hoặc amount giữa internal ledger và external network khác nhau. Detection theo control totals và aging bucket; RCA có thể là missing file, duplicate, timezone hoặc mapping.</p>
+<h4 id="cutoffbatch-failure">Cutoff/batch failure<a class="headerlink" href="#cutoffbatch-failure" title="Permanent link">&para;</a></h4>
+<p>Volume thấp ban đêm có thể bình thường; một file không đến trước cutoff là incident dù error rate bằng zero. Pack dùng expected-arrival SLI và deadline state.</p>
+<h4 id="clocktimezone-error">Clock/timezone error<a class="headerlink" href="#clocktimezone-error" title="Permanent link">&para;</a></h4>
+<p>Timestamp sai có thể làm causal order, interest, cutoff hoặc duplicate window sai. Time sync và business timezone là critical dependency.</p>
+<h4 id="fraud-model-confounder">Fraud-model confounder<a class="headerlink" href="#fraud-model-confounder" title="Permanent link">&para;</a></h4>
+<p>Decline tăng có thể do fraud policy đúng sau attack, hoặc model/rule lỗi. Infra engine không được tự tối ưu approval rate mà bỏ risk outcome.</p>
+<h3 id="46-correlation-va-rca-overlay-banking">4.6 Correlation và RCA overlay banking<a class="headerlink" href="#46-correlation-va-rca-overlay-banking" title="Permanent link">&para;</a></h3>
+<p>Banking cần hai graph:</p>
+<ul>
+<li>Service/dependency graph.</li>
+<li>Transaction-state/money-flow graph.</li>
+</ul>
+<p>Một queue delay sau authorization có thể không gây HTTP error upstream nhưng tạo posting lag. RCA weighting ưu tiên first invalid state transition và control-total divergence. Change correlation gồm rule, limit, HSM key, calendar, file mapping và reference data, không chỉ application deploy.</p>
+<h3 id="47-detection-policy-banking">4.7 Detection policy banking<a class="headerlink" href="#47-detection-policy-banking" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Burn-rate cho availability/latency.</li>
+<li>Deadline/expected-arrival cho batch/file.</li>
+<li>Invariant detector cho ledger/reconciliation.</li>
+<li>Cohort detector theo channel, product, currency, region và network.</li>
+<li>Volume floor và denominator guard.</li>
+<li>Calendar-aware baseline với holiday/cutoff.</li>
+<li>Data-quality incident khi lineage hoặc control totals thiếu.</li>
+</ul>
+<h3 id="48-remediation-boundary-banking">4.8 Remediation boundary banking<a class="headerlink" href="#48-remediation-boundary-banking" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-2" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Restart stateless channel instance</td>
+<td>Human-approved canary hoặc auto-canary đã chứng minh</td>
+</tr>
+<tr>
+<td>Scale read-only API</td>
+<td>Auto-canary với downstream guard</td>
+</tr>
+<tr>
+<td>Reduce transport retry</td>
+<td>Human-approved, cần idempotency evidence</td>
+</tr>
+<tr>
+<td>Requeue transaction</td>
+<td>Dual control, per-transaction audit</td>
+</tr>
+<tr>
+<td>Modify ledger entry</td>
+<td>Prohibited autonomous</td>
+</tr>
+<tr>
+<td>Change fraud/limit rule</td>
+<td>Dual control + model/risk owner</td>
+</tr>
+<tr>
+<td>Rotate HSM/root key</td>
+<td>Dual control/break-glass procedure</td>
+</tr>
+<tr>
+<td>Re-run settlement file</td>
+<td>Dual control + control totals</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="49-audit-va-evidence">4.9 Audit và evidence<a class="headerlink" href="#49-audit-va-evidence" title="Permanent link">&para;</a></h3>
+<p>Audit phải tái dựng:</p>
+<ul>
+<li>Incident revision và evidence tại thời điểm quyết định.</li>
+<li>Người/máy đề xuất, policy và approval.</li>
+<li>Transaction population bị ảnh hưởng, đã token hóa.</li>
+<li>Action target, desired state và outcome.</li>
+<li>Reconciliation trước/sau.</li>
+<li>External communication và regulator escalation nếu có.</li>
+</ul>
+<p>Không đưa PAN/account raw vào LLM hoặc general incident store.</p>
+<h3 id="410-banking-golden-scenarios">4.10 Banking golden scenarios<a class="headerlink" href="#410-banking-golden-scenarios" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Accepted-but-unposted tăng trong khi API success xanh.</li>
+<li>Duplicate transport delivery nhưng một economic effect.</li>
+<li>Missing settlement file trước cutoff.</li>
+<li>Partial currency/region outage bị global average che.</li>
+<li>Fraud attack làm decline tăng hợp lệ.</li>
+<li>Fraud rule lỗi làm decline tăng sai.</li>
+<li>Clock skew đảo transaction-state timeline.</li>
+<li>Audit/verifier hỏng: remediation chuyển Detection Only.</li>
+<li>Rollback action fail: dual escalation và immutable state.</li>
+</ol>
+<h3 id="411-acceptance-banking-pack">4.11 Acceptance Banking Pack<a class="headerlink" href="#411-acceptance-banking-pack" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Mọi critical journey có availability, correctness, completeness và timeliness SLI.</li>
+<li>Money invariant là hard gate, không bị score trung bình bù.</li>
+<li>Reconciliation và expected-arrival được xem first-class telemetry.</li>
+<li>Transaction-state graph tham gia RCA.</li>
+<li>Data/ledger mutation không autonomous.</li>
+<li>Dual-control và audit reconstruction pass 100% golden scenarios.</li>
+<li>Missing evidence không bao giờ được coi là zero financial harm.</li>
+</ul>
+<hr />
+<h2 id="5-pack-c-payment-processor-va-fintech">5. Pack C — Payment processor và fintech<a class="headerlink" href="#5-pack-c-payment-processor-va-fintech" title="Permanent link">&para;</a></h2>
+<p>Payment processor nằm giữa merchant, network, acquirer, issuer và ledger. Domain này kết hợp peak e-commerce với correctness banking và phụ thuộc external provider.</p>
+<h3 id="51-journeys">5.1 Journeys<a class="headerlink" href="#51-journeys" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Tokenization.</li>
+<li>Authorization.</li>
+<li>Capture.</li>
+<li>Void/refund.</li>
+<li>Routing/failover.</li>
+<li>Dispute/chargeback.</li>
+<li>Merchant webhook.</li>
+<li>Settlement/reconciliation.</li>
+</ul>
+<h3 id="52-idempotency-la-business-invariant">5.2 Idempotency là business invariant<a class="headerlink" href="#52-idempotency-la-business-invariant" title="Permanent link">&para;</a></h3>
+<p>Exactly-once transport hiếm khi có; mục tiêu là một economic effect cho một business intent. Pack khai báo:</p>
+<ul>
+<li>Idempotency key scope và TTL.</li>
+<li>State transition hợp lệ.</li>
+<li>Duplicate response semantics.</li>
+<li>Provider reference mapping.</li>
+<li>Recovery khi client timeout sau commit.</li>
+</ul>
+<h3 id="53-worked-case-partial-psp-outage">5.3 Worked case: partial PSP outage<a class="headerlink" href="#53-worked-case-partial-psp-outage" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Cohort</th>
+<th style="text-align: right;">Volume</th>
+<th style="text-align: right;">Success trước</th>
+<th style="text-align: right;">Success lúc lỗi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PSP-A Visa region A</td>
+<td style="text-align: right;">42%</td>
+<td style="text-align: right;">98,7%</td>
+<td style="text-align: right;">51,0%</td>
+</tr>
+<tr>
+<td>PSP-A Mastercard</td>
+<td style="text-align: right;">18%</td>
+<td style="text-align: right;">98,5%</td>
+<td style="text-align: right;">97,9%</td>
+</tr>
+<tr>
+<td>PSP-B Visa</td>
+<td style="text-align: right;">25%</td>
+<td style="text-align: right;">98,2%</td>
+<td style="text-align: right;">97,8%</td>
+</tr>
+<tr>
+<td>Các cohort khác</td>
+<td style="text-align: right;">15%</td>
+<td style="text-align: right;">98,6%</td>
+<td style="text-align: right;">98,3%</td>
+</tr>
+<tr>
+<td>Global</td>
+<td style="text-align: right;">100%</td>
+<td style="text-align: right;">98,6%</td>
+<td style="text-align: right;">78,7%</td>
+</tr>
+</tbody>
+</table></div>
+<p>Global đã đủ đỏ trong ví dụ này, nhưng fault partition vẫn cần Visa/region/provider để route đúng. Với cohort chỉ 5% volume, global có thể vẫn trên SLO trong khi merchant cụ thể chịu outage nặng.</p>
+<h3 id="54-smart-routing-khong-phai-remediation-on-gian">5.4 Smart routing không phải remediation đơn giản<a class="headerlink" href="#54-smart-routing-khong-phai-remediation-on-gian" title="Permanent link">&para;</a></h3>
+<p>Shift PSP có forces:</p>
+<ul>
+<li>Provider B còn capacity không?</li>
+<li>Approval/decline mix có tương đương?</li>
+<li>Fee và currency support?</li>
+<li>Token/vault compatibility?</li>
+<li>Fraud signal hoặc regulatory routing?</li>
+<li>Settlement/reconciliation downstream?</li>
+</ul>
+<p>Canary route 5% affected cohort, không 5% toàn traffic. Verify authorization outcome, latency, decline reason, duplicate charge và settlement reference.</p>
+<h3 id="55-fault-taxonomy-payment">5.5 Fault taxonomy payment<a class="headerlink" href="#55-fault-taxonomy-payment" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Provider partial outage theo BIN/method/region.</li>
+<li>Timeout sau commit tạo unknown state.</li>
+<li>Retry amplification.</li>
+<li>Webhook duplicate/out-of-order.</li>
+<li>Token vault/HSM latency.</li>
+<li>Fraud false-positive wave.</li>
+<li>Routing oscillation/flapping.</li>
+<li>Capture/settlement lag sau auth recovery.</li>
+</ul>
+<h3 id="56-remediation-policy-payment">5.6 Remediation policy payment<a class="headerlink" href="#56-remediation-policy-payment" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-2" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Policy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Shift small affected cohort</td>
+<td>Human-approved canary; route budget</td>
+</tr>
+<tr>
+<td>Open circuit cho failing provider</td>
+<td>Có fallback và correctness guard</td>
+</tr>
+<tr>
+<td>Reduce retry</td>
+<td>Có idempotency/unknown-state handling</td>
+</tr>
+<tr>
+<td>Replay webhook</td>
+<td>Per-event idempotency và merchant rate limit</td>
+</tr>
+<tr>
+<td>Replay unknown payment</td>
+<td>Không autonomous nếu commit state chưa xác định</td>
+</tr>
+<tr>
+<td>Change fraud threshold</td>
+<td>Risk owner + dual control</td>
+</tr>
+<tr>
+<td>Change settlement data</td>
+<td>Prohibited autonomous</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="57-payment-golden-scenarios">5.7 Payment golden scenarios<a class="headerlink" href="#57-payment-golden-scenarios" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Cohort 3% lỗi, global vẫn xanh.</li>
+<li>Provider timeout sau commit.</li>
+<li>Route shift làm provider B bão hòa.</li>
+<li>Circuit breaker flapping.</li>
+<li>Authorization hồi nhưng capture backlog tăng.</li>
+<li>Webhook duplicate/out-of-order.</li>
+<li>Fraud attack và fraud-model regression có cùng decline symptom.</li>
+</ol>
+<h3 id="58-acceptance-payment-pack">5.8 Acceptance Payment Pack<a class="headerlink" href="#58-acceptance-payment-pack" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Detection slice theo provider/method/region/merchant tier với privacy guard.</li>
+<li>Unknown transaction state không auto-retry mù.</li>
+<li>Routing action có capacity, fee, decline và settlement verification.</li>
+<li>Authorization recovery không đóng incident khi capture/settlement còn backlog.</li>
+<li>Idempotency/economic-effect oracle pass toàn bộ replay duplication.</li>
+</ul>
+<hr />
+<h2 id="6-cross-domain-overlays">6. Cross-domain overlays<a class="headerlink" href="#6-cross-domain-overlays" title="Permanent link">&para;</a></h2>
+<h3 id="61-data-classification">6.1 Data classification<a class="headerlink" href="#61-data-classification" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Ví dụ</th>
+<th>Xử lý</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Public operational</td>
+<td>Service health aggregate</td>
+<td>Có thể vào incident brief</td>
+</tr>
+<tr>
+<td>Internal</td>
+<td>Topology, config revision</td>
+<td>Access theo team</td>
+</tr>
+<tr>
+<td>Sensitive PII</td>
+<td>Email, address, account metadata</td>
+<td>Redact/tokenize</td>
+</tr>
+<tr>
+<td>Payment restricted</td>
+<td>PAN, CVV, secrets, raw account</td>
+<td>Không vào LLM/general logs</td>
+</tr>
+<tr>
+<td>Audit evidence</td>
+<td>Decision/action record</td>
+<td>Append-only, retention policy</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="62-external-dependency-overlay">6.2 External dependency overlay<a class="headerlink" href="#62-external-dependency-overlay" title="Permanent link">&para;</a></h3>
+<p>External provider cần:</p>
+<ul>
+<li>Provider status nhưng không coi đó là source duy nhất.</li>
+<li>Synthetic/control request.</li>
+<li>Contract/SLA và escalation path.</li>
+<li>Cohort mapping.</li>
+<li>Rate/capacity/fee constraint.</li>
+<li>Failover eligibility.</li>
+<li>Evidence khi provider status page trễ.</li>
+</ul>
+<h3 id="63-change-calendar-overlay">6.3 Change calendar overlay<a class="headerlink" href="#63-change-calendar-overlay" title="Permanent link">&para;</a></h3>
+<p>Domain calendar gồm campaign, holiday, payroll, market open/close, clearing cutoff, provider maintenance và internal freeze. Calendar là context, không phải suppression blanket.</p>
+<h3 id="64-ownership-overlay">6.4 Ownership overlay<a class="headerlink" href="#64-ownership-overlay" title="Permanent link">&para;</a></h3>
+<p>Một incident money path có business owner, service owner, platform on-call, risk/fraud, security và settlement/reconciliation owner. Domain Pack định nghĩa ai có quyền approve action class nào.</p>
+<hr />
+<h2 id="7-domain-pack-inheritance-va-override">7. Domain Pack inheritance và override<a class="headerlink" href="#7-domain-pack-inheritance-va-override" title="Permanent link">&para;</a></h2>
+<p>Một tổ chức có marketplace + wallet có thể ghép:</p>
+<ul>
+<li>Core AIOps contract.</li>
+<li>E-commerce pack cho browse/cart/order.</li>
+<li>Payment pack cho authorization/routing.</li>
+<li>Banking overlay cho wallet ledger/reconciliation.</li>
+</ul>
+<p>Override phải rõ mức ưu tiên. Ví dụ e-commerce cho phép auto replay webhook, nhưng payment overlay cấm nếu unknown economic state; policy nghiêm hơn thắng.</p>
+<p>Không copy nguyên pack rồi sửa riêng vì sẽ drift. Dùng version, owner và conformance replay.</p>
+<hr />
+<h2 id="8-domain-intake-truoc-khi-bat-aiops">8. Domain intake trước khi bật AIOps<a class="headerlink" href="#8-domain-intake-truoc-khi-bat-aiops" title="Permanent link">&para;</a></h2>
+<h3 id="business">Business<a class="headerlink" href="#business" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Journey nào tạo/mất tiền?</li>
+<li>Correctness quan trọng hơn availability ở đâu?</li>
+<li>Partial success nghĩa là gì?</li>
+<li>Cutoff/deadline nào không thể bù sau?</li>
+</ul>
+<h3 id="data">Data<a class="headerlink" href="#data" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Business key nào nối telemetry mà không lộ PII?</li>
+<li>Source of truth cho outcome/correctness?</li>
+<li>Dữ liệu đến trễ bao lâu?</li>
+<li>Retention/residency ra sao?</li>
+</ul>
+<h3 id="topology">Topology<a class="headerlink" href="#topology" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Critical path và shared dependency?</li>
+<li>External provider và async boundary?</li>
+<li>Transaction-state graph có ở đâu?</li>
+</ul>
+<h3 id="operations">Operations<a class="headerlink" href="#operations" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Incident owner và escalation?</li>
+<li>Action nào đã có rollback reliability?</li>
+<li>Dual-control/freeze?</li>
+<li>Manual change được quan sát thế nào?</li>
+</ul>
+<h3 id="benchmark">Benchmark<a class="headerlink" href="#benchmark" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Incident lịch sử nào đại diện?</li>
+<li>Negative control hợp lệ?</li>
+<li>Fault chồng và telemetry loss?</li>
+<li>Ground truth có đủ causal mechanism?</li>
+</ul>
+<p>Không trả lời được các câu này thì chỉ nên chạy observe/shadow.</p>
+<hr />
+<h2 id="9-domain-pack-lifecycle">9. Domain Pack lifecycle<a class="headerlink" href="#9-domain-pack-lifecycle" title="Permanent link">&para;</a></h2>
+<h3 id="draft">Draft<a class="headerlink" href="#draft" title="Permanent link">&para;</a></h3>
+<p>Domain owner và platform xác định journey, invariant, cohort và action boundary.</p>
+<h3 id="replay">Replay<a class="headerlink" href="#replay" title="Permanent link">&para;</a></h3>
+<p>Chạy golden scenarios trên core engine. Hard invariant fail thì không được bù bằng điểm detection/RCA cao.</p>
+<h3 id="shadow">Shadow<a class="headerlink" href="#shadow" title="Permanent link">&para;</a></h3>
+<p>Domain policy tạo decision song song với vận hành hiện tại. So false page, missed cohort, RCA và action eligibility.</p>
+<h3 id="canary">Canary<a class="headerlink" href="#canary" title="Permanent link">&para;</a></h3>
+<p>Bật cho một journey/service/tenant không phải bằng cách bỏ risk, mà giới hạn blast radius.</p>
+<h3 id="active">Active<a class="headerlink" href="#active" title="Permanent link">&para;</a></h3>
+<p>Pack có owner, version, telemetry contract, benchmark score và expiry/review date.</p>
+<h3 id="retired">Retired<a class="headerlink" href="#retired" title="Permanent link">&para;</a></h3>
+<p>Khi journey, provider, regulation hoặc data semantics đổi, pack cũ không được âm thầm dùng tiếp.</p>
+<hr />
+<h2 id="10-domain-pack-acceptance-scorecard">10. Domain Pack acceptance scorecard<a class="headerlink" href="#10-domain-pack-acceptance-scorecard" title="Permanent link">&para;</a></h2>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Cổng</th>
+<th>E-commerce</th>
+<th>Banking</th>
+<th>Payment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Customer journey coverage</td>
+<td>Browse→fulfillment</td>
+<td>Initiation→reconciliation</td>
+<td>Auth→settlement</td>
+</tr>
+<tr>
+<td>Correctness invariant</td>
+<td>Price/order/inventory</td>
+<td>Ledger/control totals</td>
+<td>Economic effect/idempotency</td>
+</tr>
+<tr>
+<td>Regime coverage</td>
+<td>Campaign/peak</td>
+<td>Cutoff/holiday/batch</td>
+<td>Provider/market/peak</td>
+</tr>
+<tr>
+<td>Partial-fault slices</td>
+<td>SKU/region/PSP</td>
+<td>Product/channel/currency</td>
+<td>Provider/BIN/method/merchant</td>
+</tr>
+<tr>
+<td>Missing-data behavior</td>
+<td>Không suppress impact</td>
+<td>Không coi missing là zero break</td>
+<td>Không auto-retry unknown state</td>
+</tr>
+<tr>
+<td>Remediation boundary</td>
+<td>Data mutation cấm</td>
+<td>Ledger/risk dual control</td>
+<td>Route bounded, settlement protected</td>
+</tr>
+<tr>
+<td>Golden replay</td>
+<td>Peak, stampede, oversell</td>
+<td>Posting, reconcile, cutoff</td>
+<td>Partial PSP, timeout-after-commit</td>
+</tr>
+</tbody>
+</table></div>
+<p>Mỗi pack phải điền đầy đủ <a href="../../acceptance-template.vi/">Acceptance Template chung</a>, có owner và evidence artifact. “Đã review tài liệu” không thay replay result.</p>
+<hr />
+<h2 id="11-anti-patterns-domain">11. Anti-patterns domain<a class="headerlink" href="#11-anti-patterns-domain" title="Permanent link">&para;</a></h2>
+<h3 id="mot-slo-global-cho-moi-journey">Một SLO global cho mọi journey<a class="headerlink" href="#mot-slo-global-cho-moi-journey" title="Permanent link">&para;</a></h3>
+<p>Browse volume lớn che checkout lỗi; authorization xanh che posting lag.</p>
+<h3 id="infra-metric-thay-business-outcome">Infra metric thay business outcome<a class="headerlink" href="#infra-metric-thay-business-outcome" title="Permanent link">&para;</a></h3>
+<p>CPU/latency khỏe không chứng minh order, ledger hoặc settlement đúng.</p>
+<h3 id="calendar-suppress-moi-alert">Calendar suppress mọi alert<a class="headerlink" href="#calendar-suppress-moi-alert" title="Permanent link">&para;</a></h3>
+<p>Peak hợp lệ vẫn có thể overload thật.</p>
+<h3 id="tu-ong-hoa-theo-ten-action">Tự động hóa theo tên action<a class="headerlink" href="#tu-ong-hoa-theo-ten-action" title="Permanent link">&para;</a></h3>
+<p>“Retry” an toàn ở read API nhưng nguy hiểm với unknown payment commit.</p>
+<h3 id="global-average">Global average<a class="headerlink" href="#global-average" title="Permanent link">&para;</a></h3>
+<p>Provider/BIN/tenant nhỏ có thể bị outage mà aggregate xanh.</p>
+<h3 id="domain-logic-trong-prompt">Domain logic trong prompt<a class="headerlink" href="#domain-logic-trong-prompt" title="Permanent link">&para;</a></h3>
+<p>Invariant và policy không được chỉ tồn tại trong văn bản cho LLM; phải là input deterministic của engine.</p>
+<h3 id="copy-pack-ma-khong-version">Copy pack mà không version<a class="headerlink" href="#copy-pack-ma-khong-version" title="Permanent link">&para;</a></h3>
+<p>Policy drift khiến cùng action có nghĩa khác giữa team và không benchmark được.</p>
+<hr />
+<h2 id="ket-luan">Kết luận<a class="headerlink" href="#ket-luan" title="Permanent link">&para;</a></h2>
+<p>Domain Pack là cầu nối giữa engine kỹ thuật và hậu quả nghiệp vụ. Nó không làm core engine phức tạp hơn bằng code riêng; nó làm semantics rõ hơn:</p>
+<ul>
+<li>E-commerce phân biệt traffic thành công với overload, bảo vệ conversion, inventory và order correctness.</li>
+<li>Banking đặt ledger, reconciliation, deadline và dual control cao hơn metric hạ tầng.</li>
+<li>Payment processor tách partial provider cohort, unknown commit state, routing capacity và economic idempotency.</li>
+</ul>
+<p>Pattern chỉ được coi là áp dụng thành công khi Domain Pack có golden replay và hard gates. Chapter 17 biến chính các scenarios này thành benchmark chạy lặp lại cho mọi thay đổi của AIOps engine.</p>
+<h2 id="oc-tiep">Đọc tiếp<a class="headerlink" href="#oc-tiep" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../../15-aiops-pattern-library/README.vi/">15 — Pattern Library</a></li>
+<li><a href="../../17-aiops-benchmark-replay/README.vi/">17 — Benchmark Replay</a></li>
+<li><a href="../../acceptance-template.vi/">Acceptance Template chung</a></li>
+</ul>
+<hr />
+<h2 id="acceptance-contract-cua-chapter">Acceptance contract của chapter<a class="headerlink" href="#acceptance-contract-cua-chapter" title="Permanent link">&para;</a></h2>
+<p>Chapter này tuân theo <a href="../../acceptance-template.vi/">Acceptance Template chung</a>: capability chỉ được coi là hoàn tất khi có scope, input quality, timeline scenario, expected output, negative control, hard gates, thresholds và evidence artifact tái tạo được. Checklist hoặc demo không thay thế benchmark/replay.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../../15-aiops-pattern-library/README.vi/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 15 Pattern Library">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                15 Pattern Library
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../../17-aiops-benchmark-replay/README.vi/" class="md-footer__link md-footer__link--next" aria-label="Next: 17 Benchmark Replay">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                17 Benchmark Replay
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../../javascripts/mermaid-zoom.js"></script>
+      
+    
+  </body>
+</html>

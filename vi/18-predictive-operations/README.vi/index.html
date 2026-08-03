@@ -1,0 +1,4545 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Production-grade AIOps handbook — observability to remediation (Vietnamese + English)">
+      
+      
+        <meta name="author" content="XUanhoa04">
+      
+      
+        <link rel="canonical" href="https://xuanhoa04.github.io/aiops-engineering-handbook/vi/18-predictive-operations/README.vi/">
+      
+      
+        <link rel="prev" href="../../17-aiops-benchmark-replay/README.vi/">
+      
+      
+        <link rel="next" href="../../19-incident-operations/README.vi/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>18 Predictive Operations - AIOps Engineering Handbook</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#chapter-18-predictive-operations-capacity-risk-engine" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="AIOps Engineering Handbook" class="md-header__button md-logo" aria-label="AIOps Engineering Handbook" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AIOps Engineering Handbook
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              18 Predictive Operations
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    XUanhoa04/aiops-engineering-handbook
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../CURRICULUM/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Curriculum
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../00-introduction.vi/" class="md-tabs__link">
+          
+  
+  
+  Tiếng Việt
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../en/system-fundamentals/" class="md-tabs__link">
+          
+  
+  
+  English
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../assets/diagrams/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Diagrams
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="AIOps Engineering Handbook" class="md-nav__button md-logo" aria-label="AIOps Engineering Handbook" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AIOps Engineering Handbook
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    XUanhoa04/aiops-engineering-handbook
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../CURRICULUM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tiếng Việt
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tiếng Việt
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bắt đầu
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bắt đầu
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../00-introduction.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    00 Từ sự cố đến AIOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../acceptance-template.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acceptance Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nền tảng hệ thống
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Nền tảng hệ thống
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../system-fundamentals/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nền tảng evidence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Nền tảng evidence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-observability/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02-opentelemetry/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 Telemetry contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-prometheus/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 Metric evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04-loki/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 Log evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-tempo/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 Trace causality
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-data-plane/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 Data & Feature Plane
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-kafka/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 Event Transport
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-topology-change/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 Topology & Change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligence engines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Intelligence engines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-anomaly-detection/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 Persistent Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-alert-correlation/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 Alert Correlation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../11-root-cause-analysis/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 Root Cause Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../12-investigation-engine/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12 Investigation Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../13-remediation-safety-engine/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13 Remediation Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production, learning & governance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Production, learning & governance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../14-production-engine/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14 Production Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../15-aiops-pattern-library/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15 Pattern Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../16-aiops-domain-packs/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16 Domain Packs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../17-aiops-benchmark-replay/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17 Benchmark Replay
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18 Predictive Operations
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18 Predictive Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Documents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sau-chapter-nay-nguoi-oc-phai-lam-uoc-gi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sau chapter này, người đọc phải làm được gì?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-case-xuyen-suot-traffic-tang-hop-le-nhung-database-sap-can" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Case xuyên suốt: traffic tăng hợp lệ nhưng database sắp cạn
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-forecast-khong-phai-capacity-decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Forecast không phải capacity decision
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-output-contract-cua-predictive-operations-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Output contract của Predictive Operations Engine
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-on-vi-du-bao-ung-demand-capacity-va-headroom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Đơn vị dự báo đúng: demand, capacity và headroom
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Đơn vị dự báo đúng: demand, capacity và headroom">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-demand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Demand
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-effective-capacity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Effective capacity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-headroom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Headroom
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-time-to-exhaustion-khong-phai-phep-chia-slope-ngay-tho" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Time-to-exhaustion không phải phép chia slope ngây thơ
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-multi-horizon-mot-model-khong-phuc-vu-moi-quyet-inh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Multi-horizon: một model không phục vụ mọi quyết định
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-dependency-aware-capacity-bottleneck-nam-sau-service-xanh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Dependency-aware capacity: bottleneck nằm sau service xanh
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Dependency-aware capacity: bottleneck nằm sau service xanh">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fan-out-va-fan-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fan-out và fan-in
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-tai-hop-le-thay-oi-ung-bien-promotion-thanh-anomaly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Tải hợp lệ thay đổi: đừng biến promotion thành anomaly
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-burn-rate-a-cua-so-cho-capacity-risk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Burn-rate đa cửa sổ cho capacity risk
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-queue-va-deadline-depth-khong-u" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Queue và deadline: depth không đủ
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-autoscaling-la-feedback-loop-khong-phai-external-truth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Autoscaling là feedback loop, không phải external truth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-cost-aware-recommendation-nhung-reliability-co-quyen-phu-quyet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Cost-aware recommendation nhưng reliability có quyền phủ quyết
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-khi-engine-phai-tu-choi-du-bao" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Khi engine phải từ chối dự báo
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-edge-cases-production-thuong-xuyen-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Edge cases production thường xuyên gặp
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. Edge cases production thường xuyên gặp">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#141-censored-demand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.1 Censored demand
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#142-cold-start-service-moi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.2 Cold start service mới
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#143-holiday-khong-giong-holiday-nam-truoc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.3 Holiday không giống holiday năm trước
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#144-metric-cham-tran" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.4 Metric chạm trần
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#145-failover-reserve-gia" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.5 Failover reserve giả
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#146-retry-amplification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.6 Retry amplification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#147-queue-rebalance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.7 Queue rebalance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#148-quota-reset-theo-cua-so" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.8 Quota reset theo cửa sổ
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#149-tenant-voi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.9 Tenant voi
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1410-deploy-lam-giam-capacity-moi-pod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.10 Deploy làm giảm capacity mỗi pod
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1411-telemetry-en-muon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.11 Telemetry đến muộn
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1412-hai-bottleneck-canh-tranh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.12 Hai bottleneck cạnh tranh
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-multi-signal-capacity-scoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Multi-signal capacity scoring
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-backtest-ung-replay-quyet-inh-khong-chi-forecast-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Backtest đúng: replay quyết định, không chỉ forecast value
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="16. Backtest đúng: replay quyết định, không chỉ forecast value">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ground-truth-cho-mot-forecast-incident" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ground truth cho một forecast incident
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metrics-co-y-nghia-van-hanh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metrics có ý nghĩa vận hành
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-state-machine-va-lifecycle-cua-risk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. State machine và lifecycle của risk
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#18-rollout-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18. Rollout production
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="18. Rollout production">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-1-historical-replay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 1 — Historical replay
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-2-shadow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 2 — Shadow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-3-watch-channel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 3 — Watch channel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-4-human-approved-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 4 — Human-approved action
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-5-bounded-automation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 5 — Bounded automation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#19-production-acceptance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19. Production acceptance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-anti-patterns-can-loai-bo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. Anti-patterns cần loại bỏ
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#21-production-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21. Production checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ket-luan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kết luận
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tai-lieu-lien-quan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tài liệu liên quan
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../19-incident-operations/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19 Incident Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../20-aiops-governance/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20 Governance & Model Risk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    English
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    English
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    System Fundamentals
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/system-fundamentals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Foundations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Foundations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/00-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    00 Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/01-observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/02-opentelemetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 OpenTelemetry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/03-prometheus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 Prometheus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/04-loki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 Loki
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/05-tempo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 Tempo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/06-data-plane/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 Data Plane
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/07-kafka/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 Kafka
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/08-topology-change/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 Topology & Change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Intelligence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/09-anomaly-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 Anomaly Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/10-alert-correlation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 Alert Correlation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/11-root-cause-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 Root Cause Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/12-investigation-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12 Investigation Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/13-remediation-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13 Remediation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production & cases
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Production & cases
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/14-production-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14 Production
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/15-bigtech-aiops/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15 Big Tech AIOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/16-ecommerce-banking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16 E-commerce & Banking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/17-famous-incidents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17 Famous Incidents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../assets/diagrams/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Diagrams
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Documents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sau-chapter-nay-nguoi-oc-phai-lam-uoc-gi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sau chapter này, người đọc phải làm được gì?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-case-xuyen-suot-traffic-tang-hop-le-nhung-database-sap-can" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Case xuyên suốt: traffic tăng hợp lệ nhưng database sắp cạn
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-forecast-khong-phai-capacity-decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Forecast không phải capacity decision
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-output-contract-cua-predictive-operations-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Output contract của Predictive Operations Engine
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-on-vi-du-bao-ung-demand-capacity-va-headroom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Đơn vị dự báo đúng: demand, capacity và headroom
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Đơn vị dự báo đúng: demand, capacity và headroom">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-demand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Demand
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-effective-capacity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Effective capacity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-headroom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Headroom
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-time-to-exhaustion-khong-phai-phep-chia-slope-ngay-tho" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Time-to-exhaustion không phải phép chia slope ngây thơ
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-multi-horizon-mot-model-khong-phuc-vu-moi-quyet-inh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Multi-horizon: một model không phục vụ mọi quyết định
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-dependency-aware-capacity-bottleneck-nam-sau-service-xanh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Dependency-aware capacity: bottleneck nằm sau service xanh
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Dependency-aware capacity: bottleneck nằm sau service xanh">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fan-out-va-fan-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fan-out và fan-in
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-tai-hop-le-thay-oi-ung-bien-promotion-thanh-anomaly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Tải hợp lệ thay đổi: đừng biến promotion thành anomaly
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-burn-rate-a-cua-so-cho-capacity-risk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Burn-rate đa cửa sổ cho capacity risk
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-queue-va-deadline-depth-khong-u" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Queue và deadline: depth không đủ
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-autoscaling-la-feedback-loop-khong-phai-external-truth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Autoscaling là feedback loop, không phải external truth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-cost-aware-recommendation-nhung-reliability-co-quyen-phu-quyet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Cost-aware recommendation nhưng reliability có quyền phủ quyết
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-khi-engine-phai-tu-choi-du-bao" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Khi engine phải từ chối dự báo
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-edge-cases-production-thuong-xuyen-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Edge cases production thường xuyên gặp
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. Edge cases production thường xuyên gặp">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#141-censored-demand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.1 Censored demand
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#142-cold-start-service-moi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.2 Cold start service mới
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#143-holiday-khong-giong-holiday-nam-truoc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.3 Holiday không giống holiday năm trước
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#144-metric-cham-tran" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.4 Metric chạm trần
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#145-failover-reserve-gia" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.5 Failover reserve giả
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#146-retry-amplification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.6 Retry amplification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#147-queue-rebalance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.7 Queue rebalance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#148-quota-reset-theo-cua-so" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.8 Quota reset theo cửa sổ
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#149-tenant-voi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.9 Tenant voi
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1410-deploy-lam-giam-capacity-moi-pod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.10 Deploy làm giảm capacity mỗi pod
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1411-telemetry-en-muon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.11 Telemetry đến muộn
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1412-hai-bottleneck-canh-tranh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.12 Hai bottleneck cạnh tranh
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-multi-signal-capacity-scoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Multi-signal capacity scoring
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-backtest-ung-replay-quyet-inh-khong-chi-forecast-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Backtest đúng: replay quyết định, không chỉ forecast value
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="16. Backtest đúng: replay quyết định, không chỉ forecast value">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ground-truth-cho-mot-forecast-incident" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ground truth cho một forecast incident
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metrics-co-y-nghia-van-hanh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metrics có ý nghĩa vận hành
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-state-machine-va-lifecycle-cua-risk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. State machine và lifecycle của risk
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#18-rollout-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18. Rollout production
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="18. Rollout production">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-1-historical-replay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 1 — Historical replay
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-2-shadow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 2 — Shadow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-3-watch-channel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 3 — Watch channel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-4-human-approved-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 4 — Human-approved action
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-5-bounded-automation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 5 — Bounded automation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#19-production-acceptance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19. Production acceptance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-anti-patterns-can-loai-bo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. Anti-patterns cần loại bỏ
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#21-production-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21. Production checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ket-luan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kết luận
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tai-lieu-lien-quan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tài liệu liên quan
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="chapter-18-predictive-operations-capacity-risk-engine">Chapter 18 — Predictive Operations &amp; Capacity Risk Engine<a class="headerlink" href="#chapter-18-predictive-operations-capacity-risk-engine" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Anomaly Detection trả lời “điều gì đang khác thường?”. Predictive Operations phải trả lời câu hỏi khó hơn: “nếu không can thiệp, service nào sẽ vi phạm SLO trước, vào khoảng thời gian nào, vì resource hoặc dependency nào, và hành động sớm nhất có thể chứng minh là an toàn là gì?”. Một đường forecast đẹp không phải AIOps; một quyết định có uncertainty, topology, cost, owner và validation mới là production engine.</strong></p>
+</blockquote>
+<p><img alt="Predictive Operations Engine" src="../../../assets/diagrams/20-predictive-operations.png" /></p>
+<p><em>Demand + event context + topology → multi-horizon forecast → capacity risk → bounded proposal → verified headroom.</em></p>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../../03-prometheus/README.vi/">03 — Metric Evidence</a> — SLI, histogram, recording rule và burn rate</li>
+<li><a href="../../06-data-plane/README.vi/">06 — Data &amp; Feature Plane</a> — event time, quality gate và feature version</li>
+<li><a href="../../08-topology-change/README.vi/">08 — Topology &amp; Change</a> — dependency, criticality, deploy và scheduled event</li>
+<li><a href="../../09-anomaly-detection/README.vi/">09 — Persistent Detection</a> — baseline, drift và incident state</li>
+<li><a href="../../14-production-engine/README.vi/">14 — Production Engine</a> — HA, cost, degraded mode và capacity của chính AIOps</li>
+</ul>
+<h2 id="related-documents">Related Documents<a class="headerlink" href="#related-documents" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../../13-remediation-safety-engine/README.vi/">13 — Remediation Safety</a> — risk gate và verification cho hành động sớm</li>
+<li><a href="../../16-aiops-domain-packs/README.vi/">16 — Domain Packs</a> — deadline và business constraint theo domain</li>
+<li><a href="../../17-aiops-benchmark-replay/README.vi/">17 — Benchmark Replay</a> — backtest cùng event-time và ground truth</li>
+<li><a href="../../acceptance-template.vi/">Acceptance Template</a> — contract kiểm chứng chung</li>
+</ul>
+<h2 id="sau-chapter-nay-nguoi-oc-phai-lam-uoc-gi">Sau chapter này, người đọc phải làm được gì?<a class="headerlink" href="#sau-chapter-nay-nguoi-oc-phai-lam-uoc-gi" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Phân biệt forecast accuracy với capacity-risk usefulness.</li>
+<li>Tính được time-to-exhaustion mà không giả định workload luôn tuyến tính.</li>
+<li>Phát hiện bottleneck downstream dù service phía trước còn xanh.</li>
+<li>Không page chỉ vì traffic hợp lệ tăng theo giờ, promotion hoặc payday.</li>
+<li>Biết khi nào phải từ chối dự báo vì dữ liệu thiếu, topology stale hoặc uncertainty quá rộng.</li>
+<li>Backtest engine bằng quyết định và lead time, không bằng một biểu đồ trông mượt.</li>
+</ol>
+<h2 id="1-case-xuyen-suot-traffic-tang-hop-le-nhung-database-sap-can">1. Case xuyên suốt: traffic tăng hợp lệ nhưng database sắp cạn<a class="headerlink" href="#1-case-xuyen-suot-traffic-tang-hop-le-nhung-database-sap-can" title="Permanent link">&para;</a></h2>
+<p>Một hệ thống checkout chuẩn bị mở flash sale lúc 09:00. Marketing đã đăng lịch nên traffic tăng không phải anomaly. Kubernetes HPA vẫn tăng pod đúng như thiết kế. Dashboard frontend còn xanh. Nếu chỉ có threshold CPU và anomaly detector, on-call không có lý do để hành động.</p>
+<p>Nhưng connection limit của database không scale cùng pod:</p>
+<div class="table-scroll table-scroll--wide table-scroll--cols-7" role="region" tabindex="0" aria-label="Scrollable data table"><table>
+<thead>
+<tr>
+<th style="text-align: right;">Thời điểm</th>
+<th style="text-align: right;">Traffic req/s</th>
+<th style="text-align: right;">Checkout pods</th>
+<th style="text-align: right;">DB connections</th>
+<th style="text-align: right;">Queue oldest age</th>
+<th style="text-align: right;">p95 checkout</th>
+<th>Trạng thái khách hàng</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">09:00</td>
+<td style="text-align: right;">8.000</td>
+<td style="text-align: right;">20</td>
+<td style="text-align: right;">620/1.000</td>
+<td style="text-align: right;">2 giây</td>
+<td style="text-align: right;">190 ms</td>
+<td>Bình thường</td>
+</tr>
+<tr>
+<td style="text-align: right;">09:10</td>
+<td style="text-align: right;">9.000</td>
+<td style="text-align: right;">24</td>
+<td style="text-align: right;">700/1.000</td>
+<td style="text-align: right;">3 giây</td>
+<td style="text-align: right;">205 ms</td>
+<td>Bình thường</td>
+</tr>
+<tr>
+<td style="text-align: right;">09:20</td>
+<td style="text-align: right;">11.000</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">790/1.000</td>
+<td style="text-align: right;">5 giây</td>
+<td style="text-align: right;">225 ms</td>
+<td>Bình thường</td>
+</tr>
+<tr>
+<td style="text-align: right;">09:30</td>
+<td style="text-align: right;">14.000</td>
+<td style="text-align: right;">38</td>
+<td style="text-align: right;">870/1.000</td>
+<td style="text-align: right;">11 giây</td>
+<td style="text-align: right;">260 ms</td>
+<td>Chưa vi phạm SLO</td>
+</tr>
+<tr>
+<td style="text-align: right;">09:40</td>
+<td style="text-align: right;">18.000</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">960/1.000</td>
+<td style="text-align: right;">38 giây</td>
+<td style="text-align: right;">340 ms</td>
+<td>Một số payment chậm</td>
+</tr>
+<tr>
+<td style="text-align: right;">09:44</td>
+<td style="text-align: right;">18.700</td>
+<td style="text-align: right;">54</td>
+<td style="text-align: right;">1.000/1.000</td>
+<td style="text-align: right;">96 giây</td>
+<td style="text-align: right;">2,8 giây</td>
+<td>Timeout lan rộng</td>
+</tr>
+</tbody>
+</table></div>
+<p>Tại 09:20, một engine đúng không phát cảnh báo “traffic anomaly”. Nó tạo một <strong>capacity-risk proposal</strong>:</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-2" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Trường quyết định</th>
+<th>Giá trị tại 09:20</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Risk object</td>
+<td><code>checkout-db-connection-exhaustion</code></td>
+</tr>
+<tr>
+<td>Predicted breach</td>
+<td>09:42</td>
+</tr>
+<tr>
+<td>Khoảng dự báo</td>
+<td>09:37–09:50</td>
+</tr>
+<tr>
+<td>Lead time còn lại</td>
+<td>22 phút</td>
+</tr>
+<tr>
+<td>Bottleneck</td>
+<td>DB connection hard limit, không phải checkout CPU</td>
+</tr>
+<tr>
+<td>Downstream impact</td>
+<td>payment authorization và order confirmation</td>
+</tr>
+<tr>
+<td>Evidence thuận</td>
+<td>Connection slope, pod-to-connection ratio, queue age acceleration</td>
+</tr>
+<tr>
+<td>Evidence nghịch</td>
+<td>DB CPU 48%, query latency vẫn bình thường</td>
+</tr>
+<tr>
+<td>Confidence</td>
+<td>0,82 sau calibration</td>
+</tr>
+<tr>
+<td>Hành động đề xuất</td>
+<td>Cap checkout concurrency; tăng DB headroom nếu failover reserve còn đủ</td>
+</tr>
+<tr>
+<td>Hard gate</td>
+<td>Không tăng pool nếu tổng connection sau action vượt 80% database max</td>
+</tr>
+<tr>
+<td>Verification</td>
+<td>Queue age giảm, connection headroom phục hồi, checkout SLI không xấu đi</td>
+</tr>
+</tbody>
+</table></div>
+<p>Điểm đáng chú ý: <strong>DB CPU thấp không phủ định connection exhaustion</strong>. Request đang chờ lấy connection chưa tạo query, nên database có thể trông nhàn ngay trước khi application sụp.</p>
+<h2 id="2-forecast-khong-phai-capacity-decision">2. Forecast không phải capacity decision<a class="headerlink" href="#2-forecast-khong-phai-capacity-decision" title="Permanent link">&para;</a></h2>
+<p>Ba output thường bị trộn vào nhau:</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Output</th>
+<th>Câu hỏi</th>
+<th>Ví dụ</th>
+<th>Có đủ để page?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Forecast</td>
+<td>Giá trị tương lai có thể là bao nhiêu?</td>
+<td>Connections sau 20 phút: 955–1.030</td>
+<td>Chưa</td>
+</tr>
+<tr>
+<td>Breach probability</td>
+<td>Xác suất vượt ranh giới là bao nhiêu?</td>
+<td>74% vượt 950 trước 09:45</td>
+<td>Chưa</td>
+</tr>
+<tr>
+<td>Capacity risk</td>
+<td>Nếu breach, user journey nào hỏng và còn thời gian làm gì?</td>
+<td>Checkout timeout sau 18–30 phút; cap concurrency an toàn</td>
+<td>Có thể</td>
+</tr>
+</tbody>
+</table></div>
+<p>Một forecast có sai số trung bình thấp vẫn vô dụng nếu sai đúng tại peak. Ngược lại, forecast lệch 8% có thể rất hữu ích nếu luôn phát hiện hard-limit breach trước 20 phút và ít page giả.</p>
+<p>Engine production phải tối ưu <strong>quyết định</strong>, không tối ưu đường cong.</p>
+<h2 id="3-output-contract-cua-predictive-operations-engine">3. Output contract của Predictive Operations Engine<a class="headerlink" href="#3-output-contract-cua-predictive-operations-engine" title="Permanent link">&para;</a></h2>
+<p>Mỗi prediction cần trở thành một object bất biến có thể replay:</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Nhóm</th>
+<th>Trường bắt buộc</th>
+<th>Vì sao cần</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Identity</td>
+<td>service, resource, tenant/region, model version</td>
+<td>Tránh trộn series và tái dựng quyết định</td>
+</tr>
+<tr>
+<td>Forecast</td>
+<td>horizon, quantiles, generated-at, valid-until</td>
+<td>Không dùng forecast cũ như sự thật hiện tại</td>
+</tr>
+<tr>
+<td>Constraint</td>
+<td>soft limit, hard limit, reserve policy</td>
+<td>80% CPU không giống 1.000 connection hard cap</td>
+</tr>
+<tr>
+<td>Risk</td>
+<td>breach probability, earliest/latest breach, severity</td>
+<td>Cho người đọc uncertainty thay vì một ETA giả</td>
+</tr>
+<tr>
+<td>Causality context</td>
+<td>topology revision, change window, shared-fate</td>
+<td>Xác định nơi user impact sẽ lan tới</td>
+</tr>
+<tr>
+<td>Evidence</td>
+<td>supporting, contradicting, missing</td>
+<td>Buộc engine thể hiện điều chưa biết</td>
+</tr>
+<tr>
+<td>Actionability</td>
+<td>owner, safe actions, lead-time budget</td>
+<td>Forecast không owner là dashboard decoration</td>
+</tr>
+<tr>
+<td>Governance</td>
+<td>policy version, calibration cohort, audit id</td>
+<td>Phục vụ acceptance và điều tra sai dự báo</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>valid-until</code> quan trọng hơn nhiều hệ thống tưởng. Forecast sinh lúc 09:20 trước một deploy 09:23 không còn cùng điều kiện. Engine phải invalidated hoặc reforecast, không giữ ETA cũ đến 09:42.</p>
+<h2 id="4-on-vi-du-bao-ung-demand-capacity-va-headroom">4. Đơn vị dự báo đúng: demand, capacity và headroom<a class="headerlink" href="#4-on-vi-du-bao-ung-demand-capacity-va-headroom" title="Permanent link">&para;</a></h2>
+<p>Chỉ forecast CPU là sai mô hình. Engine cần ba lớp:</p>
+<h3 id="41-demand">4.1 Demand<a class="headerlink" href="#41-demand" title="Permanent link">&para;</a></h3>
+<p>Demand là tải muốn đi vào hệ thống: request rate, message arrival rate, bytes/s, concurrent sessions hoặc số job theo deadline.</p>
+<p>Ví dụ payment nhận <code>2.000 → 2.300 → 2.800 → 3.400 txn/s</code>. Nếu gateway throttling giữ observed throughput ở 2.500, metric xử lý chỉ cho thấy đường phẳng. Demand thật nằm ở <code>accepted + rejected + retried</code>, không phải successful throughput.</p>
+<h3 id="42-effective-capacity">4.2 Effective capacity<a class="headerlink" href="#42-effective-capacity" title="Permanent link">&para;</a></h3>
+<p>Capacity không phải số pod. Nó là throughput tối đa dưới constraint hiện tại.</p>
+<p>40 pod có thể xử lý 20.000 req/s trong test, nhưng production chỉ đạt 12.000 vì:</p>
+<ul>
+<li>database giới hạn 1.000 connections;</li>
+<li>partner API cho 8.000 requests/phút;</li>
+<li>một shard nóng chịu 45% traffic;</li>
+<li>CPU limit khiến pod throttling;</li>
+<li>retry dùng mất 30% capacity.</li>
+</ul>
+<h3 id="43-headroom">4.3 Headroom<a class="headerlink" href="#43-headroom" title="Permanent link">&para;</a></h3>
+<p>Headroom phải tính theo bottleneck:</p>
+<p><code>headroom = effective capacity − projected demand − failover reserve</code></p>
+<p>Nếu effective capacity là 15.000 req/s, demand dự báo p95 là 13.800 và policy giữ 20% cho failover, headroom vận hành đã âm dù dashboard còn 1.200 req/s “trống”.</p>
+<h2 id="5-time-to-exhaustion-khong-phai-phep-chia-slope-ngay-tho">5. Time-to-exhaustion không phải phép chia slope ngây thơ<a class="headerlink" href="#5-time-to-exhaustion-khong-phai-phep-chia-slope-ngay-tho" title="Permanent link">&para;</a></h2>
+<p>Với dãy connection <code>620, 700, 790</code>, cách tuyến tính có thể dự báo chạm 1.000 sau khoảng 23 phút. Nhưng bốn lực làm ETA thay đổi:</p>
+<ol>
+<li>HPA thêm pod và mỗi pod mở pool mới.</li>
+<li>Retry tăng phi tuyến khi latency bắt đầu cao.</li>
+<li>Cache hit giảm khi catalog mới được bật.</li>
+<li>Circuit breaker có thể cắt demand đột ngột.</li>
+</ol>
+<p>Vì vậy engine cần xuất một <strong>khoảng breach</strong> thay vì một timestamp duy nhất.</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Kịch bản</th>
+<th>Giả định</th>
+<th style="text-align: right;">Breach dự kiến</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P50</td>
+<td>Traffic đi đúng plan, retry ổn định</td>
+<td style="text-align: right;">09:47</td>
+</tr>
+<tr>
+<td>P90</td>
+<td>Traffic cao hơn plan 12%</td>
+<td style="text-align: right;">09:42</td>
+</tr>
+<tr>
+<td>Stress</td>
+<td>Retry ratio tăng từ 1,05 lên 1,35</td>
+<td style="text-align: right;">09:36</td>
+</tr>
+<tr>
+<td>Mitigated</td>
+<td>Cap concurrency lúc 09:30</td>
+<td style="text-align: right;">Không breach trong 60 phút</td>
+</tr>
+</tbody>
+</table></div>
+<p>Nếu khoảng dự báo là “5 phút đến 4 giờ”, engine chưa có quyết định đủ tốt để page. Nó nên yêu cầu evidence bổ sung hoặc chuyển thành watch, không ép confidence giả.</p>
+<h2 id="6-multi-horizon-mot-model-khong-phuc-vu-moi-quyet-inh">6. Multi-horizon: một model không phục vụ mọi quyết định<a class="headerlink" href="#6-multi-horizon-mot-model-khong-phuc-vu-moi-quyet-inh" title="Permanent link">&para;</a></h2>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Horizon</th>
+<th>Quyết định</th>
+<th>Tín hiệu chính</th>
+<th>Sai lầm phổ biến</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>5–15 phút</td>
+<td>Throttle, pause deploy, pre-warm</td>
+<td>Slope gần, queue acceleration, retry</td>
+<td>Quá nhạy với một spike</td>
+</tr>
+<tr>
+<td>30–120 phút</td>
+<td>Scale pool, tăng quota, chuyển traffic</td>
+<td>Event schedule, topology capacity</td>
+<td>Không tính thời gian action có hiệu lực</td>
+</tr>
+<tr>
+<td>1–7 ngày</td>
+<td>Mua capacity, đổi partition, reschedule batch</td>
+<td>Seasonality, growth, planned campaigns</td>
+<td>Ngoại suy trend tuyến tính vô hạn</td>
+</tr>
+<tr>
+<td>1–3 tháng</td>
+<td>Architecture và budget</td>
+<td>Demand cohort, product roadmap</td>
+<td>Trộn uncertainty chiến lược với page on-call</td>
+</tr>
+</tbody>
+</table></div>
+<p>Một risk chỉ actionable nếu <code>lead time &gt; action latency + verification latency + safety buffer</code>.</p>
+<p>Ví dụ tăng cloud quota cần 2 ngày thì forecast 30 phút không phải “early warning”; nó là bằng chứng quy trình capacity đã thất bại.</p>
+<h2 id="7-dependency-aware-capacity-bottleneck-nam-sau-service-xanh">7. Dependency-aware capacity: bottleneck nằm sau service xanh<a class="headerlink" href="#7-dependency-aware-capacity-bottleneck-nam-sau-service-xanh" title="Permanent link">&para;</a></h2>
+<p>Topology ở Chapter 08 biến forecast cục bộ thành impact path.</p>
+<p>Giả sử:</p>
+<ul>
+<li>checkout còn 35% CPU headroom;</li>
+<li>payment còn 40% pod headroom;</li>
+<li>auth-vendor còn 18% quota;</li>
+<li>order-db còn 6% connection headroom;</li>
+<li>cả checkout và refund dùng chung order-db.</li>
+</ul>
+<p>Một engine chỉ rank theo local utilization sẽ đánh dấu order-db. Engine production phải đi thêm hai bước:</p>
+<ol>
+<li><strong>Downstream weighting:</strong> checkout và refund chiếm bao nhiêu business traffic, tier nào và error-budget state ra sao?</li>
+<li><strong>Shared-fate:</strong> failover payment sang region B có dùng chính database/quota đang cạn không?</li>
+</ol>
+<p>Risk card phải nói “order-db connection exhaustion có thể làm hỏng checkout và refund”, không chỉ “database usage high”.</p>
+<h3 id="fan-out-va-fan-in">Fan-out và fan-in<a class="headerlink" href="#fan-out-va-fan-in" title="Permanent link">&para;</a></h3>
+<p>Một API gọi 12 downstream tạo demand lớn hơn request đầu vào. Ngược lại, 20 service cùng ghi một queue tạo fan-in. Forecast từng service độc lập sẽ không thấy tổng demand.</p>
+<p>Với traffic frontend tăng 10%, nếu mỗi request tạo 4 inventory calls và cache hit giảm từ 90% xuống 70%, database read demand có thể tăng hơn 3 lần. Forecast cần feature theo <strong>work amplification</strong>, không chỉ traffic.</p>
+<h2 id="8-tai-hop-le-thay-oi-ung-bien-promotion-thanh-anomaly">8. Tải hợp lệ thay đổi: đừng biến promotion thành anomaly<a class="headerlink" href="#8-tai-hop-le-thay-oi-ung-bien-promotion-thanh-anomaly" title="Permanent link">&para;</a></h2>
+<p>Engine cần event context:</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Cách dùng đúng</th>
+<th>Cách dùng sai</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Flash sale 09:00–11:00</td>
+<td>Thay demand prior và tăng risk sensitivity</td>
+<td>Suppress mọi cảnh báo trong sale</td>
+</tr>
+<tr>
+<td>Payday</td>
+<td>Chọn cohort lịch sử tương đồng</td>
+<td>So với ngày thường gần nhất</td>
+</tr>
+<tr>
+<td>Feature launch</td>
+<td>Widen uncertainty, theo dõi amplification</td>
+<td>Tin forecast cũ sau launch</td>
+</tr>
+<tr>
+<td>Deploy checkout</td>
+<td>Invalidate model nếu feature behavior đổi</td>
+<td>Gắn deploy là root cause mặc định</td>
+</tr>
+<tr>
+<td>Batch cuối tháng</td>
+<td>Forecast queue deadline và shared DB</td>
+<td>Chỉ forecast average daily load</td>
+</tr>
+</tbody>
+</table></div>
+<p>Lịch event không phải ground truth. Marketing có thể dự kiến 20.000 req/s nhưng thực tế chỉ 9.000 hoặc lên 35.000. Engine dùng schedule làm prior, sau đó cập nhật bằng observed demand.</p>
+<h2 id="9-burn-rate-a-cua-so-cho-capacity-risk">9. Burn-rate đa cửa sổ cho capacity risk<a class="headerlink" href="#9-burn-rate-a-cua-so-cho-capacity-risk" title="Permanent link">&para;</a></h2>
+<p>Capacity prediction và SLO burn-rate nên kiểm tra lẫn nhau.</p>
+<p>Ví dụ engine dự báo database cạn trong 25 phút nhưng user SLI vẫn khỏe:</p>
+<ul>
+<li>cửa sổ 5 phút cho thấy burn-rate 0,7×;</li>
+<li>cửa sổ 30 phút là 0,9×;</li>
+<li>connection headroom giảm từ 21% xuống 9%;</li>
+<li>queue oldest age tăng đều.</li>
+</ul>
+<p>Đây là proactive risk hợp lệ vì hard limit có thể chuyển từ 0% lỗi sang gần 100% rất nhanh. Tuy nhiên severity chưa nên bằng outage đang diễn ra.</p>
+<p>Ngược lại, burn-rate 12× nhưng capacity forecast “khỏe” cho thấy incident không phải capacity class. Engine phải chuyển evidence sang Detection/RCA, không cố giải thích mọi lỗi bằng forecast.</p>
+<h2 id="10-queue-va-deadline-depth-khong-u">10. Queue và deadline: depth không đủ<a class="headerlink" href="#10-queue-va-deadline-depth-khong-u" title="Permanent link">&para;</a></h2>
+<p>Xét queue có depth <code>10k → 20k → 35k → 50k</code>, arrival 5.000 msg/s và consume 4.500 msg/s. Depth tăng 500 msg/s. Nếu chỉ chia depth cho throughput, ta bỏ qua deadline.</p>
+<p>Hai queue cùng depth 50.000:</p>
+<ul>
+<li>email receipt có deadline 30 phút: còn an toàn;</li>
+<li>payment settlement có deadline 2 phút: đã breach nghiệp vụ.</li>
+</ul>
+<p>Engine cần forecast:</p>
+<ul>
+<li>oldest event age;</li>
+<li>arrival và service rate theo partition;</li>
+<li>thời gian drain nếu arrival về bình thường;</li>
+<li>deadline miss probability;</li>
+<li>downstream window như cutoff ngân hàng.</li>
+</ul>
+<p>Partition skew cũng phải tách riêng. Average lag 8 giây có thể che một partition lag 11 phút vì key nóng.</p>
+<h2 id="11-autoscaling-la-feedback-loop-khong-phai-external-truth">11. Autoscaling là feedback loop, không phải external truth<a class="headerlink" href="#11-autoscaling-la-feedback-loop-khong-phai-external-truth" title="Permanent link">&para;</a></h2>
+<p>Forecast thay đổi hành vi hệ thống, rồi hành vi đó thay đổi forecast.</p>
+<p>Case:</p>
+<ol>
+<li>Engine dự báo CPU breach và HPA tăng pod.</li>
+<li>Mỗi pod mở 20 DB connections.</li>
+<li>CPU giảm nên forecast CPU trông tốt hơn.</li>
+<li>Database pool cạn nhanh hơn.</li>
+</ol>
+<p>Nếu engine chỉ nhìn từng resource, recommendation của nó tạo ra incident khác.</p>
+<p>Mọi proposed action cần một <strong>counterfactual impact table</strong>:</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Resource được cứu</th>
+<th>Resource có thể xấu đi</th>
+<th>Gate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tăng 20 pods</td>
+<td>Checkout CPU</td>
+<td>DB connections, cache churn</td>
+<td>DB reserve sau scale ≥ 20%</td>
+</tr>
+<tr>
+<td>Tăng worker</td>
+<td>Queue lag</td>
+<td>Partner quota, DB write</td>
+<td>Partner quota p95 còn đủ</td>
+</tr>
+<tr>
+<td>Chuyển region</td>
+<td>Region A CPU</td>
+<td>Region B shared database</td>
+<td>Failover rehearsal còn hiệu lực</td>
+</tr>
+<tr>
+<td>Tăng pool</td>
+<td>Acquire wait</td>
+<td>Database max connections</td>
+<td>Ownership/leak evidence rõ</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="12-cost-aware-recommendation-nhung-reliability-co-quyen-phu-quyet">12. Cost-aware recommendation nhưng reliability có quyền phủ quyết<a class="headerlink" href="#12-cost-aware-recommendation-nhung-reliability-co-quyen-phu-quyet" title="Permanent link">&para;</a></h2>
+<p>Engine có thể so sánh ba lựa chọn:</p>
+<div class="table-scroll table-scroll--wide table-scroll--cols-5" role="region" tabindex="0" aria-label="Scrollable data table"><table>
+<thead>
+<tr>
+<th>Lựa chọn</th>
+<th style="text-align: right;">Chi phí 2 giờ</th>
+<th style="text-align: right;">Risk breach</th>
+<th style="text-align: right;">Thời gian hiệu lực</th>
+<th>Kết luận</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Không làm gì</td>
+<td style="text-align: right;">0 USD</td>
+<td style="text-align: right;">74%</td>
+<td style="text-align: right;">Ngay</td>
+<td>Không chấp nhận</td>
+</tr>
+<tr>
+<td>Pre-scale 20 pods</td>
+<td style="text-align: right;">38 USD</td>
+<td style="text-align: right;">61% vì DB vẫn cạn</td>
+<td style="text-align: right;">4 phút</td>
+<td>Sai bottleneck</td>
+</tr>
+<tr>
+<td>Cap concurrency + tăng DB headroom</td>
+<td style="text-align: right;">120 USD</td>
+<td style="text-align: right;">8%</td>
+<td style="text-align: right;">12 phút</td>
+<td>Đề xuất</td>
+</tr>
+</tbody>
+</table></div>
+<p>Cost chỉ được tối ưu bên trong miền an toàn. Không được chọn phương án rẻ nhất nếu vi phạm SLO hoặc failover reserve.</p>
+<h2 id="13-khi-engine-phai-tu-choi-du-bao">13. Khi engine phải từ chối dự báo<a class="headerlink" href="#13-khi-engine-phai-tu-choi-du-bao" title="Permanent link">&para;</a></h2>
+<p>Từ chối là hành vi production, không phải failure.</p>
+<p>Engine phải trả <code>insufficient_evidence</code> khi:</p>
+<ul>
+<li>metric bị mất 18% trong cửa sổ dùng để forecast;</li>
+<li>topology revision quá freshness SLO;</li>
+<li>hard limit chưa rõ hoặc quota API trả dữ liệu cũ;</li>
+<li>deploy làm distribution shift ngoài cohort đã calibration;</li>
+<li>series bị clamp ở 100% nên không còn thấy latent demand;</li>
+<li>quantile interval rộng hơn action window;</li>
+<li>model version chưa qua shadow/backtest cho service tier này.</li>
+</ul>
+<p>Output từ chối vẫn phải ghi owner và query tiếp theo: “xác minh quota”, “đọc rejected demand”, hoặc “chuyển sang conservative static reserve”.</p>
+<h2 id="14-edge-cases-production-thuong-xuyen-gap">14. Edge cases production thường xuyên gặp<a class="headerlink" href="#14-edge-cases-production-thuong-xuyen-gap" title="Permanent link">&para;</a></h2>
+<h3 id="141-censored-demand">14.1 Censored demand<a class="headerlink" href="#141-censored-demand" title="Permanent link">&para;</a></h3>
+<p>Gateway chỉ nhận tối đa 10.000 req/s nên observed traffic nằm ngang 10.000. Rejected traffic tăng <code>0 → 500 → 3.000</code>. Forecast trên accepted traffic nói ổn; demand forecast phải cộng reject và retry đã dedup.</p>
+<h3 id="142-cold-start-service-moi">14.2 Cold start service mới<a class="headerlink" href="#142-cold-start-service-moi" title="Permanent link">&para;</a></h3>
+<p>Service mới có 3 giờ dữ liệu không thể học weekly seasonality. Dùng domain prior từ service cùng class, load-test envelope và uncertainty rộng. Chỉ cho phép watch hoặc human-approved pre-scale cho tới khi đủ cohort.</p>
+<h3 id="143-holiday-khong-giong-holiday-nam-truoc">14.3 Holiday không giống holiday năm trước<a class="headerlink" href="#143-holiday-khong-giong-holiday-nam-truoc" title="Permanent link">&para;</a></h3>
+<p>Campaign, giá và product mix thay đổi. Lịch sử chỉ là prior. Engine phải theo dõi forecast residual theo thời gian thật và reforecast, không giữ curve năm trước.</p>
+<h3 id="144-metric-cham-tran">14.4 Metric chạm trần<a class="headerlink" href="#144-metric-cham-tran" title="Permanent link">&para;</a></h3>
+<p>CPU báo 100% liên tục không cho biết demand là 105% hay 250%. Dùng throttled time, queue age, rejected work và client retry để ước lượng pressure ngoài trần.</p>
+<h3 id="145-failover-reserve-gia">14.5 Failover reserve giả<a class="headerlink" href="#145-failover-reserve-gia" title="Permanent link">&para;</a></h3>
+<p>Region B trống 40%, nhưng database và partner quota dùng chung global. Capacity failover thực tế bằng bottleneck chung, không phải tổng pod trống.</p>
+<h3 id="146-retry-amplification">14.6 Retry amplification<a class="headerlink" href="#146-retry-amplification" title="Permanent link">&para;</a></h3>
+<p>Traffic user không đổi nhưng request nội bộ tăng 1,8 lần. Forecast cần original-request identity hoặc retry label; nếu không sẽ nhầm retry là demand tăng tự nhiên và scale vào vòng lặp.</p>
+<h3 id="147-queue-rebalance">14.7 Queue rebalance<a class="headerlink" href="#147-queue-rebalance" title="Permanent link">&para;</a></h3>
+<p>Lag nhảy trong consumer rebalance nhưng oldest event age không tăng. Không tạo breach prediction nếu freshness SLI khỏe và throughput trở lại trong grace window.</p>
+<h3 id="148-quota-reset-theo-cua-so">14.8 Quota reset theo cửa sổ<a class="headerlink" href="#148-quota-reset-theo-cua-so" title="Permanent link">&para;</a></h3>
+<p>API quota 1 triệu request/ngày còn 8%, nhưng reset sau 12 phút. Time-to-exhaustion 20 phút nghĩa là không breach. Engine phải hiểu reset policy, timezone và clock skew.</p>
+<h3 id="149-tenant-voi">14.9 Tenant voi<a class="headerlink" href="#149-tenant-voi" title="Permanent link">&para;</a></h3>
+<p>Global usage 55%, một tenant chiếm 85% shard. Forecast theo global bỏ lọt. Tách tenant/shard nhưng kiểm soát cardinality bằng tier và heavy-hitter tracking.</p>
+<h3 id="1410-deploy-lam-giam-capacity-moi-pod">14.10 Deploy làm giảm capacity mỗi pod<a class="headerlink" href="#1410-deploy-lam-giam-capacity-moi-pod" title="Permanent link">&para;</a></h3>
+<p>Pod count không đổi, traffic không đổi, CPU tăng vì version mới tốn gấp đôi. Model cũ phải invalidated theo change event và so control group old/new version.</p>
+<h3 id="1411-telemetry-en-muon">14.11 Telemetry đến muộn<a class="headerlink" href="#1411-telemetry-en-muon" title="Permanent link">&para;</a></h3>
+<p>Batch metric arrive sau 8 phút có thể làm forecast “quay về quá khứ”. Engine dùng event time, watermark và revision id; không page lại cho cùng breach nếu chỉ processing time thay đổi.</p>
+<h3 id="1412-hai-bottleneck-canh-tranh">14.12 Hai bottleneck cạnh tranh<a class="headerlink" href="#1412-hai-bottleneck-canh-tranh" title="Permanent link">&para;</a></h3>
+<p>Database chạm limit trong 25 phút, disk chạm trong 40 phút. Hành động cứu DB có thể tăng write và làm disk chạm trong 15 phút. Action simulation phải reforecast tất cả constraint liên quan.</p>
+<h2 id="15-multi-signal-capacity-scoring">15. Multi-signal capacity scoring<a class="headerlink" href="#15-multi-signal-capacity-scoring" title="Permanent link">&para;</a></h2>
+<p>Không cộng điểm mù quáng. Hard constraint và evidence quality có quyền phủ quyết.</p>
+<p>Một risk score có thể gồm:</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Vai trò</th>
+<th>Ví dụ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Breach probability</td>
+<td>Khả năng vượt constraint</td>
+<td>0,74</td>
+</tr>
+<tr>
+<td>Business criticality</td>
+<td>Hậu quả nếu breach</td>
+<td>Payment tier-0</td>
+</tr>
+<tr>
+<td>Lead-time adequacy</td>
+<td>Còn đủ thời gian action không</td>
+<td>22 phút so với action 12 phút</td>
+</tr>
+<tr>
+<td>Dependency spread</td>
+<td>Số critical journey downstream</td>
+<td>Checkout, refund</td>
+</tr>
+<tr>
+<td>Forecast calibration</td>
+<td>Model có đáng tin trong cohort này</td>
+<td>82% interval coverage</td>
+</tr>
+<tr>
+<td>Data quality</td>
+<td>Missing/stale/conflict</td>
+<td>98% complete</td>
+</tr>
+</tbody>
+</table></div>
+<p>Nhưng nếu quota không xác minh được hoặc topology stale, score cao không được bù hard gate fail. Output phải hạ về <code>watch</code> hoặc <code>unknown</code>.</p>
+<h2 id="16-backtest-ung-replay-quyet-inh-khong-chi-forecast-value">16. Backtest đúng: replay quyết định, không chỉ forecast value<a class="headerlink" href="#16-backtest-ung-replay-quyet-inh-khong-chi-forecast-value" title="Permanent link">&para;</a></h2>
+<p>Mỗi historical window cần giả lập đúng điều engine biết tại thời điểm đó. Không được dùng quota, topology hoặc event cập nhật sau incident.</p>
+<h3 id="ground-truth-cho-mot-forecast-incident">Ground truth cho một forecast incident<a class="headerlink" href="#ground-truth-cho-mot-forecast-incident" title="Permanent link">&para;</a></h3>
+<ul>
+<li>breach có thật hay không;</li>
+<li>thời điểm user SLI bắt đầu xấu;</li>
+<li>bottleneck thật;</li>
+<li>action nào đã làm và lúc nào;</li>
+<li>nếu không breach vì người đã can thiệp, đó không phải false positive tự động;</li>
+<li>uncertainty interval có chứa thời điểm breach hay không.</li>
+</ul>
+<h3 id="metrics-co-y-nghia-van-hanh">Metrics có ý nghĩa vận hành<a class="headerlink" href="#metrics-co-y-nghia-van-hanh" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-2" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Câu hỏi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Useful lead time</td>
+<td>Engine báo trước đủ để hành động bao lâu?</td>
+</tr>
+<tr>
+<td>Breach precision</td>
+<td>Bao nhiêu risk card thật sự cần can thiệp?</td>
+</tr>
+<tr>
+<td>Missed critical breach</td>
+<td>Có hard-limit incident nào không được báo?</td>
+</tr>
+<tr>
+<td>Interval coverage</td>
+<td>Khoảng p90 có chứa kết quả thật gần 90% không?</td>
+</tr>
+<tr>
+<td>Bottleneck accuracy</td>
+<td>Resource được chỉ ra có đúng cơ chế không?</td>
+</tr>
+<tr>
+<td>Action regret</td>
+<td>Recommendation có gây chi phí/risk không cần thiết không?</td>
+</tr>
+<tr>
+<td>Alert persistence</td>
+<td>Risk kéo dài có bị tự nuốt giữa chừng không?</td>
+</tr>
+</tbody>
+</table></div>
+<p>Không dùng MAPE một mình: series gần zero làm MAPE vô nghĩa; average error cũng che lỗi tại peak.</p>
+<h2 id="17-state-machine-va-lifecycle-cua-risk">17. State machine và lifecycle của risk<a class="headerlink" href="#17-state-machine-va-lifecycle-cua-risk" title="Permanent link">&para;</a></h2>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>State</th>
+<th>Ý nghĩa</th>
+<th>Điều kiện chuyển</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Observing</td>
+<td>Có trend nhưng chưa đủ evidence</td>
+<td>Breach probability dưới watch threshold</td>
+</tr>
+<tr>
+<td>Watch</td>
+<td>Có risk, chưa cần page</td>
+<td>Lead time dài hoặc uncertainty rộng</td>
+</tr>
+<tr>
+<td>Actionable</td>
+<td>Đủ evidence và còn thời gian can thiệp</td>
+<td>Gate data/topology/model pass</td>
+</tr>
+<tr>
+<td>Mitigating</td>
+<td>Action đã được chấp thuận</td>
+<td>Có action id và owner</td>
+</tr>
+<tr>
+<td>Verifying</td>
+<td>Đợi headroom/SLI chứng minh</td>
+<td>Minimum observation window đạt</td>
+</tr>
+<tr>
+<td>Cleared</td>
+<td>Risk thật sự hết</td>
+<td>Nhiều cửa sổ đều an toàn</td>
+</tr>
+<tr>
+<td>Invalidated</td>
+<td>Context thay đổi</td>
+<td>Deploy, quota, topology hoặc model revision mới</td>
+</tr>
+</tbody>
+</table></div>
+<p>Engine không được tự clear chỉ vì action vừa chạy. Nó phải thấy constraint, leading signal và user SLI cùng phục hồi.</p>
+<h2 id="18-rollout-production">18. Rollout production<a class="headerlink" href="#18-rollout-production" title="Permanent link">&para;</a></h2>
+<h3 id="giai-oan-1-historical-replay">Giai đoạn 1 — Historical replay<a class="headerlink" href="#giai-oan-1-historical-replay" title="Permanent link">&para;</a></h3>
+<p>Chọn 30–50 incident capacity và 50 peak hợp lệ. Đảm bảo có cả case can thiệp sớm để không gắn nhãn nhầm thành false positive.</p>
+<h3 id="giai-oan-2-shadow">Giai đoạn 2 — Shadow<a class="headerlink" href="#giai-oan-2-shadow" title="Permanent link">&para;</a></h3>
+<p>Sinh risk card nhưng không page. So timestamp với quyết định thật của on-call. Thu thập “đúng bottleneck nhưng quá muộn” riêng khỏi “sai bottleneck”.</p>
+<h3 id="giai-oan-3-watch-channel">Giai đoạn 3 — Watch channel<a class="headerlink" href="#giai-oan-3-watch-channel" title="Permanent link">&para;</a></h3>
+<p>Chỉ gửi tier-0, hard constraint, lead time đủ. Mỗi card có expiry và owner; không dump hàng trăm forecast series.</p>
+<h3 id="giai-oan-4-human-approved-action">Giai đoạn 4 — Human-approved action<a class="headerlink" href="#giai-oan-4-human-approved-action" title="Permanent link">&para;</a></h3>
+<p>Cho phép pre-scale, quota request hoặc cap concurrency qua Safety Engine. Không auto-action chỉ dựa trên forecast confidence.</p>
+<h3 id="giai-oan-5-bounded-automation">Giai đoạn 5 — Bounded automation<a class="headerlink" href="#giai-oan-5-bounded-automation" title="Permanent link">&para;</a></h3>
+<p>Chỉ action class đã benchmark, rollback được và có independent verification. Một recommendation fail verification phải hạ automation tier.</p>
+<h2 id="19-production-acceptance">19. Production acceptance<a class="headerlink" href="#19-production-acceptance" title="Permanent link">&para;</a></h2>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Scenario bắt buộc</th>
+<th>Threshold khởi đầu</th>
+<th>Evidence artifact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Long ramp</td>
+<td>Dãy 8k→18k req/s</td>
+<td>Không có khoảng câm; lead time ≥ action latency + 5 phút</td>
+<td>Risk-state timeline</td>
+</tr>
+<tr>
+<td>Legitimate peak</td>
+<td>Promotion có lịch</td>
+<td>Không page chỉ vì traffic tăng</td>
+<td>Event-context decision log</td>
+</tr>
+<tr>
+<td>Hidden bottleneck</td>
+<td>CPU xanh, DB pool cạn</td>
+<td>Rank đúng dependency bottleneck</td>
+<td>Topology snapshot + evidence</td>
+</tr>
+<tr>
+<td>Concurrent risk</td>
+<td>DB và disk cùng tiến tới limit</td>
+<td>Hai risk object, action không xung đột</td>
+<td>Resource coordination log</td>
+</tr>
+<tr>
+<td>Calibration</td>
+<td>100 replay windows</td>
+<td>p90 coverage nằm trong 85–95%</td>
+<td>Calibration report</td>
+</tr>
+<tr>
+<td>Missing data</td>
+<td>Mất 20% metric</td>
+<td>Refuse hoặc degraded policy; không confidence giả</td>
+<td>Quality-gate output</td>
+</tr>
+<tr>
+<td>Change invalidation</td>
+<td>Deploy giữa forecast</td>
+<td>Forecast cũ invalidated trong freshness SLO</td>
+<td>Revision audit</td>
+</tr>
+<tr>
+<td>Safety</td>
+<td>Scale làm tăng DB pressure</td>
+<td>Hard gate chặn action</td>
+<td>Policy evaluation</td>
+</tr>
+<tr>
+<td>Recovery</td>
+<td>Headroom phục hồi</td>
+<td>Không clear trước verification window</td>
+<td>Before/after evidence</td>
+</tr>
+</tbody>
+</table></div>
+<p>Acceptance phải ghi rõ service tier, horizon, model version, topology revision và constraint version. Pass trên checkout không tự động cho phép rollout sang settlement.</p>
+<h2 id="20-anti-patterns-can-loai-bo">20. Anti-patterns cần loại bỏ<a class="headerlink" href="#20-anti-patterns-can-loai-bo" title="Permanent link">&para;</a></h2>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Anti-pattern</th>
+<th>Vì sao nguy hiểm</th>
+<th>Thay bằng</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Forecast mọi metric</td>
+<td>Alert storm dưới tên mới</td>
+<td>Forecast constraint và decision</td>
+</tr>
+<tr>
+<td>Một ETA duy nhất</td>
+<td>Che uncertainty</td>
+<td>Earliest/latest + quantiles</td>
+</tr>
+<tr>
+<td>Scale theo CPU</td>
+<td>Bỏ bottleneck downstream</td>
+<td>Dependency-aware capacity</td>
+</tr>
+<tr>
+<td>Training trên observed throughput</td>
+<td>Không thấy rejected demand</td>
+<td>Demand reconstruction</td>
+</tr>
+<tr>
+<td>Dùng schedule để suppress</td>
+<td>Che incident thật trong peak</td>
+<td>Schedule làm prior</td>
+</tr>
+<tr>
+<td>Accuracy trung bình đẹp</td>
+<td>Có thể vẫn miss peak</td>
+<td>Lead time, calibration, breach recall</td>
+</tr>
+<tr>
+<td>Auto-action theo confidence</td>
+<td>Confidence không phải policy</td>
+<td>Safety hard gates</td>
+</tr>
+<tr>
+<td>Không invalidated sau change</td>
+<td>Forecast dùng thế giới cũ</td>
+<td>Revision-aware lifecycle</td>
+</tr>
+<tr>
+<td>Page khi action không kịp</td>
+<td>Tạo toil, không cứu được</td>
+<td>Capacity planning escalation</td>
+</tr>
+<tr>
+<td>Clear ngay sau scale</td>
+<td>Chưa chứng minh recovery</td>
+<td>Multi-signal verification</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="21-production-checklist">21. Production checklist<a class="headerlink" href="#21-production-checklist" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[ ] Demand khác observed throughput.</li>
+<li>[ ] Hard/soft limit và failover reserve có owner.</li>
+<li>[ ] Forecast có interval, expiry và model version.</li>
+<li>[ ] Topology và scheduled change có freshness SLO.</li>
+<li>[ ] Risk tách theo region/shard/tenant quan trọng.</li>
+<li>[ ] HPA, retry, cache và circuit breaker được coi là feedback loop.</li>
+<li>[ ] Queue dùng oldest age và deadline, không chỉ depth.</li>
+<li>[ ] Missing data dẫn tới degraded/refuse, không im lặng.</li>
+<li>[ ] Backtest không leakage từ tương lai.</li>
+<li>[ ] Metrics gồm useful lead time và calibration.</li>
+<li>[ ] Recommendation đi qua Remediation Safety Engine.</li>
+<li>[ ] Recovery có independent verification.</li>
+<li>[ ] Mỗi risk card có owner, expiry và dedup key.</li>
+<li>[ ] Concurrent resource risk có coordination.</li>
+<li>[ ] Game day gồm peak hợp lệ lẫn hidden bottleneck.</li>
+</ul>
+<h2 id="ket-luan">Kết luận<a class="headerlink" href="#ket-luan" title="Permanent link">&para;</a></h2>
+<p>Predictive Operations không phải “vẽ tương lai” mà là quản lý uncertainty trước một constraint có hậu quả. Engine tốt biết demand thật, effective capacity, dependency bottleneck, thời gian hành động và điều chưa biết. Nó không la làng vì promotion, không scale nhầm tầng stateless khi database sắp cạn, không biến confidence thành quyền hành động và không tự nhận thành công trước khi headroom cùng user SLI phục hồi.</p>
+<h2 id="tai-lieu-lien-quan">Tài liệu liên quan<a class="headerlink" href="#tai-lieu-lien-quan" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/welcome.html">AWS Well-Architected — Reliability Pillar</a> — quota, constraint, failover headroom và reliability planning</li>
+<li><a href="https://sre.google/resources/practices-and-processes/incident-management-guide/">Google SRE — Incident Management Guide</a> — symptom-based alerting và trường hợp preventive alert cho hard quota sắp cạn</li>
+<li><a href="https://sre.google/sre-book/handling-overload/">Google SRE — Handling Overload</a> — overload, load shedding và capacity behavior</li>
+<li><a href="../../09-anomaly-detection/README.vi/">09 — Persistent Detection</a></li>
+<li><a href="../../13-remediation-safety-engine/README.vi/">13 — Remediation Safety</a></li>
+<li><a href="../../17-aiops-benchmark-replay/README.vi/">17 — Benchmark Replay</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../../17-aiops-benchmark-replay/README.vi/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 17 Benchmark Replay">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                17 Benchmark Replay
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../../19-incident-operations/README.vi/" class="md-footer__link md-footer__link--next" aria-label="Next: 19 Incident Operations">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                19 Incident Operations
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../../javascripts/mermaid-zoom.js"></script>
+      
+    
+  </body>
+</html>

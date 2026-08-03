@@ -1,0 +1,6005 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Production-grade AIOps handbook — observability to remediation (Vietnamese + English)">
+      
+      
+        <meta name="author" content="XUanhoa04">
+      
+      
+        <link rel="canonical" href="https://xuanhoa04.github.io/aiops-engineering-handbook/vi/15-aiops-pattern-library/README.vi/">
+      
+      
+        <link rel="prev" href="../../14-production-engine/README.vi/">
+      
+      
+        <link rel="next" href="../../16-aiops-domain-packs/README.vi/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>15 Pattern Library - AIOps Engineering Handbook</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#chapter-15-aiops-pattern-library-chon-pattern-theo-luc-tac-ong-khong-theo-ten-cong-ty" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="AIOps Engineering Handbook" class="md-header__button md-logo" aria-label="AIOps Engineering Handbook" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AIOps Engineering Handbook
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              15 Pattern Library
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    XUanhoa04/aiops-engineering-handbook
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../CURRICULUM/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Curriculum
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../00-introduction.vi/" class="md-tabs__link">
+          
+  
+  
+  Tiếng Việt
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../en/system-fundamentals/" class="md-tabs__link">
+          
+  
+  
+  English
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../assets/diagrams/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Diagrams
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="AIOps Engineering Handbook" class="md-nav__button md-logo" aria-label="AIOps Engineering Handbook" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AIOps Engineering Handbook
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    XUanhoa04/aiops-engineering-handbook
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../CURRICULUM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tiếng Việt
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tiếng Việt
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bắt đầu
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bắt đầu
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../00-introduction.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    00 Từ sự cố đến AIOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../acceptance-template.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acceptance Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nền tảng hệ thống
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Nền tảng hệ thống
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../system-fundamentals/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nền tảng evidence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Nền tảng evidence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-observability/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02-opentelemetry/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 Telemetry contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-prometheus/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 Metric evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04-loki/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 Log evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-tempo/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 Trace causality
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-data-plane/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 Data & Feature Plane
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-kafka/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 Event Transport
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-topology-change/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 Topology & Change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligence engines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Intelligence engines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-anomaly-detection/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 Persistent Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-alert-correlation/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 Alert Correlation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../11-root-cause-analysis/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 Root Cause Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../12-investigation-engine/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12 Investigation Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../13-remediation-safety-engine/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13 Remediation Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production, learning & governance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Production, learning & governance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../14-production-engine/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14 Production Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15 Pattern Library
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15 Pattern Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-pattern-library-giai-quyet-van-e-gi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Pattern library giải quyết vấn đề gì?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Pattern library giải quyết vấn đề gì?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-pattern-khac-best-practice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Pattern khác best practice
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-pattern-khac-san-pham" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Pattern khác sản phẩm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-pattern-khac-kien-truc-tham-khao" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Pattern khác kiến trúc tham khảo
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-cach-oc-mot-pattern-card" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Cách đọc một pattern card
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-ban-o-chon-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Bản đồ chọn pattern
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-pattern-1-freeze-on-alert-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Pattern 1 — Freeze-on-alert baseline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Pattern 1 — Freeze-on-alert baseline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#context-va-forces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context và forces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#do-not-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Do not use
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-pattern-2-multi-window-burn-rate-guard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Pattern 2 — Multi-window burn-rate guard
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Pattern 2 — Multi-window burn-rate guard">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-pattern-3-regime-aware-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Pattern 3 — Regime-aware baseline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Pattern 3 — Regime-aware baseline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-pattern-4-fault-partitioned-incident-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Pattern 4 — Fault-partitioned incident state
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Pattern 4 — Fault-partitioned incident state">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-pattern-5-topology-aware-correlation-voi-stale-graph-degrade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Pattern 5 — Topology-aware correlation với stale-graph degrade
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Pattern 5 — Topology-aware correlation với stale-graph degrade">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-pattern-6-symptom-compression-khong-xoa-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Pattern 6 — Symptom compression, không xóa evidence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Pattern 6 — Symptom compression, không xóa evidence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-pattern-7-temporal-causality-negative-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Pattern 7 — Temporal causality + negative evidence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Pattern 7 — Temporal causality + negative evidence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-pattern-8-multi-signal-evidence-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Pattern 8 — Multi-signal evidence contract
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Pattern 8 — Multi-signal evidence contract">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-pattern-9-hypothesis-ledger-information-gain-budget" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Pattern 9 — Hypothesis ledger + information-gain budget
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Pattern 9 — Hypothesis ledger + information-gain budget">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-pattern-10-bounded-tool-broker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Pattern 10 — Bounded tool broker
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. Pattern 10 — Bounded tool broker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-pattern-11-independent-remediation-safety-controller" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Pattern 11 — Independent remediation safety controller
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. Pattern 11 — Independent remediation safety controller">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-pattern-12-canary-control-verified-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Pattern 12 — Canary + control + verified recovery
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="15. Pattern 12 — Canary + control + verified recovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-pattern-13-event-sourced-incident-state-replay-convergence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Pattern 13 — Event-sourced incident state + replay convergence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="16. Pattern 13 — Event-sourced incident state + replay convergence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-pattern-14-shadow-canary-va-progressive-rollout-cho-decision-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Pattern 14 — Shadow, canary và progressive rollout cho decision logic
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="17. Pattern 14 — Shadow, canary và progressive rollout cho decision logic">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#18-pattern-15-independent-safety-plane-va-explicit-degraded-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18. Pattern 15 — Independent safety plane và explicit degraded modes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="18. Pattern 15 — Independent safety plane và explicit degraded modes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#19-pattern-16-human-command-va-calibrated-handoff" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19. Pattern 16 — Human command và calibrated handoff
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="19. Pattern 16 — Human command và calibrated handoff">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-pattern-composition-ghep-ung-thu-tu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. Pattern composition: ghép đúng thứ tự
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20. Pattern composition: ghép đúng thứ tự">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#201-long-incident-detection-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.1 Long-incident detection stack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#202-causal-diagnosis-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.2 Causal diagnosis stack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#203-safe-remediation-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.3 Safe remediation stack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#204-self-protecting-production-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.4 Self-protecting production stack
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#21-anti-pattern-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21. Anti-pattern library
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#22-chon-pattern-theo-quy-mo-to-chuc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22. Chọn pattern theo quy mô tổ chức
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="22. Chọn pattern theo quy mô tổ chức">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#oi-khoang-10-ky-su" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Đội khoảng 10 kỹ sư
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#to-chuc-khoang-100-ky-su" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tổ chức khoảng 100 kỹ sư
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#to-chuc-khoang-1000-ky-su-tro-len" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tổ chức khoảng 1.000 kỹ sư trở lên
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#23-pattern-adoption-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23. Pattern adoption record
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#24-acceptance-cho-pattern-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24. Acceptance cho Pattern Library
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ket-luan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kết luận
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oc-tiep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Đọc tiếp
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-contract-cua-chapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance contract của chapter
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../16-aiops-domain-packs/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16 Domain Packs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../17-aiops-benchmark-replay/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17 Benchmark Replay
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../18-predictive-operations/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18 Predictive Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../19-incident-operations/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19 Incident Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../20-aiops-governance/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20 Governance & Model Risk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    English
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    English
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    System Fundamentals
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/system-fundamentals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Foundations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Foundations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/00-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    00 Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/01-observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/02-opentelemetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 OpenTelemetry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/03-prometheus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 Prometheus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/04-loki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 Loki
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/05-tempo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 Tempo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/06-data-plane/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 Data Plane
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/07-kafka/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 Kafka
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/08-topology-change/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 Topology & Change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Intelligence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/09-anomaly-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 Anomaly Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/10-alert-correlation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 Alert Correlation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/11-root-cause-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 Root Cause Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/12-investigation-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12 Investigation Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/13-remediation-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13 Remediation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production & cases
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Production & cases
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/14-production-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14 Production
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/15-bigtech-aiops/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15 Big Tech AIOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/16-ecommerce-banking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16 E-commerce & Banking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/17-famous-incidents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17 Famous Incidents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../assets/diagrams/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Diagrams
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-pattern-library-giai-quyet-van-e-gi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Pattern library giải quyết vấn đề gì?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Pattern library giải quyết vấn đề gì?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-pattern-khac-best-practice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Pattern khác best practice
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-pattern-khac-san-pham" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Pattern khác sản phẩm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-pattern-khac-kien-truc-tham-khao" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Pattern khác kiến trúc tham khảo
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-cach-oc-mot-pattern-card" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Cách đọc một pattern card
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-ban-o-chon-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Bản đồ chọn pattern
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-pattern-1-freeze-on-alert-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Pattern 1 — Freeze-on-alert baseline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Pattern 1 — Freeze-on-alert baseline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#context-va-forces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context và forces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#do-not-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Do not use
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-pattern-2-multi-window-burn-rate-guard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Pattern 2 — Multi-window burn-rate guard
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Pattern 2 — Multi-window burn-rate guard">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-pattern-3-regime-aware-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Pattern 3 — Regime-aware baseline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Pattern 3 — Regime-aware baseline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-pattern-4-fault-partitioned-incident-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Pattern 4 — Fault-partitioned incident state
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Pattern 4 — Fault-partitioned incident state">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-pattern-5-topology-aware-correlation-voi-stale-graph-degrade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Pattern 5 — Topology-aware correlation với stale-graph degrade
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Pattern 5 — Topology-aware correlation với stale-graph degrade">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-pattern-6-symptom-compression-khong-xoa-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Pattern 6 — Symptom compression, không xóa evidence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Pattern 6 — Symptom compression, không xóa evidence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-pattern-7-temporal-causality-negative-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Pattern 7 — Temporal causality + negative evidence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Pattern 7 — Temporal causality + negative evidence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-pattern-8-multi-signal-evidence-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Pattern 8 — Multi-signal evidence contract
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Pattern 8 — Multi-signal evidence contract">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-pattern-9-hypothesis-ledger-information-gain-budget" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Pattern 9 — Hypothesis ledger + information-gain budget
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Pattern 9 — Hypothesis ledger + information-gain budget">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-pattern-10-bounded-tool-broker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Pattern 10 — Bounded tool broker
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. Pattern 10 — Bounded tool broker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-pattern-11-independent-remediation-safety-controller" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Pattern 11 — Independent remediation safety controller
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. Pattern 11 — Independent remediation safety controller">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-pattern-12-canary-control-verified-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Pattern 12 — Canary + control + verified recovery
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="15. Pattern 12 — Canary + control + verified recovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-pattern-13-event-sourced-incident-state-replay-convergence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Pattern 13 — Event-sourced incident state + replay convergence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="16. Pattern 13 — Event-sourced incident state + replay convergence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-pattern-14-shadow-canary-va-progressive-rollout-cho-decision-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Pattern 14 — Shadow, canary và progressive rollout cho decision logic
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="17. Pattern 14 — Shadow, canary và progressive rollout cho decision logic">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#18-pattern-15-independent-safety-plane-va-explicit-degraded-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18. Pattern 15 — Independent safety plane và explicit degraded modes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="18. Pattern 15 — Independent safety plane và explicit degraded modes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#19-pattern-16-human-command-va-calibrated-handoff" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19. Pattern 16 — Human command và calibrated handoff
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="19. Pattern 16 — Human command và calibrated handoff">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#problem_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-case_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked case
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-modes_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acceptance_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-pattern-composition-ghep-ung-thu-tu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. Pattern composition: ghép đúng thứ tự
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20. Pattern composition: ghép đúng thứ tự">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#201-long-incident-detection-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.1 Long-incident detection stack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#202-causal-diagnosis-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.2 Causal diagnosis stack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#203-safe-remediation-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.3 Safe remediation stack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#204-self-protecting-production-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.4 Self-protecting production stack
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#21-anti-pattern-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21. Anti-pattern library
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#22-chon-pattern-theo-quy-mo-to-chuc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22. Chọn pattern theo quy mô tổ chức
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="22. Chọn pattern theo quy mô tổ chức">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#oi-khoang-10-ky-su" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Đội khoảng 10 kỹ sư
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#to-chuc-khoang-100-ky-su" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tổ chức khoảng 100 kỹ sư
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#to-chuc-khoang-1000-ky-su-tro-len" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tổ chức khoảng 1.000 kỹ sư trở lên
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#23-pattern-adoption-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23. Pattern adoption record
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#24-acceptance-cho-pattern-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24. Acceptance cho Pattern Library
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ket-luan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kết luận
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oc-tiep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Đọc tiếp
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-contract-cua-chapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance contract của chapter
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="chapter-15-aiops-pattern-library-chon-pattern-theo-luc-tac-ong-khong-theo-ten-cong-ty">Chapter 15 — AIOps Pattern Library: chọn pattern theo lực tác động, không theo tên công ty<a class="headerlink" href="#chapter-15-aiops-pattern-library-chon-pattern-theo-luc-tac-ong-khong-theo-ten-cong-ty" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Pattern library không phải bộ sưu tập logo Big Tech. Mỗi pattern trong chapter này là một quyết định kiến trúc tái sử dụng được: nêu vấn đề, lực tác động, điều kiện dùng, dữ liệu cần có, trade-off, failure mode và bài acceptance. Hãy chọn pattern theo quy mô, topology, độ trưởng thành và hậu quả khi sai; không copy một hệ thống được thiết kế cho tổ chức lớn hơn mình hàng trăm lần.</strong></p>
+</blockquote>
+<p><img alt="AIOps pattern library lifecycle" src="../../../assets/diagrams/18-pattern-library.png" /></p>
+<p><em>Poster: một pattern chỉ được giữ lại khi có context, negative control, degraded mode, acceptance và điều kiện retire.</em></p>
+<hr />
+<h2 id="1-pattern-library-giai-quyet-van-e-gi">1. Pattern library giải quyết vấn đề gì?<a class="headerlink" href="#1-pattern-library-giai-quyet-van-e-gi" title="Permanent link">&para;</a></h2>
+<p>Các chapter trước xây từng năng lực: telemetry, detection, correlation, RCA, investigation, remediation và production operations. Khi áp dụng thực tế, đội kỹ thuật không hỏi “nên dùng công cụ nào?” mà hỏi:</p>
+<ul>
+<li>Incident kéo dài bị detector tự nuốt thì ghép pattern nào?</li>
+<li>Alert storm gồm root cause và hàng trăm downstream symptom thì tách thế nào?</li>
+<li>Topology stale thì engine nên giảm cấp hay vẫn tự động?</li>
+<li>RCA đúng nhưng action có blast radius lớn thì chặn ở đâu?</li>
+<li>AIOps phụ thuộc chính Kafka/OTel đang hỏng thì còn đường nào để page?</li>
+</ul>
+<p>Pattern library biến các câu trả lời thành đơn vị thiết kế có hợp đồng. Một pattern không phải chân lý phổ quát. Nó chỉ đúng khi context và forces khớp.</p>
+<h3 id="11-pattern-khac-best-practice">1.1 Pattern khác best practice<a class="headerlink" href="#11-pattern-khac-best-practice" title="Permanent link">&para;</a></h3>
+<p>“Luôn dùng tracing” là khẩu hiệu. Một pattern đầy đủ phải nói tracing giúp phân biệt điểm phát sinh lỗi với nơi nhìn thấy lỗi, nhưng độ tin cậy giảm khi sampling, clock skew hoặc propagation hỏng; lúc đó engine cần degrade sang metric/log evidence.</p>
+<h3 id="12-pattern-khac-san-pham">1.2 Pattern khác sản phẩm<a class="headerlink" href="#12-pattern-khac-san-pham" title="Permanent link">&para;</a></h3>
+<p>“Dùng hệ thống X” không mô tả semantics. Hai sản phẩm cùng tên anomaly detection có thể khác hoàn toàn về baseline freeze, incident state và missing-data handling. Pattern mô tả hành vi cần giữ dù implementation thay đổi.</p>
+<h3 id="13-pattern-khac-kien-truc-tham-khao">1.3 Pattern khác kiến trúc tham khảo<a class="headerlink" href="#13-pattern-khac-kien-truc-tham-khao" title="Permanent link">&para;</a></h3>
+<p>Kiến trúc tham khảo cho thấy thành phần. Pattern giải thích quyết định dưới áp lực: tại sao state phải tách theo service, vì sao action phải có revision, điều gì xảy ra khi dependency hỏng.</p>
+<hr />
+<h2 id="2-cach-oc-mot-pattern-card">2. Cách đọc một pattern card<a class="headerlink" href="#2-cach-oc-mot-pattern-card" title="Permanent link">&para;</a></h2>
+<p>Mọi pattern trong chapter dùng cùng cấu trúc.</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-2" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Mục</th>
+<th>Câu hỏi bắt buộc</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Problem</td>
+<td>Failure cụ thể nào đang xảy ra?</td>
+</tr>
+<tr>
+<td>Context</td>
+<td>Quy mô, topology, domain và maturity nào?</td>
+</tr>
+<tr>
+<td>Forces</td>
+<td>Những mục tiêu nào kéo ngược nhau?</td>
+</tr>
+<tr>
+<td>Decision</td>
+<td>State, boundary hoặc rule nào được áp dụng?</td>
+</tr>
+<tr>
+<td>Inputs</td>
+<td>Dữ liệu nào phải có và độ mới ra sao?</td>
+</tr>
+<tr>
+<td>Outputs</td>
+<td>Hệ thống tạo decision/event gì?</td>
+</tr>
+<tr>
+<td>Worked case</td>
+<td>Với một dãy số/timeline thật, pattern thay đổi kết quả thế nào?</td>
+</tr>
+<tr>
+<td>Failure modes</td>
+<td>Khi nào pattern tạo hại hoặc kết luận sai?</td>
+</tr>
+<tr>
+<td>Do not use</td>
+<td>Điều kiện nào khiến nên chọn cách đơn giản hơn?</td>
+</tr>
+<tr>
+<td>Acceptance</td>
+<td>Bài replay/failure injection nào chứng minh pattern hoạt động?</td>
+</tr>
+</tbody>
+</table></div>
+<p>Không có acceptance thì đó mới là ý tưởng, chưa phải pattern production.</p>
+<hr />
+<h2 id="3-ban-o-chon-pattern">3. Bản đồ chọn pattern<a class="headerlink" href="#3-ban-o-chon-pattern" title="Permanent link">&para;</a></h2>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Pain đang gặp</th>
+<th>Pattern chính</th>
+<th>Pattern đi kèm</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Incident dài có khoảng câm</td>
+<td>Freeze-on-alert baseline</td>
+<td>Multi-window burn rate, durable incident state</td>
+</tr>
+<tr>
+<td>Traffic hợp lệ đổi gây báo giả</td>
+<td>Regime-aware baseline</td>
+<td>Change/campaign context</td>
+</tr>
+<tr>
+<td>Fault thứ hai bị incident đầu che</td>
+<td>Fault-partitioned state</td>
+<td>Resource-scoped coordination</td>
+</tr>
+<tr>
+<td>Alert storm theo cascade</td>
+<td>Topology-aware correlation</td>
+<td>Symptom compression</td>
+</tr>
+<tr>
+<td>Deploy gần nhất luôn bị đổ lỗi</td>
+<td>Temporal causality + negative evidence</td>
+<td>Cohort/control comparison</td>
+</tr>
+<tr>
+<td>RCA chỉ dựa một nguồn</td>
+<td>Multi-signal evidence</td>
+<td>Evidence provenance</td>
+</tr>
+<tr>
+<td>Agent query vô hạn</td>
+<td>Hypothesis ledger</td>
+<td>Information-gain budget</td>
+</tr>
+<tr>
+<td>Model chạm production trực tiếp</td>
+<td>Bounded tool broker</td>
+<td>Independent safety controller</td>
+</tr>
+<tr>
+<td>Remediation “xanh giả”</td>
+<td>Canary + control verification</td>
+<td>Outcome/mechanism/harm triad</td>
+</tr>
+<tr>
+<td>Worker restart làm page/action trùng</td>
+<td>Event-sourced incident state</td>
+<td>Idempotency + replay convergence</td>
+</tr>
+<tr>
+<td>Model mới gây alert storm</td>
+<td>Shadow + progressive rollout</td>
+<td>Versioned evaluation slices</td>
+</tr>
+<tr>
+<td>AIOps mù khi platform hỏng</td>
+<td>Independent safety plane</td>
+<td>Explicit degraded modes</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="4-pattern-1-freeze-on-alert-baseline">4. Pattern 1 — Freeze-on-alert baseline<a class="headerlink" href="#4-pattern-1-freeze-on-alert-baseline" title="Permanent link">&para;</a></h2>
+<h3 id="problem">Problem<a class="headerlink" href="#problem" title="Permanent link">&para;</a></h3>
+<p>Rolling baseline tiếp tục học trong lúc anomaly kéo dài. Sau một thời gian, lỗi trở thành “normal mới”, detector im lặng dù khách hàng còn chịu lỗi.</p>
+<h3 id="context-va-forces">Context và forces<a class="headerlink" href="#context-va-forces" title="Permanent link">&para;</a></h3>
+<p>Pattern phù hợp với signal có baseline học online như latency, error rate, throughput hoặc queue depth. Hai lực kéo ngược nhau:</p>
+<ul>
+<li>Freeze để không nuốt anomaly.</li>
+<li>Vẫn cần thích nghi với thay đổi tải hợp lệ theo giờ.</li>
+</ul>
+<h3 id="decision">Decision<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h3>
+<p>Freeze baseline theo <code>service × signal × regime</code> khi alert chuyển Firing. Incident state vẫn cập nhật; chỉ learning state bị giữ. Dùng baseline trước incident hoặc cohort khỏe để tiếp tục đánh giá. Unfreeze sau recovery có hold window và kiểm tra contamination.</p>
+<h3 id="worked-case">Worked case<a class="headerlink" href="#worked-case" title="Permanent link">&para;</a></h3>
+<p>Error rate payment mỗi 5 phút:</p>
+<p>0,7%; 0,8%; 0,6%; 12%; 21%; 25%; 24%; 23%; 25%; 24%; 22%; 8%; 1,2%.</p>
+<p>Rolling median/MAD không freeze sẽ đưa median lên vùng 23–24%, khiến anomaly score giảm giữa incident. Freeze giữ median quanh 0,7%. Alert vẫn Firing từ 12% đến 8%; 1,2% chưa resolve ngay vì burn-rate cửa sổ chậm còn cao.</p>
+<h3 id="failure-modes">Failure modes<a class="headerlink" href="#failure-modes" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Freeze toàn nền tảng làm service khỏe không học được daily regime và tạo false alert.</li>
+<li>Unfreeze ngay tại điểm recovery đưa tail anomaly vào baseline.</li>
+<li>Incident ID bị recreate khi worker restart làm baseline freeze mất liên kết.</li>
+</ul>
+<h3 id="do-not-use">Do not use<a class="headerlink" href="#do-not-use" title="Permanent link">&para;</a></h3>
+<p>Không cần cho rule deterministic không học baseline. Với metric thay đổi regime liên tục mà không có context, nên dùng static SLO safety rule song song.</p>
+<h3 id="acceptance">Acceptance<a class="headerlink" href="#acceptance" title="Permanent link">&para;</a></h3>
+<p>Replay sự cố 65 phút. Yêu cầu không có khoảng câm quá hai phút, baseline không tăng theo anomaly, recovery chỉ xảy ra sau fast/slow window, và service control vẫn thích nghi với traffic theo giờ.</p>
+<hr />
+<h2 id="5-pattern-2-multi-window-burn-rate-guard">5. Pattern 2 — Multi-window burn-rate guard<a class="headerlink" href="#5-pattern-2-multi-window-burn-rate-guard" title="Permanent link">&para;</a></h2>
+<h3 id="problem_1">Problem<a class="headerlink" href="#problem_1" title="Permanent link">&para;</a></h3>
+<p>Cửa sổ ngắn phản ứng nhanh nhưng nhiễu; cửa sổ dài ổn định nhưng phát hiện chậm. Một threshold đơn không phân biệt spike vài phút với budget burn kéo dài.</p>
+<h3 id="decision_1">Decision<a class="headerlink" href="#decision_1" title="Permanent link">&para;</a></h3>
+<p>Dùng ít nhất hai cửa sổ cho cùng customer SLO:</p>
+<ul>
+<li>Fast window phát hiện tăng đột ngột và harm sau action.</li>
+<li>Slow window xác nhận incident bền và điều kiện resolve.</li>
+</ul>
+<p>Decision dựa trên cả burn magnitude và duration; missing data không được coi là burn bằng zero.</p>
+<h3 id="worked-case_1">Worked case<a class="headerlink" href="#worked-case_1" title="Permanent link">&para;</a></h3>
+<p>Checkout SLO 99,9%. Error 20% trong 3 phút tạo burn rất cao ở cửa sổ 5 phút nhưng chưa đủ slow-window evidence. Error 4% kéo dài 60 phút có fast burn thấp hơn nhưng đốt budget lớn hơn. Hệ thống page cả hai theo policy khác nhau; spike nhanh ưu tiên verify data, incident dài giữ Firing tới khi slow window hạ.</p>
+<h3 id="failure-modes_1">Failure modes<a class="headerlink" href="#failure-modes_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Dùng cùng threshold cho mọi service tier.</li>
+<li>Resolve theo fast window dù slow window còn cháy.</li>
+<li>Ratio đẹp do traffic denominator tụt mạnh.</li>
+</ul>
+<h3 id="acceptance_1">Acceptance<a class="headerlink" href="#acceptance_1" title="Permanent link">&para;</a></h3>
+<p>Replay spike hợp lệ, outage kéo dài và traffic collapse. Đo time-to-detect, false page và time-to-resolve; không cho success ratio che successful-request count.</p>
+<hr />
+<h2 id="6-pattern-3-regime-aware-baseline">6. Pattern 3 — Regime-aware baseline<a class="headerlink" href="#6-pattern-3-regime-aware-baseline" title="Permanent link">&para;</a></h2>
+<h3 id="problem_2">Problem<a class="headerlink" href="#problem_2" title="Permanent link">&para;</a></h3>
+<p>Traffic flash sale, lương về, batch cuối ngày hoặc campaign hợp lệ làm baseline theo giờ không còn đúng. Detector báo giả hoặc freeze nhầm một regime mới.</p>
+<h3 id="decision_2">Decision<a class="headerlink" href="#decision_2" title="Permanent link">&para;</a></h3>
+<p>Baseline có nhãn regime từ calendar, campaign, release, tenant mix và capacity state. Regime mới chưa có lịch sử dùng SLO/static safety và confidence thấp; chỉ promote thành normal sau human/change acceptance và customer outcome khỏe.</p>
+<h3 id="worked-case_2">Worked case<a class="headerlink" href="#worked-case_2" title="Permanent link">&para;</a></h3>
+<p>Traffic checkout bình thường 8.000 request/phút, 20:00 tăng lên 30.000 do flash sale. Latency từ 240 lên 330 ms nhưng success giữ 99,2%, queue ổn và campaign flag hợp lệ. Volume anomaly được suppress thành contextual event. Nếu success giảm còn 91%, campaign không được dùng để suppress customer-impact alert.</p>
+<h3 id="failure-modes_2">Failure modes<a class="headerlink" href="#failure-modes_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Campaign flag bị dùng như giấy phép tắt alert.</li>
+<li>Regime label đến trễ hoặc sai tenant.</li>
+<li>Quá nhiều regime làm baseline mỗi nhóm thiếu dữ liệu.</li>
+</ul>
+<h3 id="acceptance_2">Acceptance<a class="headerlink" href="#acceptance_2" title="Permanent link">&para;</a></h3>
+<p>Replay hai timeline cùng traffic: một campaign khỏe và một overload thật. Hệ thống không page trường hợp đầu nhưng page trường hợp sau trong deadline.</p>
+<hr />
+<h2 id="7-pattern-4-fault-partitioned-incident-state">7. Pattern 4 — Fault-partitioned incident state<a class="headerlink" href="#7-pattern-4-fault-partitioned-incident-state" title="Permanent link">&para;</a></h2>
+<h3 id="problem_3">Problem<a class="headerlink" href="#problem_3" title="Permanent link">&para;</a></h3>
+<p>Incident đầu còn active làm suppression/correlation state quá rộng; fault mới ở service khác bị merge hoặc bỏ lọt.</p>
+<h3 id="decision_3">Decision<a class="headerlink" href="#decision_3" title="Permanent link">&para;</a></h3>
+<p>State tách theo fault candidate, customer journey, service boundary và temporal signature. Một parent event có thể liên kết các incident concurrent, nhưng mỗi incident có lifecycle, baseline freeze, evidence, query budget và action lock riêng.</p>
+<h3 id="worked-case_3">Worked case<a class="headerlink" href="#worked-case_3" title="Permanent link">&para;</a></h3>
+<p>Payment lỗi từ 10:00. Auth certificate lỗi lúc 10:37. Payment ảnh hưởng checkout, auth ảnh hưởng login; mechanism, owner và write set khác nhau. Engine tạo <code>INC-8421</code> và <code>INC-8422</code>, liên kết là concurrent. Proposal restart shared gateway bị conflict, nhưng giảm retry payment và rotate auth certificate vẫn được đánh giá riêng.</p>
+<h3 id="failure-modes_3">Failure modes<a class="headerlink" href="#failure-modes_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Partition quá nhỏ tạo một incident cho từng pod.</li>
+<li>Partition quá lớn merge mọi alert cùng region.</li>
+<li>Incident mới kế thừa confidence/memory của incident cũ.</li>
+</ul>
+<h3 id="acceptance_3">Acceptance<a class="headerlink" href="#acceptance_3" title="Permanent link">&para;</a></h3>
+<p>Inject fault B ở phút 37 của fault A kéo dài 65 phút. B phải page theo SLO riêng; A không reset ID; hai evidence ledger không trộn.</p>
+<hr />
+<h2 id="8-pattern-5-topology-aware-correlation-voi-stale-graph-degrade">8. Pattern 5 — Topology-aware correlation với stale-graph degrade<a class="headerlink" href="#8-pattern-5-topology-aware-correlation-voi-stale-graph-degrade" title="Permanent link">&para;</a></h2>
+<h3 id="problem_4">Problem<a class="headerlink" href="#problem_4" title="Permanent link">&para;</a></h3>
+<p>Alert storm ở downstream tạo hàng trăm triệu chứng. Correlation theo thời gian gom sai những service không liên quan; graph stale lại tạo confidence giả.</p>
+<h3 id="decision_4">Decision<a class="headerlink" href="#decision_4" title="Permanent link">&para;</a></h3>
+<p>Dùng dependency graph để kiểm tra propagation path và downstream reach, nhưng mọi quyết định mang graph revision, age và coverage. Khi graph stale, giảm topology weight, mở rộng uncertainty và cấm remediation chạm shared dependency.</p>
+<h3 id="worked-case_4">Worked case<a class="headerlink" href="#worked-case_4" title="Permanent link">&para;</a></h3>
+<p>Payment pool wait tăng trước checkout, gateway và notification errors. Graph cho thấy payment nằm upstream của checkout symptom và downstream reach lớn. Catalog deploy cùng phút nhưng không nằm trên path nên bị loại. Nếu graph 35 phút tuổi và vừa có routing change, RCA chỉ ghi candidate, không kết luận mạnh.</p>
+<h3 id="failure-modes_4">Failure modes<a class="headerlink" href="#failure-modes_4" title="Permanent link">&para;</a></h3>
+<ul>
+<li>CMDB có service node nhưng thiếu runtime edge.</li>
+<li>Async queue khiến temporal window dài hơn synchronous call.</li>
+<li>Fan-in dependency chung bị nhầm thành hai incident độc lập.</li>
+</ul>
+<h3 id="acceptance_4">Acceptance<a class="headerlink" href="#acceptance_4" title="Permanent link">&para;</a></h3>
+<p>Replay graph đúng, thiếu một edge và stale revision. Ranking phải degrade có kiểm soát; không auto-action trong case graph không đủ trust.</p>
+<hr />
+<h2 id="9-pattern-6-symptom-compression-khong-xoa-evidence">9. Pattern 6 — Symptom compression, không xóa evidence<a class="headerlink" href="#9-pattern-6-symptom-compression-khong-xoa-evidence" title="Permanent link">&para;</a></h2>
+<h3 id="problem_5">Problem<a class="headerlink" href="#problem_5" title="Permanent link">&para;</a></h3>
+<p>Một root cause làm 500 alert downstream. Gửi tất cả làm on-call tê liệt; suppress cứng lại có thể che fault mới.</p>
+<h3 id="decision_5">Decision<a class="headerlink" href="#decision_5" title="Permanent link">&para;</a></h3>
+<p>Nén symptom thành một incident view nhưng giữ member event, count, scope và change delta. Update lặp không page lại; signature mới hoặc fault partition mới vẫn được đánh giá.</p>
+<h3 id="worked-case_5">Worked case<a class="headerlink" href="#worked-case_5" title="Permanent link">&para;</a></h3>
+<p>100 payment timeout events cùng signature trở thành một incident update. Một auth TLS signature mới không nằm trong suppression key nên tạo incident riêng. Operator thấy “100 duplicate symptoms compressed” thay vì mất hoàn toàn dữ liệu.</p>
+<h3 id="failure-modes_5">Failure modes<a class="headerlink" href="#failure-modes_5" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Dedup key chỉ dùng service name nên xóa signature mới.</li>
+<li>Suppression TTL dài hơn incident lifecycle.</li>
+<li>Không lưu member provenance khiến RCA không tái tạo được.</li>
+</ul>
+<h3 id="acceptance_5">Acceptance<a class="headerlink" href="#acceptance_5" title="Permanent link">&para;</a></h3>
+<p>Inject 100 duplicate, một same-service new signature và một other-service fault. Kỳ vọng 100 update bị nén, hai candidate mới vẫn xuất hiện.</p>
+<hr />
+<h2 id="10-pattern-7-temporal-causality-negative-evidence">10. Pattern 7 — Temporal causality + negative evidence<a class="headerlink" href="#10-pattern-7-temporal-causality-negative-evidence" title="Permanent link">&para;</a></h2>
+<h3 id="problem_6">Problem<a class="headerlink" href="#problem_6" title="Permanent link">&para;</a></h3>
+<p>Engine đổ lỗi service đỏ nhất hoặc deploy gần nhất. Correlation bị trình bày như causation.</p>
+<h3 id="decision_6">Decision<a class="headerlink" href="#decision_6" title="Permanent link">&para;</a></h3>
+<p>Xếp event theo event-time đã hiệu chỉnh skew; kiểm tra cause phải xảy ra trước effect, nằm trên path và khớp cohort. Bắt buộc tìm negative evidence/control trước khi nâng confidence.</p>
+<h3 id="worked-case_6">Worked case<a class="headerlink" href="#worked-case_6" title="Permanent link">&para;</a></h3>
+<p>Retry tăng 09:59:40, pool wait 10:00:10, timeout 10:01:50, checkout error 10:02:30, DB CPU 10:05. DB CPU nhiều khả năng là hậu quả. Catalog deploy 09:57 xảy ra trước nhưng không có path/cohort match. Fraud dùng cùng DB cluster vẫn khỏe là negative evidence chống database-wide failure.</p>
+<h3 id="failure-modes_6">Failure modes<a class="headerlink" href="#failure-modes_6" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Processing-time bị dùng khi Kafka lag.</li>
+<li>Clock skew làm đảo thứ tự.</li>
+<li>“Đỏ trước” nhưng chỉ là leading indicator, không có mechanism.</li>
+</ul>
+<h3 id="acceptance_6">Acceptance<a class="headerlink" href="#acceptance_6" title="Permanent link">&para;</a></h3>
+<p>Replay một deploy vô tội, một deploy thật, event trễ 11 phút và host lệch clock. Root-cause ranking phải đúng theo event-time và hạ confidence khi skew không giải được.</p>
+<hr />
+<h2 id="11-pattern-8-multi-signal-evidence-contract">11. Pattern 8 — Multi-signal evidence contract<a class="headerlink" href="#11-pattern-8-multi-signal-evidence-contract" title="Permanent link">&para;</a></h2>
+<h3 id="problem_7">Problem<a class="headerlink" href="#problem_7" title="Permanent link">&para;</a></h3>
+<p>Metric, log, trace và change có semantic khác nhau nhưng bị cộng điểm như các lá phiếu độc lập. Source duplication tạo confidence giả.</p>
+<h3 id="decision_7">Decision<a class="headerlink" href="#decision_7" title="Permanent link">&para;</a></h3>
+<p>Mỗi fact có provenance, scope, freshness, coverage và transformation. Signal được dùng theo vai trò:</p>
+<ul>
+<li>Metrics đo impact, trend và saturation.</li>
+<li>Traces đo propagation và span timing.</li>
+<li>Logs cho signature, reason và discrete state.</li>
+<li>Changes sinh candidate và cohort.</li>
+<li>Topology giới hạn causal path.</li>
+</ul>
+<p>Evidence phụ thuộc cùng source không được tính như độc lập.</p>
+<h3 id="worked-case_7">Worked case<a class="headerlink" href="#worked-case_7" title="Permanent link">&para;</a></h3>
+<p>Payment timeout metric 24,9%, log timeout chỉ 8% vì rate limit, trace coverage 94%. Engine không bỏ phiếu “2 chống 1”; nó giải thích denominator và sampling. Pool-acquire span 1.920 ms trong khi query span 103 ms giúp định vị client pool thay vì database execution.</p>
+<h3 id="failure-modes_7">Failure modes<a class="headerlink" href="#failure-modes_7" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Missing trace bị coi là trace khỏe.</li>
+<li>Log volume tăng do retry được hiểu là user count.</li>
+<li>Metric và alert rule cùng nguồn bị tính hai bằng chứng.</li>
+</ul>
+<h3 id="acceptance_7">Acceptance<a class="headerlink" href="#acceptance_7" title="Permanent link">&para;</a></h3>
+<p>Replay source mất 35%, duplicate logs và metric denominator đổi. Conclusion phải ghi coverage và không tăng confidence vì duplicate source.</p>
+<hr />
+<h2 id="12-pattern-9-hypothesis-ledger-information-gain-budget">12. Pattern 9 — Hypothesis ledger + information-gain budget<a class="headerlink" href="#12-pattern-9-hypothesis-ledger-information-gain-budget" title="Permanent link">&para;</a></h2>
+<h3 id="problem_8">Problem<a class="headerlink" href="#problem_8" title="Permanent link">&para;</a></h3>
+<p>Agent chốt sớm một lời giải hoặc gọi tool vô hạn để “tìm thêm”. Narrative trôi chảy che contradiction.</p>
+<h3 id="decision_8">Decision<a class="headerlink" href="#decision_8" title="Permanent link">&para;</a></h3>
+<p>Giữ nhiều hypothesis với evidence ủng hộ/phản bác, open question và state. Chọn query có khả năng đảo ranking hoặc decision. Mỗi incident có budget thời gian, query, byte và token; có stopping rule và abstention.</p>
+<h3 id="worked-case_8">Worked case<a class="headerlink" href="#worked-case_8" title="Permanent link">&para;</a></h3>
+<p>Giữa retry-induced pool exhaustion và database-wide failure, query thêm 10.000 log ít giá trị. So request retry/first-attempt và control service dùng cùng DB có information gain cao. Kết quả retry cohort wait 2.120 ms, first-attempt 380 ms, Fraud success 99,4% làm H1 mạnh và H2 yếu.</p>
+<h3 id="failure-modes_8">Failure modes<a class="headerlink" href="#failure-modes_8" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Xóa hypothesis yếu nên không thể phục hồi khi event đến muộn.</li>
+<li>Query budget toàn tenant làm incident thứ hai không còn quota.</li>
+<li>Confidence do LLM tự viết, không calibration.</li>
+</ul>
+<h3 id="acceptance_8">Acceptance<a class="headerlink" href="#acceptance_8" title="Permanent link">&para;</a></h3>
+<p>Đo top-3 accuracy, contradiction recall, query efficiency và abstention quality trên replay có evidence thiếu/trễ.</p>
+<hr />
+<h2 id="13-pattern-10-bounded-tool-broker">13. Pattern 10 — Bounded tool broker<a class="headerlink" href="#13-pattern-10-bounded-tool-broker" title="Permanent link">&para;</a></h2>
+<h3 id="problem_9">Problem<a class="headerlink" href="#problem_9" title="Permanent link">&para;</a></h3>
+<p>Model có credential trực tiếp có thể query quá rộng, rò dữ liệu, bị prompt injection hoặc mutation production trong bước “điều tra”.</p>
+<h3 id="decision_9">Decision<a class="headerlink" href="#decision_9" title="Permanent link">&para;</a></h3>
+<p>Tách model khỏi tools. Broker validate schema, tenant, service, time window, cost, redaction và policy. Investigation broker read-only; mutation chỉ đi qua Safety Engine với catalog action.</p>
+<h3 id="worked-case_9">Worked case<a class="headerlink" href="#worked-case_9" title="Permanent link">&para;</a></h3>
+<p>Một log chứa instruction yêu cầu bỏ policy và đọc secret. Broker coi log là data, không instruction; query cross-tenant bị từ chối; output chỉ có evidence artifact. LLM không có credential executor nên injection không thể biến thành action.</p>
+<h3 id="failure-modes_9">Failure modes<a class="headerlink" href="#failure-modes_9" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Allowlist tool nhưng argument không giới hạn.</li>
+<li>Broker trả raw payload chứa PII vào context.</li>
+<li>“Bật debug để xem” được coi read-only dù làm đổi production.</li>
+</ul>
+<h3 id="acceptance_9">Acceptance<a class="headerlink" href="#acceptance_9" title="Permanent link">&para;</a></h3>
+<p>Prompt/data injection suite phải có zero scope escalation, zero secret leakage và zero freeform mutation.</p>
+<hr />
+<h2 id="14-pattern-11-independent-remediation-safety-controller">14. Pattern 11 — Independent remediation safety controller<a class="headerlink" href="#14-pattern-11-independent-remediation-safety-controller" title="Permanent link">&para;</a></h2>
+<h3 id="problem_10">Problem<a class="headerlink" href="#problem_10" title="Permanent link">&para;</a></h3>
+<p>RCA hoặc agent vừa đề xuất vừa tự thực thi. Confidence bị dùng thay cho risk, policy và blast radius.</p>
+<h3 id="decision_10">Decision<a class="headerlink" href="#decision_10" title="Permanent link">&para;</a></h3>
+<p>Tách proposal, policy decision, approval, resource coordination, bounded executor, verifier, audit và kill switch. Hard gate không được bù bằng confidence.</p>
+<h3 id="worked-case_10">Worked case<a class="headerlink" href="#worked-case_10" title="Permanent link">&para;</a></h3>
+<p>RCA confidence 0,86 nói pool exhaustion. Proposal tăng pool 80→160 bị reject vì 40 instance có thể thêm 3.200 connections trong khi DB chỉ còn 900 headroom. Proposal giảm retry được canary 5% với TTL và control.</p>
+<h3 id="failure-modes_10">Failure modes<a class="headerlink" href="#failure-modes_10" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Catalog action vẫn có selector rộng.</li>
+<li>Approval cũ dùng cho incident revision mới.</li>
+<li>Audit/verifier hỏng nhưng action vẫn chạy.</li>
+</ul>
+<h3 id="acceptance_10">Acceptance<a class="headerlink" href="#acceptance_10" title="Permanent link">&para;</a></h3>
+<p>Stale action, invalid target, audit outage và shared-invariant violation đều phải fail closed; detection vẫn hoạt động.</p>
+<hr />
+<h2 id="15-pattern-12-canary-control-verified-recovery">15. Pattern 12 — Canary + control + verified recovery<a class="headerlink" href="#15-pattern-12-canary-control-verified-recovery" title="Permanent link">&para;</a></h2>
+<h3 id="problem_11">Problem<a class="headerlink" href="#problem_11" title="Permanent link">&para;</a></h3>
+<p>Metric tốt lên sau action bị coi là causal success, dù traffic tự giảm hoặc dependency tự hồi.</p>
+<h3 id="decision_11">Decision<a class="headerlink" href="#decision_11" title="Permanent link">&para;</a></h3>
+<p>Canary đủ mẫu, control cohort tương đương, và ba tầng verification:</p>
+<ul>
+<li>Customer outcome.</li>
+<li>Mechanism signal.</li>
+<li>Harm guardrail.</li>
+</ul>
+<p>Mỗi expansion là decision mới; partial success không đóng incident.</p>
+<h3 id="worked-case_11">Worked case<a class="headerlink" href="#worked-case_11" title="Permanent link">&para;</a></h3>
+<p>Canary retry 1 tăng success từ 71,8% lên 91,2%; control retry 3 chỉ tăng 71,5% lên 74,0%. Retry amplification và pool wait giảm, DB CPU không tăng. Action có effect nhưng recovery target 98,5% chưa đạt, nên trạng thái là Partial Success.</p>
+<h3 id="failure-modes_11">Failure modes<a class="headerlink" href="#failure-modes_11" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Canary quá nhỏ không đủ mẫu.</li>
+<li>Cohort khác tenant mix.</li>
+<li>Ratio đẹp do volume sụt.</li>
+<li>Guardrail missing được coi là zero harm.</li>
+</ul>
+<h3 id="acceptance_11">Acceptance<a class="headerlink" href="#acceptance_11" title="Permanent link">&para;</a></h3>
+<p>Replay traffic recovery tự nhiên, metric missing, delayed harm và regional partial recovery. Không được false success hoặc expand khi verifier mất.</p>
+<hr />
+<h2 id="16-pattern-13-event-sourced-incident-state-replay-convergence">16. Pattern 13 — Event-sourced incident state + replay convergence<a class="headerlink" href="#16-pattern-13-event-sourced-incident-state-replay-convergence" title="Permanent link">&para;</a></h2>
+<h3 id="problem_12">Problem<a class="headerlink" href="#problem_12" title="Permanent link">&para;</a></h3>
+<p>Worker restart hoặc region fail làm incident mất memory, page lại, chạy action trùng hoặc unfreeze baseline sai.</p>
+<h3 id="decision_12">Decision<a class="headerlink" href="#decision_12" title="Permanent link">&para;</a></h3>
+<p>Incident identity, lifecycle, baseline state, watermark, correlation membership, evidence ledger, action state và notification được checkpoint từ append-only events. Recovery replay phải hội tụ về cùng decision semantics.</p>
+<h3 id="worked-case_12">Worked case<a class="headerlink" href="#worked-case_12" title="Permanent link">&para;</a></h3>
+<p>Worker chết 10:52, checkpoint 10:50, log giữ từ 10:45. Replay 10:50–10:52 không tạo incident ID mới, không page lại và không chạy canary lần hai. Evidence đến muộn có thể tăng revision nhưng không thay identity.</p>
+<h3 id="failure-modes_12">Failure modes<a class="headerlink" href="#failure-modes_12" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Chỉ checkpoint model state, không checkpoint suppression/action.</li>
+<li>Replay dùng processing-time nên đổi causal order.</li>
+<li>Idempotency key không gắn incident revision.</li>
+</ul>
+<h3 id="acceptance_12">Acceptance<a class="headerlink" href="#acceptance_12" title="Permanent link">&para;</a></h3>
+<p>So continuous run và recovery run event-by-event. Cho phép timestamp xử lý khác; incident/action outcome, count và identity phải giống.</p>
+<hr />
+<h2 id="17-pattern-14-shadow-canary-va-progressive-rollout-cho-decision-logic">17. Pattern 14 — Shadow, canary và progressive rollout cho decision logic<a class="headerlink" href="#17-pattern-14-shadow-canary-va-progressive-rollout-cho-decision-logic" title="Permanent link">&para;</a></h2>
+<h3 id="problem_13">Problem<a class="headerlink" href="#problem_13" title="Permanent link">&para;</a></h3>
+<p>Rule, model, feature hoặc prompt mới có blast radius toàn fleet dù không “deploy application”. Offline average đẹp nhưng một telemetry slice thất bại.</p>
+<h3 id="decision_13">Decision<a class="headerlink" href="#decision_13" title="Permanent link">&para;</a></h3>
+<p>Rollout theo chuỗi offline replay → shadow → canary service/tenant → progressive rollout. Artifact version gắn feature schema, calibration dataset, graph assumptions và rollback target.</p>
+<h3 id="worked-case_13">Worked case<a class="headerlink" href="#worked-case_13" title="Permanent link">&para;</a></h3>
+<p>RCA model mới tăng Top-1 trung bình 62%→69%, nhưng slice trace coverage dưới 50% giảm 48%→35%. Model chỉ canary trên service coverage cao; missing-trace slice giữ incumbent. Average không được bù hard regression.</p>
+<h3 id="failure-modes_13">Failure modes<a class="headerlink" href="#failure-modes_13" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Rollback model nhưng giữ feature transform mới.</li>
+<li>Shadow chỉ đo agreement, không đo outcome.</li>
+<li>Canary tenant quá dễ.</li>
+</ul>
+<h3 id="acceptance_13">Acceptance<a class="headerlink" href="#acceptance_13" title="Permanent link">&para;</a></h3>
+<p>Mọi revision phải pass hard gates theo slice, không chỉ weighted score; rollback được diễn tập trước 100% rollout.</p>
+<hr />
+<h2 id="18-pattern-15-independent-safety-plane-va-explicit-degraded-modes">18. Pattern 15 — Independent safety plane và explicit degraded modes<a class="headerlink" href="#18-pattern-15-independent-safety-plane-va-explicit-degraded-modes" title="Permanent link">&para;</a></h2>
+<h3 id="problem_14">Problem<a class="headerlink" href="#problem_14" title="Permanent link">&para;</a></h3>
+<p>AIOps phụ thuộc cùng telemetry, queue, DNS hoặc IAM với hệ thống đang hỏng. Mọi dashboard im lặng tạo health giả; remediation tiếp tục khi audit/verifier mất.</p>
+<h3 id="decision_14">Decision<a class="headerlink" href="#decision_14" title="Permanent link">&para;</a></h3>
+<p>Có safety plane tối thiểu độc lập: external heartbeat, queue-age probe, alternate notification, break-glass read path, kill switch. Production engine có các mode Healthy, Degraded Context, Detection Only, Human Only và Recovery.</p>
+<h3 id="worked-case_14">Worked case<a class="headerlink" href="#worked-case_14" title="Permanent link">&para;</a></h3>
+<p>OTel mất 35% span: Degraded Context, RCA confidence giảm. Kafka lag 11 phút: event-time processing, stale action bị cấm. Audit sink hỏng: Detection Only, không action mới. LLM hỏng: raw evidence vẫn page.</p>
+<h3 id="failure-modes_14">Failure modes<a class="headerlink" href="#failure-modes_14" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Safety plane đi cùng Kafka/IAM chính.</li>
+<li>Auto-return Healthy chỉ vì pod xanh.</li>
+<li>Degraded mode toàn cục dù chỉ một tenant lỗi.</li>
+</ul>
+<h3 id="acceptance_14">Acceptance<a class="headerlink" href="#acceptance_14" title="Permanent link">&para;</a></h3>
+<p>Kill từng dependency và xác nhận đúng mode, đúng forbidden action, incident continuity và route page độc lập.</p>
+<hr />
+<h2 id="19-pattern-16-human-command-va-calibrated-handoff">19. Pattern 16 — Human command và calibrated handoff<a class="headerlink" href="#19-pattern-16-human-command-va-calibrated-handoff" title="Permanent link">&para;</a></h2>
+<h3 id="problem_15">Problem<a class="headerlink" href="#problem_15" title="Permanent link">&para;</a></h3>
+<p>Automation tạo nhiều output nhưng không giúp incident commander quyết định; ownership mơ hồ, approval fatigue và handoff mất context.</p>
+<h3 id="decision_15">Decision<a class="headerlink" href="#decision_15" title="Permanent link">&para;</a></h3>
+<p>Brief có customer impact, leading/alternative hypothesis, contradiction, uncertainty, action scope, success/abort và owner. Handoff giữ incident revision và query history. Máy không tự nhận vai incident commander.</p>
+<h3 id="worked-case_15">Worked case<a class="headerlink" href="#worked-case_15" title="Permanent link">&para;</a></h3>
+<p>Payment chỉ hồi 91,2%, auth vừa lỗi, trace coverage giảm. Brief nói rõ hai incident, payment Partial Success, auth certificate candidate, shared gateway conflict và AIOps đang Degraded Context. Commander có thể ưu tiên login recovery mà không hiểu nhầm payment đã đóng.</p>
+<h3 id="failure-modes_15">Failure modes<a class="headerlink" href="#failure-modes_15" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Report dài nhưng không có decision delta.</li>
+<li>Approval UI không khóa revision stale.</li>
+<li>Feedback chỉ thumbs-up/down, không reason.</li>
+</ul>
+<h3 id="acceptance_15">Acceptance<a class="headerlink" href="#acceptance_15" title="Permanent link">&para;</a></h3>
+<p>Trong game day, on-call phải xác định impact, uncertainty, action đang chạy và owner trong dưới hai phút mà không mở raw dashboard.</p>
+<hr />
+<h2 id="20-pattern-composition-ghep-ung-thu-tu">20. Pattern composition: ghép đúng thứ tự<a class="headerlink" href="#20-pattern-composition-ghep-ung-thu-tu" title="Permanent link">&para;</a></h2>
+<p>Pattern độc lập nhưng production value đến từ composition.</p>
+<h3 id="201-long-incident-detection-stack">20.1 Long-incident detection stack<a class="headerlink" href="#201-long-incident-detection-stack" title="Permanent link">&para;</a></h3>
+<p>Regime-aware baseline → Freeze-on-alert → Multi-window burn → Fault-partitioned state → Event-sourced recovery.</p>
+<p>Thiếu event-sourced state, restart có thể unfreeze baseline. Thiếu regime context, freeze giữ một false positive quá lâu.</p>
+<h3 id="202-causal-diagnosis-stack">20.2 Causal diagnosis stack<a class="headerlink" href="#202-causal-diagnosis-stack" title="Permanent link">&para;</a></h3>
+<p>Topology correlation → Temporal causality → Multi-signal evidence → Hypothesis ledger → Bounded tool broker.</p>
+<p>Thiếu negative evidence, deploy gần nhất thắng. Thiếu provenance, investigation report không kiểm toán được.</p>
+<h3 id="203-safe-remediation-stack">20.3 Safe remediation stack<a class="headerlink" href="#203-safe-remediation-stack" title="Permanent link">&para;</a></h3>
+<p>Independent safety controller → Resource coordination → Canary/control → Verified recovery → Independent kill switch.</p>
+<p>Chỉ có executor và rollback chưa phải closed loop.</p>
+<h3 id="204-self-protecting-production-stack">20.4 Self-protecting production stack<a class="headerlink" href="#204-self-protecting-production-stack" title="Permanent link">&para;</a></h3>
+<p>Event-sourced state → Progressive decision rollout → Explicit degraded modes → Safety plane → Human command.</p>
+<p>Mục tiêu là khi “AI” hỏng, hệ thống vẫn phát hiện, giữ state và biết không hành động.</p>
+<hr />
+<h2 id="21-anti-pattern-library">21. Anti-pattern library<a class="headerlink" href="#21-anti-pattern-library" title="Permanent link">&para;</a></h2>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Anti-pattern</th>
+<th>Vì sao hấp dẫn</th>
+<th>Vì sao thất bại</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tool-first architecture</td>
+<td>Demo nhanh</td>
+<td>Không có decision contract</td>
+</tr>
+<tr>
+<td>One anomaly model for all</td>
+<td>Dễ vận hành</td>
+<td>Trộn regime và service semantics</td>
+</tr>
+<tr>
+<td>Correlation by time only</td>
+<td>Không cần topology</td>
+<td>Merge concurrent fault</td>
+</tr>
+<tr>
+<td>Latest deploy is root cause</td>
+<td>Dễ giải thích</td>
+<td>Tương quan không có path/cohort</td>
+</tr>
+<tr>
+<td>LLM as orchestrator with admin</td>
+<td>Linh hoạt</td>
+<td>Injection và blast radius</td>
+</tr>
+<tr>
+<td>Confidence threshold remediation</td>
+<td>Một con số đơn giản</td>
+<td>Bỏ qua impact/irreversibility</td>
+</tr>
+<tr>
+<td>Global remediation lock</td>
+<td>Tránh conflict</td>
+<td>Chặn incident độc lập</td>
+</tr>
+<tr>
+<td>Rollback equals safety</td>
+<td>Có đường quay lại</td>
+<td>Rollback có thể fail/gây storm</td>
+</tr>
+<tr>
+<td>Component uptime SLO</td>
+<td>Dễ đo</td>
+<td>Không chứng minh operator outcome</td>
+</tr>
+<tr>
+<td>Average benchmark score</td>
+<td>Dễ báo cáo</td>
+<td>Che failure slice nguy hiểm</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="22-chon-pattern-theo-quy-mo-to-chuc">22. Chọn pattern theo quy mô tổ chức<a class="headerlink" href="#22-chon-pattern-theo-quy-mo-to-chuc" title="Permanent link">&para;</a></h2>
+<h3 id="oi-khoang-10-ky-su">Đội khoảng 10 kỹ sư<a class="headerlink" href="#oi-khoang-10-ky-su" title="Permanent link">&para;</a></h3>
+<p>Ưu tiên:</p>
+<ul>
+<li>Customer SLO + multi-window burn.</li>
+<li>Freeze-on-alert cho vài signal quan trọng.</li>
+<li>Correlation theo service graph nhỏ và change events.</li>
+<li>Human-owned hypothesis ledger.</li>
+<li>Catalog 3–5 action an toàn, chưa auto-expand.</li>
+<li>Golden replay nhỏ nhưng chạy được.</li>
+</ul>
+<p>Không cần feature store, graph ML hay multi-agent platform.</p>
+<h3 id="to-chuc-khoang-100-ky-su">Tổ chức khoảng 100 kỹ sư<a class="headerlink" href="#to-chuc-khoang-100-ky-su" title="Permanent link">&para;</a></h3>
+<p>Thêm:</p>
+<ul>
+<li>Durable incident state và replay.</li>
+<li>Fault partition, topology freshness và change bus.</li>
+<li>Tool broker, evidence provenance và calibrated RCA.</li>
+<li>Human-approved canary, verifier và audit.</li>
+<li>Shadow/canary cho model/rule.</li>
+<li>Domain packs theo money/search/data.</li>
+</ul>
+<h3 id="to-chuc-khoang-1000-ky-su-tro-len">Tổ chức khoảng 1.000 kỹ sư trở lên<a class="headerlink" href="#to-chuc-khoang-1000-ky-su-tro-len" title="Permanent link">&para;</a></h3>
+<p>Thêm khi có nhu cầu:</p>
+<ul>
+<li>Multi-tenant isolation và federated ownership.</li>
+<li>Graph scale/streaming context.</li>
+<li>Per-slice calibration và policy federation.</li>
+<li>Independent regional safety plane.</li>
+<li>Dataset governance, benchmark registry và model risk management.</li>
+<li>Self-service pattern adoption với conformance tests.</li>
+</ul>
+<p>Quy mô không tự động biện minh độ phức tạp. Chỉ thêm capability khi pain và acceptance chứng minh ROI.</p>
+<hr />
+<h2 id="23-pattern-adoption-record">23. Pattern adoption record<a class="headerlink" href="#23-pattern-adoption-record" title="Permanent link">&para;</a></h2>
+<p>Mỗi lần chọn pattern, đội ghi một decision record ngắn:</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-2" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Trường</th>
+<th>Nội dung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pain</td>
+<td>Failure hiện tại bằng số</td>
+</tr>
+<tr>
+<td>Context</td>
+<td>Service tier, traffic, topology, domain</td>
+</tr>
+<tr>
+<td>Pattern</td>
+<td>Pattern và version semantics</td>
+</tr>
+<tr>
+<td>Alternatives</td>
+<td>Cách đơn giản hơn đã cân nhắc</td>
+</tr>
+<tr>
+<td>Expected effect</td>
+<td>Metric/outcome cần đổi</td>
+</tr>
+<tr>
+<td>New risks</td>
+<td>State, cost, false decision, security</td>
+</tr>
+<tr>
+<td>Acceptance</td>
+<td>Replay/failure injection sẽ chạy</td>
+</tr>
+<tr>
+<td>Owner/expiry</td>
+<td>Ai chịu trách nhiệm và khi nào review</td>
+</tr>
+</tbody>
+</table></div>
+<p>Nếu không mô tả được pain bằng evidence, chưa nên thêm platform component.</p>
+<hr />
+<h2 id="24-acceptance-cho-pattern-library">24. Acceptance cho Pattern Library<a class="headerlink" href="#24-acceptance-cho-pattern-library" title="Permanent link">&para;</a></h2>
+<p>Pattern Library đạt mục tiêu khi:</p>
+<ul>
+<li>Mỗi pattern có problem, context, forces và do-not-use.</li>
+<li>Có worked case bằng số, không chỉ lợi ích chung.</li>
+<li>Failure mode của chính pattern được nêu.</li>
+<li>Acceptance test tái tạo được.</li>
+<li>Pattern không gắn bắt buộc với một vendor/tool.</li>
+<li>Pattern composition chỉ rõ dependency giữa state, decision và safety.</li>
+<li>Người đọc chọn được subset theo quy mô thay vì copy toàn bộ.</li>
+<li>Domain Packs ở Chapter 16 có thể tham chiếu pattern bằng tên ổn định.</li>
+<li>Benchmark Replay ở Chapter 17 có scenario chứng minh từng pattern.</li>
+</ul>
+<p>Chapter này dùng <a href="../../acceptance-template.vi/">Acceptance Template chung</a> làm rubric canonical.</p>
+<hr />
+<h2 id="ket-luan">Kết luận<a class="headerlink" href="#ket-luan" title="Permanent link">&para;</a></h2>
+<p>Big Tech đáng học không phải vì họ dùng một tên công nghệ đặc biệt, mà vì nhiều hệ thống lớn hội tụ vào các lực giống nhau: state phải bền, causality phải có negative evidence, automation phải bị giới hạn, rollout decision phải như rollout code và AIOps phải có đường sống khi dependency chính hỏng.</p>
+<p>Pattern Library biến những bài học đó thành lựa chọn có điều kiện. Chapter tiếp theo không hỏi “công ty nào làm gì”, mà đóng gói các pattern theo hậu quả nghiệp vụ của e-commerce, banking và payment.</p>
+<h2 id="oc-tiep">Đọc tiếp<a class="headerlink" href="#oc-tiep" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../../16-aiops-domain-packs/README.vi/">16 — Domain Packs</a></li>
+<li><a href="../../17-aiops-benchmark-replay/README.vi/">17 — Benchmark Replay</a></li>
+<li><a href="../../acceptance-template.vi/">Acceptance Template chung</a></li>
+</ul>
+<hr />
+<h2 id="acceptance-contract-cua-chapter">Acceptance contract của chapter<a class="headerlink" href="#acceptance-contract-cua-chapter" title="Permanent link">&para;</a></h2>
+<p>Chapter này tuân theo <a href="../../acceptance-template.vi/">Acceptance Template chung</a>: capability chỉ được coi là hoàn tất khi có scope, input quality, timeline scenario, expected output, negative control, hard gates, thresholds và evidence artifact tái tạo được. Checklist hoặc demo không thay thế benchmark/replay.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../../14-production-engine/README.vi/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 14 Production Engine">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                14 Production Engine
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../../16-aiops-domain-packs/README.vi/" class="md-footer__link md-footer__link--next" aria-label="Next: 16 Domain Packs">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                16 Domain Packs
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../../javascripts/mermaid-zoom.js"></script>
+      
+    
+  </body>
+</html>

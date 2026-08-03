@@ -1,0 +1,687 @@
+/* Handbook reading system */
+
+:root {
+  --handbook-reading-measure: 54rem;
+  --handbook-rule: color-mix(
+    in srgb,
+    var(--md-primary-fg-color) 28%,
+    transparent
+  );
+  --handbook-surface: color-mix(
+    in srgb,
+    var(--md-default-bg-color) 94%,
+    var(--md-primary-fg-color)
+  );
+}
+
+.md-grid {
+  max-width: 92rem;
+}
+
+.md-content__inner {
+  padding-bottom: 4rem;
+}
+
+.md-typeset {
+  font-size: 0.84rem;
+  line-height: 1.72;
+  text-rendering: optimizeLegibility;
+}
+
+.md-typeset > p:not(:has(> img:only-child)),
+.md-typeset > ul,
+.md-typeset > ol,
+.md-typeset > blockquote,
+.md-typeset > .admonition,
+.md-typeset > details {
+  max-width: var(--handbook-reading-measure);
+}
+
+.md-typeset p {
+  margin: 0.72em 0 1em;
+}
+
+.md-typeset li {
+  margin-bottom: 0.32em;
+}
+
+.md-typeset li > p {
+  margin: 0.28em 0;
+}
+
+.md-typeset strong {
+  color: var(--md-default-fg-color);
+  font-weight: 750;
+}
+
+.md-typeset a {
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.16em;
+}
+
+/* Clear heading hierarchy for long, scan-heavy chapters. */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4 {
+  color: var(--md-default-fg-color);
+  scroll-margin-top: 5rem;
+}
+
+.md-typeset h1 {
+  margin: 0 0 1.05rem;
+  padding-bottom: 0.72rem;
+  border-bottom: 0.14rem solid var(--md-primary-fg-color);
+  font-size: 2rem;
+  font-weight: 850;
+  letter-spacing: -0.025em;
+  line-height: 1.18;
+}
+
+.md-typeset h2 {
+  margin: 2.7rem 0 1rem;
+  padding: 0.42rem 0 0.48rem 0.82rem;
+  border-left: 0.24rem solid var(--md-primary-fg-color);
+  border-bottom: 1px solid var(--handbook-rule);
+  font-size: 1.42rem;
+  font-weight: 820;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+.md-typeset h3 {
+  margin: 2rem 0 0.72rem;
+  font-size: 1.12rem;
+  font-weight: 780;
+  line-height: 1.38;
+}
+
+.md-typeset h4 {
+  margin: 1.55rem 0 0.55rem;
+  color: var(--md-primary-fg-color);
+  font-size: 0.94rem;
+  font-weight: 780;
+  letter-spacing: 0.005em;
+}
+
+.md-typeset h2 + h3,
+.md-typeset h3 + h4 {
+  margin-top: 0.8rem;
+}
+
+/* Chapter orientation is useful, but should not dominate the content outline. */
+.md-typeset h2#prerequisites,
+.md-typeset h2#related-documents,
+.md-typeset h2#next-reading {
+  margin-top: 1.45rem;
+  padding: 0;
+  border: 0;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.82rem;
+  font-weight: 780;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.md-typeset h2#prerequisites + ul,
+.md-typeset h2#related-documents + ul,
+.md-typeset h2#next-reading + p {
+  margin-top: 0.35rem;
+  padding-left: 1.1rem;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+/* Standalone bold lines are visual subheads, not anonymous paragraphs. */
+.md-typeset p:has(> strong:only-child) {
+  margin: 1.45rem 0 0.5rem;
+  color: var(--md-default-fg-color);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.md-typeset hr {
+  margin: 2.4rem 0;
+  border-color: var(--handbook-rule);
+}
+
+/* Opening thesis: make the promise of each chapter visible while skimming. */
+.md-typeset h1 + blockquote {
+  max-width: var(--handbook-reading-measure);
+  margin: 0 0 1.6rem;
+  padding: 0.85rem 1rem 0.88rem 1.1rem;
+  border-left-width: 0.3rem;
+  background: var(--handbook-surface);
+  font-size: 0.94rem;
+  line-height: 1.65;
+}
+
+/* Architecture posters read as figures, with captions separated from body copy. */
+.md-typeset p:has(> img:only-child),
+.md-typeset p.diagram-image-shell {
+  position: relative;
+  max-width: none;
+  margin: 1.4rem 0 0.45rem;
+  padding: 0.7rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.65rem;
+  background: #fff;
+  overflow-x: auto;
+  text-align: center;
+  box-shadow: 0 0.18rem 0.65rem rgba(15, 23, 42, 0.08);
+}
+
+.md-typeset img {
+  display: inline-block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.35rem;
+}
+
+.md-typeset p:has(> img:only-child) + p:has(> em:only-child),
+.md-typeset p.diagram-image-shell + p:has(> em:only-child) {
+  max-width: none;
+  margin: 0 1rem 1.45rem;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.diagram-image--zoomable {
+  cursor: zoom-in;
+}
+
+.diagram-image-expand {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.34rem 0.68rem;
+  border: 1px solid var(--md-primary-fg-color);
+  border-radius: 999px;
+  background: var(--md-primary-fg-color);
+  color: var(--md-primary-bg-color);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 0.12rem 0.35rem rgba(15, 23, 42, 0.2);
+}
+
+.diagram-image-expand:hover,
+.diagram-image-expand:focus-visible {
+  filter: brightness(1.08);
+}
+
+/* Dense decision tables remain scannable and mobile-safe. */
+.md-typeset__table,
+.md-typeset .table-scroll {
+  display: block;
+  width: 100%;
+  margin: 1.25rem 0 1.65rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.55rem;
+}
+
+.md-typeset__table,
+.md-typeset .table-scroll--wide {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-inline: contain;
+}
+
+.md-typeset .table-scroll--fit {
+  overflow-x: hidden;
+}
+
+.md-typeset .table-scroll:focus-visible {
+  outline: 0.14rem solid var(--md-accent-fg-color);
+  outline-offset: 0.12rem;
+}
+
+.md-typeset table:not([class]) {
+  display: table;
+  width: 100%;
+  margin: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.md-typeset table:not([class]) th {
+  padding: 0.72rem 0.82rem;
+  border-bottom: 2px solid var(--handbook-rule);
+  background: var(--handbook-surface);
+  color: var(--md-default-fg-color);
+  font-weight: 780;
+  text-align: left;
+  vertical-align: top;
+}
+
+.md-typeset table:not([class]) td {
+  padding: 0.62rem 0.82rem;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  text-align: left;
+  vertical-align: top;
+}
+
+.md-typeset .table-scroll--fit table:not([class]) {
+  table-layout: fixed;
+}
+
+.md-typeset .table-scroll--fit th,
+.md-typeset .table-scroll--fit td,
+.md-typeset .table-scroll--fit code {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  hyphens: auto;
+}
+
+.md-typeset .table-scroll--cols-2 th:first-child,
+.md-typeset .table-scroll--cols-2 td:first-child {
+  width: 34%;
+}
+
+.md-typeset .table-scroll--cols-3 th:first-child,
+.md-typeset .table-scroll--cols-3 td:first-child {
+  width: 24%;
+}
+
+.md-typeset .table-scroll--cols-4 th:first-child,
+.md-typeset .table-scroll--cols-4 td:first-child {
+  width: 18%;
+}
+
+.md-typeset table:not([class]) tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--md-code-bg-color) 58%, transparent);
+}
+
+.md-typeset table:not([class]) tbody tr:hover {
+  background: color-mix(in srgb, var(--md-primary-fg-color) 7%, transparent);
+}
+
+.md-typeset table:not([class]) td:first-child {
+  color: var(--md-default-fg-color);
+  font-weight: 620;
+}
+
+.md-typeset code {
+  border-radius: 0.28rem;
+  font-size: 0.86em;
+}
+
+.md-typeset pre > code {
+  line-height: 1.58;
+}
+
+/* ---------- Material admonitions (from GitHub [!NOTE] conversion) ---------- */
+
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  margin: 1.25em 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.md-typeset .admonition-title,
+.md-typeset summary {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* Slightly roomier body */
+.md-typeset .admonition > :not(.admonition-title):last-child,
+.md-typeset details > :not(summary):last-child {
+  margin-bottom: 0.6em;
+}
+
+.md-typeset .admonition p,
+.md-typeset details p {
+  margin-top: 0.4em;
+  margin-bottom: 0.5em;
+}
+
+/* Tip = green-ish success feel (Material already colors; reinforce title) */
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+  border-left-width: 0.28rem;
+}
+
+.md-typeset .admonition.note,
+.md-typeset details.note {
+  border-left-width: 0.28rem;
+}
+
+.md-typeset .admonition.important,
+.md-typeset details.important {
+  border-left-width: 0.28rem;
+}
+
+.md-typeset .admonition.warning,
+.md-typeset details.warning {
+  border-left-width: 0.28rem;
+}
+
+/* Fallback: if any raw GFM still slips through as blockquote, don't look broken */
+.md-typeset blockquote {
+  border-left: 0.25rem solid var(--md-primary-fg-color);
+  border-radius: 0 6px 6px 0;
+  padding: 0.6rem 1rem;
+  background: var(--md-code-bg-color);
+  color: var(--md-typeset-color);
+}
+
+.md-typeset blockquote > p:first-child {
+  margin-top: 0;
+}
+
+/* ---------- Collapsible implementation code ---------- */
+
+.md-typeset details {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  padding: 0.35rem 0.85rem 0.5rem;
+  margin: 1rem 0 1.25rem;
+  background: var(--md-code-bg-color);
+}
+
+.md-typeset details > summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--md-primary-fg-color);
+  padding: 0.45rem 0;
+  list-style: none;
+}
+
+.md-typeset details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.md-typeset details > summary::before {
+  content: "▸ ";
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.md-typeset details[open] > summary::before {
+  content: "▾ ";
+}
+
+.md-typeset details > summary:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Mermaid: readable size + scroll + click-to-zoom ---------- */
+
+/* Don't shrink huge graphs into a postage stamp */
+.md-typeset pre.mermaid,
+.md-typeset div.mermaid,
+.md-typeset .mermaid {
+  overflow: visible;
+  text-align: center;
+}
+
+.md-typeset .mermaid svg,
+.md-typeset pre.mermaid svg {
+  max-width: none !important;
+  height: auto !important;
+}
+
+/* Scroll shell when diagram is wider than article column */
+.mermaid-scroll {
+  position: relative;
+  margin: 1.25em 0;
+  padding: 0.5rem 0.5rem 0.75rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 10px;
+  background: var(--md-code-bg-color);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mermaid-scroll .mermaid,
+.mermaid-scroll pre.mermaid {
+  margin: 0;
+  min-width: min-content;
+  display: inline-block;
+  vertical-align: top;
+}
+
+.mermaid-expand-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.15rem 0 0.5rem 0.15rem;
+  padding: 0.28rem 0.7rem;
+  border: 1px solid var(--md-primary-fg-color);
+  border-radius: 999px;
+  background: var(--md-primary-fg-color);
+  color: var(--md-primary-bg-color);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.mermaid-expand-hint:hover {
+  filter: brightness(1.05);
+}
+
+.mermaid--zoomable {
+  cursor: zoom-in;
+}
+
+/* Lightbox */
+html.mermaid-lightbox-open,
+html.mermaid-lightbox-open body {
+  overflow: hidden;
+}
+
+.mermaid-lightbox[hidden] {
+  display: none !important;
+}
+
+.mermaid-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.mermaid-lightbox__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+.mermaid-lightbox__panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(96vw, 1400px);
+  height: min(92vh, 900px);
+  margin: auto;
+  border-radius: 12px;
+  background: var(--md-default-bg-color);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.mermaid-lightbox__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  background: var(--md-default-bg-color);
+}
+
+.mermaid-lightbox__title {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.mermaid-lightbox__actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.mermaid-lightbox__btn {
+  min-width: 2.2rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--md-default-fg-color--lighter);
+  border-radius: 6px;
+  background: var(--md-code-bg-color);
+  color: var(--md-typeset-color);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mermaid-lightbox__btn:hover {
+  border-color: var(--md-primary-fg-color);
+}
+
+.mermaid-lightbox__btn--close {
+  background: var(--md-primary-fg-color);
+  color: var(--md-primary-bg-color);
+  border-color: transparent;
+}
+
+.mermaid-lightbox__stage {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+  background:
+    linear-gradient(90deg, rgba(127, 127, 127, 0.06) 1px, transparent 1px) 0 0 /
+      20px 20px,
+    linear-gradient(rgba(127, 127, 127, 0.06) 1px, transparent 1px) 0 0 / 20px
+      20px,
+    var(--md-default-bg-color);
+}
+
+.mermaid-lightbox__canvas {
+  display: inline-block;
+  min-width: 100%;
+}
+
+.mermaid-lightbox__canvas svg,
+.mermaid-lightbox__canvas img {
+  max-width: none !important;
+  height: auto !important;
+  display: block;
+}
+
+.mermaid-lightbox__hint {
+  margin: 0;
+  padding: 0.45rem 0.85rem 0.65rem;
+  font-size: 0.75rem;
+  color: var(--md-default-fg-color--light);
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+}
+
+@media (max-width: 600px) {
+  .md-typeset {
+    font-size: 0.81rem;
+    line-height: 1.68;
+  }
+
+  .md-typeset h1 {
+    font-size: 1.55rem;
+  }
+
+  .md-typeset h2 {
+    margin-top: 2.2rem;
+    padding-left: 0.62rem;
+    font-size: 1.2rem;
+  }
+
+  .md-typeset h3 {
+    font-size: 1.03rem;
+  }
+
+  .md-typeset p:has(> img:only-child),
+  .md-typeset p.diagram-image-shell {
+    margin-right: -0.35rem;
+    margin-left: -0.35rem;
+    padding: 0.35rem;
+  }
+
+  .md-typeset__table,
+  .md-typeset .table-scroll {
+    margin-right: -0.35rem;
+    margin-left: -0.35rem;
+    width: calc(100% + 0.7rem);
+    border-radius: 0.35rem;
+  }
+
+  .md-typeset table:not([class]) {
+    font-size: 0.72rem;
+  }
+
+  .md-typeset table:not([class]) th,
+  .md-typeset table:not([class]) td {
+    padding: 0.55rem 0.65rem;
+  }
+
+  .md-typeset .table-scroll--wide th,
+  .md-typeset .table-scroll--wide td {
+    min-width: 7.5rem;
+  }
+
+  .md-typeset .table-scroll--fit th,
+  .md-typeset .table-scroll--fit td {
+    padding: 0.5rem;
+  }
+
+  .mermaid-lightbox__panel {
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    border-radius: 0;
+  }
+}
+
+[data-md-color-scheme="slate"] .md-typeset p:has(> img:only-child),
+[data-md-color-scheme="slate"] .md-typeset p.diagram-image-shell {
+  background: color-mix(in srgb, var(--md-default-bg-color) 88%, white);
+}
+
+@media print {
+  .md-typeset {
+    font-size: 10.5pt;
+    line-height: 1.55;
+  }
+
+  .md-typeset h1,
+  .md-typeset h2,
+  .md-typeset h3,
+  .md-typeset h4 {
+    break-after: avoid;
+  }
+
+  .md-typeset table,
+  .md-typeset p:has(> img:only-child),
+  .md-typeset p.diagram-image-shell,
+  .md-typeset .admonition {
+    break-inside: avoid;
+  }
+
+  .diagram-image-expand {
+    display: none;
+  }
+}

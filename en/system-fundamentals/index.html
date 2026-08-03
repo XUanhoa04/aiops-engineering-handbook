@@ -1,0 +1,4616 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Production-grade AIOps handbook — observability to remediation (Vietnamese + English)">
+      
+      
+        <meta name="author" content="XUanhoa04">
+      
+      
+        <link rel="canonical" href="https://xuanhoa04.github.io/aiops-engineering-handbook/en/system-fundamentals/">
+      
+      
+        <link rel="prev" href="../../vi/20-aiops-governance/README.vi/">
+      
+      
+        <link rel="next" href="../00-introduction/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>System Architecture Fundamentals - AIOps Engineering Handbook</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#chapter-s-modern-system-architecture-fundamentals-for-aiops-engineers-2026-edition" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AIOps Engineering Handbook" class="md-header__button md-logo" aria-label="AIOps Engineering Handbook" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AIOps Engineering Handbook
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              System Architecture Fundamentals
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    XUanhoa04/aiops-engineering-handbook
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../CURRICULUM/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Curriculum
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../vi/00-introduction.vi/" class="md-tabs__link">
+          
+  
+  
+  Tiếng Việt
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  English
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../assets/diagrams/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Diagrams
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AIOps Engineering Handbook" class="md-nav__button md-logo" aria-label="AIOps Engineering Handbook" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AIOps Engineering Handbook
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    XUanhoa04/aiops-engineering-handbook
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CURRICULUM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tiếng Việt
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tiếng Việt
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bắt đầu
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bắt đầu
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/00-introduction.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    00 Từ sự cố đến AIOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/acceptance-template.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acceptance Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nền tảng hệ thống
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Nền tảng hệ thống
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/system-fundamentals/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nền tảng evidence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Nền tảng evidence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/01-observability/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/02-opentelemetry/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 Telemetry contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/03-prometheus/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 Metric evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/04-loki/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 Log evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/05-tempo/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 Trace causality
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/06-data-plane/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 Data & Feature Plane
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/07-kafka/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 Event Transport
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/08-topology-change/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 Topology & Change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligence engines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Intelligence engines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/09-anomaly-detection/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 Persistent Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/10-alert-correlation/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 Alert Correlation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/11-root-cause-analysis/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 Root Cause Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/12-investigation-engine/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12 Investigation Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/13-remediation-safety-engine/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13 Remediation Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production, learning & governance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Production, learning & governance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/14-production-engine/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14 Production Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/15-aiops-pattern-library/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15 Pattern Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/16-aiops-domain-packs/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16 Domain Packs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/17-aiops-benchmark-replay/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17 Benchmark Replay
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/18-predictive-operations/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18 Predictive Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/19-incident-operations/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19 Incident Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vi/20-aiops-governance/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20 Governance & Model Risk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    English
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    English
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    System Fundamentals
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Documents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-reading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Reading
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Foundations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Foundations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../00-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    00 Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01-observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02-opentelemetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 OpenTelemetry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03-prometheus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 Prometheus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04-loki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 Loki
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05-tempo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 Tempo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06-data-plane/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 Data Plane
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07-kafka/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 Kafka
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08-topology-change/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 Topology & Change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Intelligence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09-anomaly-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 Anomaly Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10-alert-correlation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 Alert Correlation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11-root-cause-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 Root Cause Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../12-investigation-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12 Investigation Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../13-remediation-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13 Remediation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production & cases
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Production & cases
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../14-production-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14 Production
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../15-bigtech-aiops/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15 Big Tech AIOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../16-ecommerce-banking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16 E-commerce & Banking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../17-famous-incidents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17 Famous Incidents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../assets/diagrams/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Diagrams
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Documents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-reading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Reading
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="chapter-s-modern-system-architecture-fundamentals-for-aiops-engineers-2026-edition">Chapter S — Modern System Architecture Fundamentals for AIOps Engineers (2026 Edition)<a class="headerlink" href="#chapter-s-modern-system-architecture-fundamentals-for-aiops-engineers-2026-edition" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>AI processes Data — Metrics, Logs, Traces. But that Data reflects the physical behavior of CPU, Memory, Network, Disk, and GPU. If an AIOps engineer doesn't understand the PHYSICAL MECHANICS behind every number, every Anomaly Detection model becomes a useless black box, every Root Cause Analysis points to symptoms instead of causes, and every Auto-healing action treats the wrong disease. This chapter builds the system foundation required before reading any intelligence chapter.</strong></p>
+</blockquote>
+<hr />
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Basic experience with Linux and command line</li>
+<li>Introductory knowledge of containers and Kubernetes</li>
+<li>Recommended: <a href="../00-introduction/">00 — Introduction to AIOps</a></li>
+</ul>
+<h2 id="related-documents">Related Documents<a class="headerlink" href="#related-documents" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../01-observability/">01 — Observability</a> — designing evidence packs from system signals</li>
+<li><a href="../02-opentelemetry/">02 — OpenTelemetry</a> — collecting telemetry from system layers</li>
+<li><a href="../03-prometheus/">03 — Prometheus</a> — storing and querying system metrics</li>
+<li><a href="../06-data-plane/">06 — Data Plane</a> — normalizing and enriching telemetry data</li>
+<li><a href="../09-anomaly-detection/">09 — Anomaly Detection</a> — detecting anomalies in system signals</li>
+</ul>
+<h2 id="next-reading">Next Reading<a class="headerlink" href="#next-reading" title="Permanent link">&para;</a></h2>
+<p>After this chapter, continue to <a href="../01-observability/">01 — Observability</a> to learn how to design evidence packs for the system signals covered here.</p>
+<hr />
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<p><strong>Section 1: Compute &amp; Runtime Mechanics</strong></p>
+<ol>
+<li><a href="#1-linux-process-model">Linux Process Model</a></li>
+<li><a href="#2-memory-management">Memory Management</a></li>
+<li><a href="#3-linux-control-groups-v2">Linux Control Groups v2</a></li>
+<li><a href="#4-container-runtime-internals">Container Runtime Internals</a></li>
+<li><a href="#5-kubernetes-pod-lifecycle-deep-dive">Kubernetes Pod Lifecycle Deep Dive</a></li>
+<li><a href="#6-resource-requestslimits--qos-classes">Resource Requests/Limits &amp; QoS Classes</a></li>
+<li><a href="#7-cpu-throttling-mechanics">CPU Throttling Mechanics</a></li>
+<li><a href="#8-oomkilled--memory-pressure">OOMKilled &amp; Memory Pressure</a></li>
+<li><a href="#9-node-pressure--eviction">Node Pressure &amp; Eviction</a></li>
+<li><a href="#10-ebpf-based-telemetry">eBPF-based Telemetry</a></li>
+</ol>
+<p><strong>Section 2: Networking &amp; Traffic Engineering</strong></p>
+<ol>
+<li><a href="#11-end-to-end-request-lifecycle">End-to-End Request Lifecycle</a></li>
+<li><a href="#12-tcpip-internals-for-operations">TCP/IP Internals for Operations</a></li>
+<li><a href="#13-dns-resolution-mechanics">DNS Resolution Mechanics</a></li>
+<li><a href="#14-ingress-controllers--load-balancing">Ingress Controllers &amp; Load Balancing</a></li>
+<li><a href="#15-service-mesh-deep-dive">Service Mesh Deep Dive</a></li>
+<li><a href="#16-api-gateway-patterns">API Gateway Patterns</a></li>
+<li><a href="#17-connection-pool-management">Connection Pool Management</a></li>
+<li><a href="#18-thread-pool-exhaustion--backpressure">Thread Pool Exhaustion &amp; Backpressure</a></li>
+<li><a href="#19-circuit-breaking--cascading-prevention">Circuit Breaking &amp; Cascading Prevention</a></li>
+</ol>
+<p><strong>Section 3: Data &amp; Storage Layer</strong></p>
+<ol>
+<li><a href="#20-caching-architecture">Caching Architecture</a></li>
+<li><a href="#21-cache-failure-patterns">Cache Failure Patterns</a></li>
+<li><a href="#22-database-connection-management">Database Connection Management</a></li>
+<li><a href="#23-query-performance--lock-contention">Query Performance &amp; Lock Contention</a></li>
+<li><a href="#24-replication-lag--consistency">Replication Lag &amp; Consistency</a></li>
+<li><a href="#25-storage-io-fundamentals">Storage I/O Fundamentals</a></li>
+</ol>
+<p><strong>Section 4: Distributed Systems &amp; Failure Patterns</strong></p>
+<ol>
+<li><a href="#26-distributed-tracing-internals">Distributed Tracing Internals</a></li>
+<li><a href="#27-cascading-failures--error-storms">Cascading Failures &amp; Error Storms</a></li>
+<li><a href="#28-gray-failures--partial-outages">Gray Failures &amp; Partial Outages</a></li>
+</ol>
+<p><strong>Section 5: AI/ML Infrastructure Internals</strong></p>
+<ol>
+<li><a href="#29-gpu-compute--saturation">GPU Compute &amp; Saturation</a></li>
+<li><a href="#30-llm-inference-mechanics">LLM Inference Mechanics</a></li>
+<li><a href="#31-vector-database--embedding-pipeline">Vector Database &amp; Embedding Pipeline</a></li>
+</ol>
+<p><strong>Section 6: Synthesis — System Thinking for AIOps</strong></p>
+<ol>
+<li><a href="#32-use--red-methods">USE &amp; RED Methods</a></li>
+<li><a href="#33-cross-layer-correlation">Cross-Layer Correlation</a></li>
+<li><a href="#34-anti-patterns--chapter-summary">Anti-Patterns &amp; Chapter Summary</a></li>
+</ol>
+<hr />
+<h1 id="section-1-compute-runtime-mechanics">SECTION 1 — COMPUTE &amp; RUNTIME MECHANICS<a class="headerlink" href="#section-1-compute-runtime-mechanics" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><em>Every workload — from a microservice handling HTTP requests to an LLM inference pipeline — runs on the same foundation: the Linux kernel managing CPU time, memory pages, and I/O. AIOps engineers must understand how the kernel distributes resources, because this is the final layer that determines the "numbers" AI models see.</em></p>
+</blockquote>
+<hr />
+<h2 id="1-linux-process-model">1. Linux Process Model<a class="headerlink" href="#1-linux-process-model" title="Permanent link">&para;</a></h2>
+<h3 id="11-why-aiops-engineers-need-to-understand-process-scheduling">1.1 Why AIOps engineers need to understand process scheduling<a class="headerlink" href="#11-why-aiops-engineers-need-to-understand-process-scheduling" title="Permanent link">&para;</a></h3>
+<p>When an anomaly detector reports "CPU utilization spike on pod X", the first question must be: <strong>is that spike user time, system time, iowait, or steal?</strong> Each type points to a fundamentally different root cause. Without this knowledge, an RCA engine will misattribute the cause.</p>
+<h3 id="12-process-states-and-cpu-time-breakdown">1.2 Process states and CPU time breakdown<a class="headerlink" href="#12-process-states-and-cpu-time-breakdown" title="Permanent link">&para;</a></h3>
+<p>A Linux process exists in one of several states:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌──────────────────────────────────────────────────────────────────┐
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│                    Linux Process States                          │
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│                                                                  │
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│  TASK_RUNNING (R) ──── running or ready to run on CPU           │
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│         │                                                        │
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│         ├──→ TASK_INTERRUPTIBLE (S) ── waiting for I/O, signal  │
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│         │         │                                              │
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│         │         └──→ wake up ──→ back to R (runqueue)          │
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│         │                                                        │
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│         ├──→ TASK_UNINTERRUPTIBLE (D) ── waiting for disk I/O   │
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>│         │         │                  (cannot be killed by signal)│
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>│         │         └──→ I/O complete ──→ back to R                │
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>│         │                                                        │
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>│         ├──→ TASK_STOPPED (T) ── hit SIGSTOP or debugger        │
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>│         │                                                        │
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>│         └──→ TASK_ZOMBIE (Z) ── exited, parent hasn&#39;t wait()   │
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>└──────────────────────────────────────────────────────────────────┘
+</code></pre></div>
+<p><strong>CPU time breaks down into:</strong></p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>CPU Time Type</th>
+<th>Symbol</th>
+<th>Meaning</th>
+<th>AIOps Signal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>User</strong></td>
+<td><code>us</code></td>
+<td>Time running application code</td>
+<td>High → app busy (normal or bug loop)</td>
+</tr>
+<tr>
+<td><strong>System</strong></td>
+<td><code>sy</code></td>
+<td>Time in kernel (syscalls)</td>
+<td>High → excessive syscalls, context switches</td>
+</tr>
+<tr>
+<td><strong>I/O Wait</strong></td>
+<td><code>wa</code></td>
+<td>CPU idle waiting for disk I/O</td>
+<td>High → disk bottleneck, NOT CPU bottleneck</td>
+</tr>
+<tr>
+<td><strong>Steal</strong></td>
+<td><code>st</code></td>
+<td>CPU stolen by hypervisor (VM/cloud)</td>
+<td>High → noisy neighbor, host overcommit</td>
+</tr>
+<tr>
+<td><strong>IRQ/SoftIRQ</strong></td>
+<td><code>hi</code>/<code>si</code></td>
+<td>Handling hardware/software interrupts</td>
+<td>High → network packet storm, driver issue</td>
+</tr>
+<tr>
+<td><strong>Idle</strong></td>
+<td><code>id</code></td>
+<td>CPU doing nothing</td>
+<td>Combined with high latency → thread blocking</td>
+</tr>
+<tr>
+<td><strong>Nice</strong></td>
+<td><code>ni</code></td>
+<td>User-space at lowered priority</td>
+<td>Batch jobs, background tasks</td>
+</tr>
+</tbody>
+</table></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>Classic AIOps mistake:</strong> A detector sees high <code>iowait</code> and concludes "CPU overloaded" → triggers scale-out. But <code>iowait</code> means the CPU is <strong>idle</strong> waiting for disk. Adding more CPU won't help — you need to fix disk I/O or add caching. This is a textbook example of how missing system knowledge leads to wrong auto-scaling decisions.</p>
+</div>
+<h3 id="13-context-switching">1.3 Context switching<a class="headerlink" href="#13-context-switching" title="Permanent link">&para;</a></h3>
+<p>A context switch occurs when the kernel moves the CPU from process A to process B. The kernel must:</p>
+<ol>
+<li>Save the entire register state of A (program counter, stack pointer, general-purpose registers)</li>
+<li>Flush/invalidate TLB entries (Translation Lookaside Buffer)</li>
+<li>Load the register state of B</li>
+<li>Restore B's address space mapping</li>
+</ol>
+<p><strong>Real-world costs:</strong>
+- Voluntary context switch: process yields CPU (waiting on I/O, mutex) — ~1–5 μs
+- Involuntary context switch: kernel preempts (time slice expired) — ~5–15 μs
+- Hidden cost: cache pollution — after a switch, L1/L2/L3 caches are full of stale data and must warm again — <strong>this is the largest cost</strong>, potentially tens of μs</p>
+<p><strong>Key metrics:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Count system-wide context switches</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>vmstat<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{print $12, $13}&#39;</span><span class="w">   </span><span class="c1"># cs = context switches</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Count per-process</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>pidstat<span class="w"> </span>-w<span class="w"> </span><span class="m">1</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1"># cswch/s  = voluntary context switches per second</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># nvcswch/s = involuntary context switches per second</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1"># Inside a container (cgroups v2)</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>cat<span class="w"> </span>/sys/fs/cgroup/&lt;cgroup&gt;/cpu.stat
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="c1"># nr_throttled, throttled_usec — signs of CFS throttling</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p><strong>Rule of thumb for AIOps:</strong> Involuntary context switch rate &gt; 10,000/s/core usually indicates too many runnable threads relative to available CPU. This is a leading indicator for latency spikes before CPU utilization reaches 100%.</p>
+</div>
+<h3 id="14-cfs-scheduler-completely-fair-scheduler">1.4 CFS Scheduler — Completely Fair Scheduler<a class="headerlink" href="#14-cfs-scheduler-completely-fair-scheduler" title="Permanent link">&para;</a></h3>
+<p>Linux uses CFS as the default scheduler. Core principles:</p>
+<ul>
+<li>Each task has a <strong>virtual runtime</strong> (<code>vruntime</code>) — the CPU time it has "consumed" (weighted by priority/nice value)</li>
+<li>CFS always picks the task with the lowest <code>vruntime</code> to run next</li>
+<li>A red-black tree orders tasks by <code>vruntime</code> → O(log n) to select the next task</li>
+<li><strong>Time slices</strong> are not fixed — they depend on the number of runnable tasks and the target latency (<code>sched_latency_ns</code>, default 6ms for ≤8 tasks)</li>
+</ul>
+<p><strong>AIOps implication:</strong> When a pod runs inside a container, CFS + cgroups CPU quota determines how much CPU time the pod actually receives. <code>cpu.cfs_quota_us</code> / <code>cpu.cfs_period_us</code> creates the phenomenon of <strong>CPU throttling</strong> — one of the most common causes of hidden latency spikes in Kubernetes that does not appear on CPU utilization metrics.</p>
+<hr />
+<h2 id="2-memory-management">2. Memory Management<a class="headerlink" href="#2-memory-management" title="Permanent link">&para;</a></h2>
+<h3 id="21-virtual-memory-and-paging">2.1 Virtual memory and paging<a class="headerlink" href="#21-virtual-memory-and-paging" title="Permanent link">&para;</a></h3>
+<p>Every process has its own address space (virtual memory). The kernel maps virtual pages → physical frames via the <strong>page table</strong>. When a process accesses a page not in RAM:</p>
+<ul>
+<li><strong>Minor page fault:</strong> page exists in memory (e.g., shared library already loaded) — just update the page table. Cost ~1 μs.</li>
+<li><strong>Major page fault:</strong> page must be read from disk (swap) — cost <strong>1,000x–10,000x</strong> higher. This is "death by swap" for latency-sensitive workloads.</li>
+</ul>
+<h3 id="22-memory-pressure-signals">2.2 Memory pressure signals<a class="headerlink" href="#22-memory-pressure-signals" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Source</th>
+<th>Meaning</th>
+<th>Severity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pgfault</code> (minor)</td>
+<td><code>/proc/vmstat</code></td>
+<td>Page table miss, no disk I/O</td>
+<td>Normal at moderate levels</td>
+</tr>
+<tr>
+<td><code>pgmajfault</code> (major)</td>
+<td><code>/proc/vmstat</code></td>
+<td>Must read from disk/swap</td>
+<td>🔴 Very bad for latency</td>
+</tr>
+<tr>
+<td><code>pswpin</code>/<code>pswpout</code></td>
+<td><code>/proc/vmstat</code></td>
+<td>Pages swapping in/out</td>
+<td>🔴 Active swapping</td>
+</tr>
+<tr>
+<td><code>oom_kill_count</code></td>
+<td>cgroup stat</td>
+<td>OOM kill count</td>
+<td>🔴 Memory exhaustion</td>
+</tr>
+<tr>
+<td><code>memory.high events</code></td>
+<td>cgroup v2</td>
+<td>Exceeded soft limit, kernel throttles allocations</td>
+<td>🟡 Early warning</td>
+</tr>
+<tr>
+<td><code>PSI memory</code></td>
+<td><code>/proc/pressure/memory</code></td>
+<td>Pressure Stall Information</td>
+<td>🟡 Quantified memory contention</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="23-numa-non-uniform-memory-access">2.3 NUMA — Non-Uniform Memory Access<a class="headerlink" href="#23-numa-non-uniform-memory-access" title="Permanent link">&para;</a></h3>
+<p>On multi-socket servers, each CPU socket has its own "local memory." Accessing local memory is fast (~100ns), accessing remote memory is slower (~150–300ns).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>AIOps impact:</strong> When Kubernetes schedules a pod on a multi-socket node without NUMA-aware topology, the container may be allocated CPU cores on Socket 0 but memory on Socket 1. Result: latency increases 30–50% with no metric clearly explaining why — only "unexpectedly high P99." eBPF probes on <code>numastat</code> can detect <code>numa_miss</code> and <code>numa_foreign</code> events.</p>
+</div>
+<hr />
+<h2 id="3-linux-control-groups-v2">3. Linux Control Groups v2<a class="headerlink" href="#3-linux-control-groups-v2" title="Permanent link">&para;</a></h2>
+<h3 id="31-role-in-the-container-ecosystem">3.1 Role in the container ecosystem<a class="headerlink" href="#31-role-in-the-container-ecosystem" title="Permanent link">&para;</a></h3>
+<p>Cgroups v2 is the <strong>core kernel mechanism</strong> that limits, tracks, and isolates resources for groups of processes. Every container (Docker, containerd, CRI-O) is simply processes managed by cgroups.</p>
+<h3 id="32-key-resource-controllers">3.2 Key resource controllers<a class="headerlink" href="#32-key-resource-controllers" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Controller</th>
+<th>File</th>
+<th>Function</th>
+<th>AIOps Metric</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CPU</strong></td>
+<td><code>cpu.max</code></td>
+<td>Bandwidth limit (quota/period)</td>
+<td><code>nr_throttled</code>, <code>throttled_usec</code></td>
+</tr>
+<tr>
+<td><strong>CPU</strong></td>
+<td><code>cpu.weight</code></td>
+<td>CPU sharing under contention</td>
+<td>Proportional share</td>
+</tr>
+<tr>
+<td><strong>Memory</strong></td>
+<td><code>memory.max</code></td>
+<td>Hard limit → OOM kill when exceeded</td>
+<td><code>oom_kill</code> count</td>
+</tr>
+<tr>
+<td><strong>Memory</strong></td>
+<td><code>memory.high</code></td>
+<td>Soft limit → throttles allocation</td>
+<td><code>high</code> events in <code>memory.events</code></td>
+</tr>
+<tr>
+<td><strong>Memory</strong></td>
+<td><code>memory.current</code></td>
+<td>Current usage</td>
+<td>RSS + cache</td>
+</tr>
+<tr>
+<td><strong>I/O</strong></td>
+<td><code>io.max</code></td>
+<td>IOPS/BPS limit per device</td>
+<td><code>io.stat</code> (rbytes, wbytes, rios, wios)</td>
+</tr>
+<tr>
+<td><strong>PID</strong></td>
+<td><code>pids.max</code></td>
+<td>Process count limit</td>
+<td>Fork bomb protection</td>
+</tr>
+<tr>
+<td><strong>PSI</strong></td>
+<td><code>cpu.pressure</code>, <code>memory.pressure</code>, <code>io.pressure</code></td>
+<td>Pressure stall information</td>
+<td><code>some</code>, <code>full</code> — % time stalled</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="33-psi-pressure-stall-information">3.3 PSI — Pressure Stall Information<a class="headerlink" href="#33-psi-pressure-stall-information" title="Permanent link">&para;</a></h3>
+<p>PSI is a critical innovation in cgroups v2. Instead of only knowing "CPU utilization is 80%", PSI answers: <strong>"what percentage of time do tasks stall waiting for CPU/memory/IO?"</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a># /sys/fs/cgroup/kubepods.slice/.../cpu.pressure
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>some avg10=4.52 avg60=2.31 avg300=1.08 total=283947102
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>full avg10=1.03 avg60=0.55 avg300=0.24 total=89483921
+</code></pre></div>
+<ul>
+<li><code>some</code>: at least 1 task is stalled (part of the workload affected)</li>
+<li><code>full</code>: ALL tasks are stalled (entire workload stopped making progress)</li>
+<li><code>avg10/60/300</code>: averages over 10s/60s/300s windows (%)</li>
+<li><code>total</code>: cumulative stall time in microseconds</li>
+</ul>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p><strong>PSI is the gold signal for AIOps.</strong> Compared to CPU utilization (which can be misleading), PSI <code>some</code> &gt; 10% in a 10-second window is a far more reliable signal for anomaly detection. Meta (Facebook) uses PSI instead of load average as an autoscaling trigger — it's much more accurate because it measures <strong>actual impact</strong> rather than absolute utilization.</p>
+</div>
+<hr />
+<h2 id="4-container-runtime-internals">4. Container Runtime Internals<a class="headerlink" href="#4-container-runtime-internals" title="Permanent link">&para;</a></h2>
+<h3 id="41-containers-are-not-vms">4.1 Containers are not VMs<a class="headerlink" href="#41-containers-are-not-vms" title="Permanent link">&para;</a></h3>
+<p>A container is a <strong>group of processes</strong> isolated by two kernel mechanisms:</p>
+<ol>
+<li><strong>Namespaces</strong> — isolate visibility: each container sees its own PID tree, network stack, filesystem</li>
+<li><strong>Cgroups</strong> — isolate resources: limit the CPU, memory, and I/O that the process group can use</li>
+</ol>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>Container observability trap:</strong> Many tools running inside containers read <code>/proc/meminfo</code> or <code>/proc/cpuinfo</code> but see the <strong>host's</strong> information, not the container's. Example: a JVM reads <code>/proc/meminfo</code>, sees 128GB host RAM → sets heap to 96GB → exceeds container memory limit of 4Gi → OOMKilled. Java 10+ and Go 1.19+ are cgroup-aware, but legacy applications still hit this frequently.</p>
+</div>
+<h3 id="42-overlayfs-container-filesystem">4.2 OverlayFS — Container filesystem<a class="headerlink" href="#42-overlayfs-container-filesystem" title="Permanent link">&para;</a></h3>
+<p>Container images use a <strong>layered filesystem</strong> (OverlayFS):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Container writable layer (upperdir)  ← container writes go here
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>        │
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        ▼ (union mount)
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>Image Layer 3: app binary             ← read-only
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>Image Layer 2: dependencies            ← read-only
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>Image Layer 1: base OS (debian:slim)   ← read-only
+</code></pre></div>
+<p><strong>AIOps impact:</strong> Write-heavy containers create large <code>upperdir</code> → disk I/O increases → may trigger node eviction (<code>imagefs.available</code> pressure). The metrics <code>container_fs_writes_bytes_total</code> (cAdvisor) and <code>io.stat</code> (cgroup) detect this.</p>
+<hr />
+<h2 id="5-kubernetes-pod-lifecycle-deep-dive">5. Kubernetes Pod Lifecycle Deep Dive<a class="headerlink" href="#5-kubernetes-pod-lifecycle-deep-dive" title="Permanent link">&para;</a></h2>
+<h3 id="51-from-kubectl-apply-to-container-running">5.1 From <code>kubectl apply</code> to container running<a class="headerlink" href="#51-from-kubectl-apply-to-container-running" title="Permanent link">&para;</a></h3>
+<p>Understanding the lifecycle helps AIOps engines distinguish: is the pod pending because of scheduling or image pull? Is the crash loop from an app bug or a resource limit?</p>
+<pre class="mermaid"><code>stateDiagram-v2
+    [*] --&gt; Pending: kubectl apply / controller creates pod
+
+    state Pending {
+        Scheduling: Scheduler finds a node
+        ImagePulling: Kubelet pulls image
+        InitContainers: Init containers run sequentially
+    }
+
+    Pending --&gt; Running: All containers started
+    Pending --&gt; Failed: Image pull fail / init crash / unschedulable
+
+    state Running {
+        Ready: Passed readiness probe
+        NotReady: Readiness probe failing
+        CrashLoopBackOff: Container crashes and restarts repeatedly
+    }
+
+    Running --&gt; Succeeded: All containers exit 0 (Job)
+    Running --&gt; Failed: Container exits non-zero + restartPolicy=Never
+    Running --&gt; Terminating: Deletion requested
+
+    state Terminating {
+        PreStop: preStop hook runs
+        SIGTERM: Grace period countdown
+        SIGKILL: Grace period expired
+    }
+
+    Terminating --&gt; [*]: Pod removed from API</code></pre>
+<h3 id="52-probe-types-and-impact-on-traffic">5.2 Probe types and impact on traffic<a class="headerlink" href="#52-probe-types-and-impact-on-traffic" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>┌──────────────────────────────────────────────────────────────┐
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>│                    Kubernetes Probes                          │
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>│                                                              │
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>│  startupProbe ──── &quot;Has the container started?&quot;              │
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>│       │             Runs first, disables liveness/readiness  │
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>│       │             Use for: slow-starting apps (JVM, ML)    │
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>│       ▼                                                      │
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>│  livenessProbe ─── &quot;Is the container alive?&quot;                 │
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>│       │             Fail → kubelet RESTARTS container         │
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>│       │             ⚠️ Does NOT remove from Service endpoints│
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>│       ▼                                                      │
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>│  readinessProbe ── &quot;Is the container ready for traffic?&quot;     │
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>│                     Fail → removed from Service endpoints    │
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>│                     Recover → added back to endpoints        │
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>│                     ⚠️ Does NOT restart container            │
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>└──────────────────────────────────────────────────────────────┘
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>Most dangerous probe mistake:</strong> Using a <strong>liveness probe that checks a dependency</strong> (e.g., DB connection). When the DB goes down → all pods fail liveness → kubelet restarts them all → restart storm → pods start simultaneously → connection storm → DB dies harder. This is a cascading failure caused by misconfigured probes. Liveness must only check <strong>process health</strong>, never dependencies. Dependency health belongs in readiness probes.</p>
+</div>
+<h3 id="53-graceful-shutdown-why-502s-happen-during-deploys">5.3 Graceful shutdown — why 502s happen during deploys<a class="headerlink" href="#53-graceful-shutdown-why-502s-happen-during-deploys" title="Permanent link">&para;</a></h3>
+<p>When a pod is deleted (rolling update), two paths happen <strong>in parallel</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>            ┌─── Path A: kube-proxy/iptables removes pod IP from Service
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>            │    (async, may take 1-5 seconds)
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>            │
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>Pod delete ─┤
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>            │
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>            └─── Path B: kubelet sends preStop → SIGTERM → countdown
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>                 (starts immediately)
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>Problem: If preStop has no delay, the container receives SIGTERM
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>         and begins shutdown BEFORE iptables/Envoy finishes updating.
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>         → Requests still routed to the shutting-down pod → 502/503
+</code></pre></div>
+<p><strong>Fix:</strong> Add a <code>preStop</code> hook with <code>sleep 5–10s</code> to wait for endpoint propagation.</p>
+<p><strong>AIOps implication:</strong> If the detector sees 502 spikes every deploy, this is not an app bug — it's an endpoint propagation race condition. Correlation with deployment events (Ch. 08) will help the RCA engine eliminate false hypotheses.</p>
+<hr />
+<h2 id="6-resource-requestslimits-qos-classes">6. Resource Requests/Limits &amp; QoS Classes<a class="headerlink" href="#6-resource-requestslimits-qos-classes" title="Permanent link">&para;</a></h2>
+<h3 id="61-requests-vs-limits">6.1 Requests vs Limits<a class="headerlink" href="#61-requests-vs-limits" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th></th>
+<th>Requests</th>
+<th>Limits</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Meaning</strong></td>
+<td>Amount of resources <strong>guaranteed</strong></td>
+<td>Maximum resources <strong>allowed</strong></td>
+</tr>
+<tr>
+<td><strong>Used by scheduler</strong></td>
+<td>✅ To decide which node</td>
+<td>❌ Does not affect scheduling</td>
+</tr>
+<tr>
+<td><strong>Enforcement</strong></td>
+<td>Kernel cgroups <code>cpu.weight</code></td>
+<td>Kernel cgroups <code>cpu.max</code> (CPU), <code>memory.max</code> (Memory)</td>
+</tr>
+<tr>
+<td><strong>Exceeding CPU</strong></td>
+<td>Bursts if node has slack</td>
+<td><strong>Throttled</strong> (CFS bandwidth)</td>
+</tr>
+<tr>
+<td><strong>Exceeding Memory</strong></td>
+<td>—</td>
+<td><strong>OOMKilled</strong> immediately</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="62-qos-classes">6.2 QoS Classes<a class="headerlink" href="#62-qos-classes" title="Permanent link">&para;</a></h3>
+<p>Kubernetes automatically assigns a QoS class based on requests/limits configuration:</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>QoS Class</th>
+<th>Condition</th>
+<th>Eviction Priority</th>
+<th>When to Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Guaranteed</strong></td>
+<td>requests == limits for all containers, all resources</td>
+<td>Last to be evicted</td>
+<td>Latency-critical services (payment, auth)</td>
+</tr>
+<tr>
+<td><strong>Burstable</strong></td>
+<td>Has requests but &lt; limits (or only 1 resource set)</td>
+<td>Evicted after BestEffort</td>
+<td>Most workloads</td>
+</tr>
+<tr>
+<td><strong>BestEffort</strong></td>
+<td>No requests set at all</td>
+<td><strong>First to be evicted</strong></td>
+<td>Batch jobs, dev/test</td>
+</tr>
+</tbody>
+</table></div>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p><strong>Common production mistake:</strong> Setting very low <code>requests</code> (so the scheduler places pods easily) + very high <code>limits</code> (so the app isn't killed). Result: node overcommit → multiple pods burst simultaneously → node memory pressure → eviction storm. This is the root cause of "random pod kills" that teams often blame on Kubernetes.</p>
+</div>
+<hr />
+<h2 id="7-cpu-throttling-mechanics">7. CPU Throttling Mechanics<a class="headerlink" href="#7-cpu-throttling-mechanics" title="Permanent link">&para;</a></h2>
+<h3 id="71-cfs-bandwidth-control-hidden-latency-cause-1">7.1 CFS Bandwidth Control — hidden latency cause #1<a class="headerlink" href="#71-cfs-bandwidth-control-hidden-latency-cause-1" title="Permanent link">&para;</a></h3>
+<p>When a container has a CPU limit, the kernel applies <strong>CFS Bandwidth Control</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>cpu.max = &quot;200000 100000&quot;
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>           ↑ quota   ↑ period
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>Means: in each 100ms period, the container can use at most 200ms of CPU time.
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>→ Equivalent to 2 CPU cores.
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>If the container exhausts its quota before the period ends:
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>→ Container is THROTTLED — all threads STOP until the next period begins.
+</code></pre></div>
+<h3 id="72-detecting-cpu-throttling">7.2 Detecting CPU throttling<a class="headerlink" href="#72-detecting-cpu-throttling" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># From cgroup v2</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>cat<span class="w"> </span>/sys/fs/cgroup/.../cpu.stat
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="c1"># nr_periods    — total CFS periods</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1"># nr_throttled  — periods where throttling occurred</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="c1"># throttled_usec — total time throttled (microseconds)</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="c1"># Calculate throttle ratio</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="nv">throttle_ratio</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>nr_throttled<span class="w"> </span>/<span class="w"> </span>nr_periods
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="c1"># &gt; 5%  → concerning</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="c1"># &gt; 20% → severe, latency clearly affected</span>
+</code></pre></div>
+<p><strong>Prometheus metrics (from cAdvisor):</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Throttle ratio per container</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kr">rate</span><span class="o">(</span><span class="nv">container_cpu_cfs_throttled_periods_total</span><span class="p">[</span><span class="s">5m</span><span class="p">]</span><span class="o">)</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="o">/</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="kr">rate</span><span class="o">(</span><span class="nv">container_cpu_cfs_periods_total</span><span class="p">[</span><span class="s">5m</span><span class="p">]</span><span class="o">)</span>
+</code></pre></div>
+<h3 id="73-multi-threaded-throttling-amplification">7.3 Multi-threaded throttling amplification<a class="headerlink" href="#73-multi-threaded-throttling-amplification" title="Permanent link">&para;</a></h3>
+<p>Especially dangerous: JVM/Go runtimes have many threads (GC, compilation, app threads). All threads <strong>share</strong> the container's CPU quota:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>Container limit: 2 CPU (200ms per 100ms period)
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>Application: 8 threads (4 app + 2 GC + 1 compiler + 1 runtime)
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>Burst scenario:
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>- Parallel GC runs → 4 GC threads active simultaneously → burn 80ms in 20ms wall-time
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>- App threads consume 120ms
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>- Total: 200ms quota exhausted after 50ms wall-time
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>- Container frozen for remaining 50ms
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>- Every request arriving in those 50ms → timeout/delay
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>This is why many teams remove CPU limits for latency-critical services.</strong> Google internally and several companies (Datadog, Uber) recommend setting only CPU requests (so the scheduler knows what's needed) without CPU limits (to allow free bursting). Trade-off: loss of isolation — one pod can "steal" CPU from another. Alternative: use PSI triggers instead of hard throttling.</p>
+</div>
+<hr />
+<h2 id="8-oomkilled-memory-pressure">8. OOMKilled &amp; Memory Pressure<a class="headerlink" href="#8-oomkilled-memory-pressure" title="Permanent link">&para;</a></h2>
+<h3 id="81-two-types-of-oom-kill">8.1 Two types of OOM Kill<a class="headerlink" href="#81-two-types-of-oom-kill" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>Cgroup OOM (container level):</strong> Triggered when <code>memory.current</code> &gt; <code>memory.max</code>. The cgroup OOM handler kills a process within that cgroup. Exit code: 137 (128 + SIGKILL=9). Kubernetes reason: <code>OOMKilled</code>. Most common in Kubernetes.</p>
+</li>
+<li>
+<p><strong>System OOM (node level):</strong> Triggered when the entire node runs out of physical memory. The kernel's global OOM killer selects the process with the highest <code>oom_score</code>. Rare if kubelet eviction works correctly, but can kill kubelet or system processes.</p>
+</li>
+</ol>
+<h3 id="82-memory-metric-anatomy">8.2 Memory metric anatomy<a class="headerlink" href="#82-memory-metric-anatomy" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>Container memory.current =
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    RSS (anonymous pages — heap, stack)         ← &quot;real&quot; app usage
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>  + Page Cache (file-backed pages — disk reads) ← kernel auto-caches
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>  + Kernel memory (socket buffers, etc.)        ← overhead
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>  + Swap (if enabled)
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>Problem:
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>- memory.current includes page cache
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>- Page cache is reclaimable (freed automatically when needed)
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>- But cgroup OOM killer looks at memory.current, DOESN&#39;T distinguish
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>- → I/O-heavy container may show 95% usage, mostly page cache, fine
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>- → But if memory.max is too tight → OOMKill on small RSS spike
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>Correct metric for real memory pressure:
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>  memory.current - inactive_file ≈ &quot;working set&quot;
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>  Or: container_memory_working_set_bytes (kubelet/cAdvisor)
+</code></pre></div>
+<h3 id="83-memory-leak-detection-for-aiops">8.3 Memory leak detection for AIOps<a class="headerlink" href="#83-memory-leak-detection-for-aiops" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>Memory leak signature — sawtooth pattern:
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>  Linear growth → OOMKill → restart → growth again
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>Detection:
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>- Slope detection: Linear regression on container_memory_working_set_bytes
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>  over 1h/6h/24h window. Slope &gt; 0 consistently with R² &gt; 0.9
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>  → high probability memory leak
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>- Restart correlation: restartCount increasing + reason OOMKilled → confirm
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>- Time-to-exhaustion: (memory.max - current) / slope = estimated time to next OOMKill
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>  → predictive alert
+</code></pre></div>
+<hr />
+<h2 id="9-node-pressure-eviction">9. Node Pressure &amp; Eviction<a class="headerlink" href="#9-node-pressure-eviction" title="Permanent link">&para;</a></h2>
+<h3 id="91-kubelet-eviction-signals">9.1 Kubelet eviction signals<a class="headerlink" href="#91-kubelet-eviction-signals" title="Permanent link">&para;</a></h3>
+<p>Kubelet continuously monitors node resources. When thresholds are breached, it begins <strong>evicting pods</strong> (BestEffort first):</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Description</th>
+<th>Soft Default</th>
+<th>Hard Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>memory.available</code></td>
+<td>Available RAM on node</td>
+<td><code>100Mi</code></td>
+<td><code>100Mi</code></td>
+</tr>
+<tr>
+<td><code>nodefs.available</code></td>
+<td>Disk space on root fs</td>
+<td><code>10%</code></td>
+<td><code>5%</code></td>
+</tr>
+<tr>
+<td><code>nodefs.inodesFree</code></td>
+<td>Free inodes on root fs</td>
+<td><code>5%</code></td>
+<td><code>3%</code></td>
+</tr>
+<tr>
+<td><code>imagefs.available</code></td>
+<td>Disk space on image fs</td>
+<td><code>15%</code></td>
+<td><code>10%</code></td>
+</tr>
+<tr>
+<td><code>pid.available</code></td>
+<td>Available PIDs on node</td>
+<td>—</td>
+<td><code>100</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p><strong>AIOps detection pattern:</strong> Monitor <code>kube_node_status_condition</code> metric. When a node transitions to <code>MemoryPressure=True</code>, this is a <strong>leading indicator</strong> for an eviction storm. The detector should correlate with: (1) whether pods on that node have memory usage near their limits, (2) any recent deployment/scaling events, (3) whether any pod on the node exhibits a memory leak pattern.</p>
+</div>
+<hr />
+<h2 id="10-ebpf-based-telemetry">10. eBPF-based Telemetry<a class="headerlink" href="#10-ebpf-based-telemetry" title="Permanent link">&para;</a></h2>
+<h3 id="101-ebpf-the-observability-game-changer">10.1 eBPF — the observability game-changer<a class="headerlink" href="#101-ebpf-the-observability-game-changer" title="Permanent link">&para;</a></h3>
+<p>eBPF (extended Berkeley Packet Filter) allows running <strong>sandboxed programs inside the kernel</strong> without kernel modules or application instrumentation:</p>
+<h3 id="102-ebpf-use-cases-for-aiops">10.2 eBPF use cases for AIOps<a class="headerlink" href="#102-ebpf-use-cases-for-aiops" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Use Case</th>
+<th>eBPF Hook</th>
+<th>Data Collected</th>
+<th>Tool</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Application-transparent tracing</strong></td>
+<td>uprobe on HTTP libraries</td>
+<td>Request latency/status per endpoint — no code changes</td>
+<td>Pixie, Odigos, Beyla</td>
+</tr>
+<tr>
+<td><strong>TCP retransmission tracking</strong></td>
+<td>kprobe <code>tcp_retransmit_skb</code></td>
+<td>Retransmit count per connection</td>
+<td>BCC <code>tcpretrans</code></td>
+</tr>
+<tr>
+<td><strong>DNS latency</strong></td>
+<td>kprobe <code>udp_sendmsg</code>/<code>udp_recvmsg</code></td>
+<td>DNS query duration, failures</td>
+<td>Cilium</td>
+</tr>
+<tr>
+<td><strong>File I/O latency</strong></td>
+<td>tracepoint <code>block:block_rq_issue/complete</code></td>
+<td>Per-disk I/O latency distribution</td>
+<td>BCC <code>biolatency</code></td>
+</tr>
+<tr>
+<td><strong>Container network flows</strong></td>
+<td>tc/XDP</td>
+<td>L3/L4 flow data per pod</td>
+<td>Cilium Hubble</td>
+</tr>
+<tr>
+<td><strong>Security: syscall audit</strong></td>
+<td>LSM hooks, seccomp</td>
+<td>Suspicious syscall patterns</td>
+<td>Falco, Tetragon</td>
+</tr>
+<tr>
+<td><strong>CPU scheduling delays</strong></td>
+<td>tracepoint <code>sched:sched_switch</code></td>
+<td>Run queue latency per process</td>
+<td>BCC <code>runqlat</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="103-cost-and-limitations">10.3 Cost and limitations<a class="headerlink" href="#103-cost-and-limitations" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>eBPF overhead spectrum:
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>Passive tracing (tracepoints):       ~1-3% CPU overhead
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>Active probing (kprobes on hot path): ~3-8% CPU overhead  
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>XDP packet processing:                ~0.1-1% (replaces iptables!)
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>User-space probes (uprobe):            ~5-15% per probed function
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>Comparison:
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>- Sidecar proxy (Envoy): +10-30% latency, +50-200MB memory per pod
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>- eBPF-based mesh (Cilium): +1-5% latency, shared daemon per node
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>2026 trend:</strong> eBPF is replacing the sidecar proxy model for service mesh (Cilium replacing Istio sidecars), replacing iptables for Kubernetes networking, and providing "zero-instrumentation" observability for legacy apps. AIOps pipelines should integrate eBPF data sources (Hubble flows, Pixie spans, Tetragon security events) alongside OpenTelemetry.</p>
+</div>
+<hr />
+<h1 id="section-2-networking-traffic-engineering">SECTION 2 — NETWORKING &amp; TRAFFIC ENGINEERING<a class="headerlink" href="#section-2-networking-traffic-engineering" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><em>Most production incidents are network-related. Latency spikes, timeouts, connection refused, 503 — all relate to how requests travel through the system. AIOps engineers must understand each step in the request lifecycle so detectors don't confuse symptoms with causes.</em></p>
+</blockquote>
+<hr />
+<h2 id="11-end-to-end-request-lifecycle">11. End-to-End Request Lifecycle<a class="headerlink" href="#11-end-to-end-request-lifecycle" title="Permanent link">&para;</a></h2>
+<h3 id="111-anatomy-of-an-http-request-in-kubernetes">11.1 Anatomy of an HTTP request in Kubernetes<a class="headerlink" href="#111-anatomy-of-an-http-request-in-kubernetes" title="Permanent link">&para;</a></h3>
+<p>From a user's browser to the application container, a request passes through <strong>at least 6-8 layers</strong>, each of which can introduce latency and failure:</p>
+<pre class="mermaid"><code>graph LR
+    Client[Client/Browser] --&gt;|DNS resolve| DNS[DNS Server]
+    DNS --&gt;|IP address| Client
+    Client --&gt;|TLS + HTTP| LB[Cloud Load Balancer&lt;br/&gt;ALB/NLB]
+    LB --&gt;|L7 routing| Ingress[Ingress Controller&lt;br/&gt;nginx/envoy]
+    Ingress --&gt;|Host/path match| Sidecar1[Envoy Sidecar&lt;br/&gt;mTLS, retry]
+    Sidecar1 --&gt;|localhost| App[Application&lt;br/&gt;Container]
+    App --&gt;|outbound| Sidecar2[Egress Sidecar]
+    Sidecar2 --&gt;|mTLS| Backend[Backend Service&lt;br/&gt;DB/Cache/API]
+
+    style Client fill:#dbeafe
+    style LB fill:#fef3c7
+    style Ingress fill:#fef3c7
+    style Sidecar1 fill:#ede9fe
+    style App fill:#dcfce7
+    style Sidecar2 fill:#ede9fe
+    style Backend fill:#fecdd3</code></pre>
+<h3 id="112-latency-budget-breakdown">11.2 Latency budget breakdown<a class="headerlink" href="#112-latency-budget-breakdown" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Hop</th>
+<th>Typical Latency</th>
+<th>Failure Mode</th>
+<th>Metric</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DNS Resolution</td>
+<td>1–50ms (cached: &lt;1ms)</td>
+<td>DNS timeout, NXDOMAIN, stale cache</td>
+<td><code>dns_lookup_duration_seconds</code></td>
+</tr>
+<tr>
+<td>TLS Handshake</td>
+<td>10–50ms (new), 0ms (resumed)</td>
+<td>Certificate expiry, OCSP issue</td>
+<td><code>tls_handshake_duration_seconds</code></td>
+</tr>
+<tr>
+<td>Cloud LB → Ingress</td>
+<td>1–5ms</td>
+<td>Unhealthy target, cross-AZ</td>
+<td>ALB <code>TargetResponseTime</code></td>
+</tr>
+<tr>
+<td>Ingress → Pod</td>
+<td>1–3ms (same-AZ)</td>
+<td>Rate limit hit, wrong backend</td>
+<td><code>nginx_upstream_response_time</code></td>
+</tr>
+<tr>
+<td>Sidecar (Envoy)</td>
+<td>1–3ms</td>
+<td>Circuit open, retry exhausted</td>
+<td><code>envoy_cluster_upstream_rq_time</code></td>
+</tr>
+<tr>
+<td>Application processing</td>
+<td>Variable</td>
+<td>App bug, slow query, OOM</td>
+<td><code>http_server_request_duration</code></td>
+</tr>
+<tr>
+<td>Pod → Backend</td>
+<td>1–100ms</td>
+<td>Connection refused, timeout</td>
+<td><code>db_query_duration_seconds</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p><strong>AIOps correlation pattern:</strong> When latency spikes, decompose it by hop. If 90% of latency is in the "Application → DB" hop → root cause is in the data layer (slow query, connection pool). If latency increases uniformly across all hops → network-level issue (congestion, packet loss). Distributed tracing (Ch. 05) automates this decomposition via span durations.</p>
+</div>
+<hr />
+<h2 id="12-tcpip-internals-for-operations">12. TCP/IP Internals for Operations<a class="headerlink" href="#12-tcpip-internals-for-operations" title="Permanent link">&para;</a></h2>
+<h3 id="121-tcp-handshake-and-connection-states">12.1 TCP Handshake and connection states<a class="headerlink" href="#121-tcp-handshake-and-connection-states" title="Permanent link">&para;</a></h3>
+<p>Every TCP connection goes through a complex state machine. AIOps engineers need to understand this because <strong>connection state accumulation</strong> causes many incidents.</p>
+<h3 id="122-time_wait-the-silent-killer">12.2 TIME_WAIT — the silent killer<a class="headerlink" href="#122-time_wait-the-silent-killer" title="Permanent link">&para;</a></h3>
+<p><strong>Problem:</strong> Every closed connection stays in <code>TIME_WAIT</code> for 60 seconds on Linux. During that time, the tuple (src_ip, src_port, dst_ip, dst_port) cannot be reused.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>High-traffic service closing 10,000 connections/second:
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>→ 10,000 × 60s = 600,000 sockets in TIME_WAIT
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>→ Ephemeral port range: 32768–60999 = 28,232 ports
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>→ If connecting to the same destination: PORT EXHAUSTION!
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>Symptoms:
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>- connect() returns EADDRNOTAVAIL
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>- &quot;Cannot assign requested address&quot; in logs
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>- All requests to destination X fail, but Y is fine
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>AIOps trap:</strong> A detector sees "connection refused" errors spiking → concludes "service down." But if failures only occur when connecting to <strong>one specific destination</strong> and <code>TIME_WAIT</code> count is high → root cause is port exhaustion, not a service outage. Fix: enable <code>tcp_tw_reuse</code>, use connection pooling, or increase the ephemeral port range.</p>
+</div>
+<h3 id="123-tcp-retransmissions">12.3 TCP Retransmissions<a class="headerlink" href="#123-tcp-retransmissions" title="Permanent link">&para;</a></h3>
+<p>Retransmissions occur when TCP segments are lost (network congestion, packet drops, interface errors):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>Retransmission Timeout (RTO) escalation:
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>  Attempt 1: RTO = ~200ms (initial)
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>  Attempt 2: RTO = ~400ms (doubled)
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>  Attempt 3: RTO = ~800ms
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>  ...
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>  After net.ipv4.tcp_retries2 (default 15) attempts:
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>  → Connection reset → application sees &quot;Connection timed out&quot;
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>Impact on application latency:
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>  1 retransmit = +200ms minimum delay
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>  2 retransmits = +600ms
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>  → P99 latency spike with no obvious cause
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># Retransmission rate (node_exporter)</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="kr">rate</span><span class="o">(</span><span class="nv">node_netstat_Tcp_RetransSegs</span><span class="p">[</span><span class="s">5m</span><span class="p">]</span><span class="o">)</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="o">/</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="kr">rate</span><span class="o">(</span><span class="nv">node_netstat_Tcp_OutSegs</span><span class="p">[</span><span class="s">5m</span><span class="p">]</span><span class="o">)</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="c1"># &gt; 0.1% → investigate</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="c1"># &gt; 1%   → significant packet loss</span>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="c1"># &gt; 5%   → critical network issue</span>
+</code></pre></div>
+<h3 id="124-tcp-connection-timeouts">12.4 TCP connection timeouts<a class="headerlink" href="#124-tcp-connection-timeouts" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Timeout</th>
+<th>Default</th>
+<th>Meaning</th>
+<th>When Hit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>connect_timeout</code></td>
+<td><code>tcp_syn_retries=6</code> (~127s)</td>
+<td>SYN not ACKed</td>
+<td>Destination unreachable, firewall drop</td>
+</tr>
+<tr>
+<td><code>tcp_keepalive_time</code></td>
+<td>7200s (2h!)</td>
+<td>Time before keepalive probe</td>
+<td>Idle connection killed by NAT/firewall</td>
+</tr>
+<tr>
+<td><code>tcp_fin_timeout</code></td>
+<td>60s</td>
+<td>TIME_WAIT duration</td>
+<td>Port exhaustion on high-traffic services</td>
+</tr>
+<tr>
+<td><code>tcp_retries2</code></td>
+<td>15</td>
+<td>Retransmits for established connections</td>
+<td>Long timeout before app sees error</td>
+</tr>
+</tbody>
+</table></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>Linux's default timeouts are far too long for cloud-native workloads.</strong> TCP keepalive of 2 hours means that if a pod is rescheduled, the backend pod is running at a new IP but the client holds a connection to the old IP and won't know it's dead for up to 2 hours. Cloud load balancers (ALB idle timeout: 60s) and NAT gateways will drop the connection before the keepalive probe fires. Result: sporadic "connection reset by peer" errors.</p>
+</div>
+<hr />
+<h2 id="13-dns-resolution-mechanics">13. DNS Resolution Mechanics<a class="headerlink" href="#13-dns-resolution-mechanics" title="Permanent link">&para;</a></h2>
+<h3 id="131-dns-in-kubernetes">13.1 DNS in Kubernetes<a class="headerlink" href="#131-dns-in-kubernetes" title="Permanent link">&para;</a></h3>
+<p>DNS resolution in a Kubernetes cluster goes through multiple layers. With the default <code>ndots:5</code> setting, every name with fewer than 5 dots tries the search domain list first — generating unnecessary DNS queries.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong><code>ndots:5</code> performance trap:</strong> Every external DNS lookup (e.g., <code>api.stripe.com</code>) tries <strong>5 search domain variants</strong> before querying the correct hostname. At ~5ms per DNS round-trip, every external call adds <strong>25ms just for DNS</strong>. Fix: add a trailing dot <code>api.stripe.com.</code> or reduce <code>ndots:2</code> in the pod spec. In high-traffic systems, this DNS amplification can overload CoreDNS → DNS timeout → cascading failure.</p>
+</div>
+<h3 id="132-dns-failure-modes">13.2 DNS failure modes<a class="headerlink" href="#132-dns-failure-modes" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Failure</th>
+<th>Symptom</th>
+<th>Root Cause</th>
+<th>AIOps Signal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DNS timeout</td>
+<td>5s+ latency spike (DNS timeout default)</td>
+<td>CoreDNS overload, network issue</td>
+<td><code>coredns_dns_request_duration_seconds</code> P99 increase</td>
+</tr>
+<tr>
+<td>NXDOMAIN</td>
+<td>Service not found errors</td>
+<td>Typo, service not deployed, wrong namespace</td>
+<td><code>coredns_dns_responses_total{rcode="NXDOMAIN"}</code></td>
+</tr>
+<tr>
+<td>Stale cache</td>
+<td>Request sent to old IP</td>
+<td>TTL still valid but endpoint changed</td>
+<td>Connection refused to old IP</td>
+</tr>
+<tr>
+<td>CoreDNS OOM</td>
+<td>Cluster-wide DNS failure</td>
+<td>Too many DNS queries, low memory limit</td>
+<td>CoreDNS pod restarts</td>
+</tr>
+<tr>
+<td>Conntrack full</td>
+<td>DNS (UDP) packets dropped</td>
+<td>Conntrack table full on node</td>
+<td><code>conntrack_entries</code> / <code>conntrack_max</code></td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="14-ingress-controllers-load-balancing">14. Ingress Controllers &amp; Load Balancing<a class="headerlink" href="#14-ingress-controllers-load-balancing" title="Permanent link">&para;</a></h2>
+<h3 id="141-l4-vs-l7-load-balancing">14.1 L4 vs L7 Load Balancing<a class="headerlink" href="#141-l4-vs-l7-load-balancing" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>L4 (Transport)</th>
+<th>L7 (Application)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Level</td>
+<td>TCP/UDP</td>
+<td>HTTP/HTTPS/gRPC</td>
+</tr>
+<tr>
+<td>Content awareness</td>
+<td>No</td>
+<td>Reads headers, path, host</td>
+</tr>
+<tr>
+<td>Routing</td>
+<td>By IP:Port</td>
+<td>By host, path, cookie, header</td>
+</tr>
+<tr>
+<td>Speed</td>
+<td>~microseconds</td>
+<td>~milliseconds</td>
+</tr>
+<tr>
+<td>TLS</td>
+<td>Passthrough</td>
+<td>Termination</td>
+</tr>
+<tr>
+<td>AWS</td>
+<td>NLB</td>
+<td>ALB</td>
+</tr>
+<tr>
+<td>K8s</td>
+<td>Service type=LoadBalancer</td>
+<td>Ingress + nginx/envoy</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="142-health-check-gaps-source-of-502503">14.2 Health check gaps — source of 502/503<a class="headerlink" href="#142-health-check-gaps-source-of-502503" title="Permanent link">&para;</a></h3>
+<p>Each layer checks health independently with different intervals and timeouts. When a pod goes down, readiness fails, and the endpoint is removed — but the ALB may still send traffic to the Ingress, which forwards to the old endpoint → 502 until the ALB detects the target is down.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p><strong>AIOps correlation:</strong> 502 error spikes after deployment should be correlated with (1) endpoint update events (<code>kube_endpoint_*</code>), (2) ALB target health transitions, (3) pod lifecycle events. If the 502 duration matches the health check convergence time → configuration issue, not app bug.</p>
+</div>
+<hr />
+<h2 id="15-service-mesh-deep-dive">15. Service Mesh Deep Dive<a class="headerlink" href="#15-service-mesh-deep-dive" title="Permanent link">&para;</a></h2>
+<h3 id="151-retry-budget-preventing-retry-storms">15.1 Retry budget — preventing retry storms<a class="headerlink" href="#151-retry-budget-preventing-retry-storms" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>Retry Storm:
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>  Service A ──retry 3x──► Service B ──retry 3x──► Service C (down)
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>  1 request from A → 3 × 3 = 9 requests to C
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>  1000 concurrent users from A → 9,000 requests to C (already down!)
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>  → C can never recover → B also overloads → cascading failure
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>Fix: Retry budget = max 20% extra traffic
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>     1000 baseline + 200 retries max = 1200 total → C can recover
+</code></pre></div>
+<h3 id="152-envoy-metrics-for-aiops">15.2 Envoy metrics for AIOps<a class="headerlink" href="#152-envoy-metrics-for-aiops" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Meaning</th>
+<th>AIOps Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>envoy_cluster_upstream_rq_total</code></td>
+<td>Total requests per cluster</td>
+<td>Baseline traffic</td>
+</tr>
+<tr>
+<td><code>envoy_cluster_upstream_rq_xx</code></td>
+<td>Requests by response code</td>
+<td>Error rate</td>
+</tr>
+<tr>
+<td><code>envoy_cluster_upstream_rq_time</code></td>
+<td>Request duration histogram</td>
+<td>Latency anomaly</td>
+</tr>
+<tr>
+<td><code>envoy_cluster_upstream_rq_pending_overflow</code></td>
+<td>Requests rejected (queue full)</td>
+<td>Overload signal</td>
+</tr>
+<tr>
+<td><code>envoy_cluster_upstream_rq_retry</code></td>
+<td>Retry count</td>
+<td>Retry amplification</td>
+</tr>
+<tr>
+<td><code>envoy_cluster_circuit_breakers_default_cx_open</code></td>
+<td>Circuit breaker open?</td>
+<td>Upstream failure</td>
+</tr>
+<tr>
+<td><code>envoy_cluster_outlier_detection_ejections_active</code></td>
+<td>Endpoints ejected</td>
+<td>Partial failure</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="16-api-gateway-patterns">16. API Gateway Patterns<a class="headerlink" href="#16-api-gateway-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="161-rate-limiting-leaky-bucket-vs-token-bucket">16.1 Rate limiting — leaky bucket vs token bucket<a class="headerlink" href="#161-rate-limiting-leaky-bucket-vs-token-bucket" title="Permanent link">&para;</a></h3>
+<p><strong>Token Bucket</strong> (more common): allows bursts up to capacity, then limits to refill rate. <strong>Leaky Bucket</strong>: smooths out bursts, constant output rate.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>AIOps impact:</strong> Rate limiting metrics (<code>rate_limit_remaining</code>, <code>429 response count</code>) are <strong>leading indicators</strong> for capacity issues. If the detector sees 429 increasing but backend resources are idle → rate limit config is too tight. If 429 increases alongside backend latency → legitimate overload, rate limiting is protecting the system.</p>
+</div>
+<hr />
+<h2 id="17-connection-pool-management">17. Connection Pool Management<a class="headerlink" href="#17-connection-pool-management" title="Permanent link">&para;</a></h2>
+<h3 id="171-why-connection-pools-matter">17.1 Why connection pools matter<a class="headerlink" href="#171-why-connection-pools-matter" title="Permanent link">&para;</a></h3>
+<p>Every new TCP connection costs: DNS lookup + TCP handshake (1 RTT) + TLS handshake (1–2 RTT) = <strong>50–200ms</strong>. Connection pools keep connections ready for reuse.</p>
+<h3 id="172-pool-failure-modes">17.2 Pool failure modes<a class="headerlink" href="#172-pool-failure-modes" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Failure Mode</th>
+<th>Symptom</th>
+<th>Root Cause</th>
+<th>AIOps Metric</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Pool exhaustion</strong></td>
+<td>Requests queue → timeout</td>
+<td>Too many concurrent requests, connection leak</td>
+<td><code>pool_active</code> / <code>pool_max</code> &gt; 95%</td>
+</tr>
+<tr>
+<td><strong>Connection leak</strong></td>
+<td>Pool gradually empties despite normal traffic</td>
+<td>Code doesn't return connections (missing <code>close()</code>)</td>
+<td><code>pool_active</code> increases monotonically</td>
+</tr>
+<tr>
+<td><strong>Stale connection</strong></td>
+<td>Random "connection reset" errors</td>
+<td>Server closed idle connection, client unaware</td>
+<td><code>pool_stale_removed</code> count</td>
+</tr>
+<tr>
+<td><strong>Connection storm</strong></td>
+<td>App start → opens max_pool_size connections at once</td>
+<td>Cold start, scale-out event</td>
+<td><code>pool_new_connections_total</code> spike</td>
+</tr>
+</tbody>
+</table></div>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p><strong>Database-side limit:</strong> PostgreSQL <code>max_connections</code> default = 100. If 20 pods × 25 max_pool = 500 connections → <strong>exceeds DB limit!</strong> PgBouncer (connection multiplexer) is needed in front of the DB. AIOps must monitor both sides: app pool metrics AND DB connection count.</p>
+</div>
+<hr />
+<h2 id="18-thread-pool-exhaustion-backpressure">18. Thread Pool Exhaustion &amp; Backpressure<a class="headerlink" href="#18-thread-pool-exhaustion-backpressure" title="Permanent link">&para;</a></h2>
+<h3 id="181-sync-vs-async-threading-models">18.1 Sync vs Async threading models<a class="headerlink" href="#181-sync-vs-async-threading-models" title="Permanent link">&para;</a></h3>
+<p><strong>Synchronous (thread-per-request):</strong> When all threads are blocked on slow downstream calls, no thread is available for new requests → 503 even though CPU is 10% idle. This is the classic "CPU low, latency high" thread exhaustion pattern.</p>
+<p><strong>Asynchronous (event loop):</strong> A single thread handles N requests concurrently via non-blocking I/O. But if code blocks (sync library call), the event loop stalls completely.</p>
+<h3 id="182-backpressure-mechanisms">18.2 Backpressure mechanisms<a class="headerlink" href="#182-backpressure-mechanisms" title="Permanent link">&para;</a></h3>
+<p>Backpressure is the system's ability to say "I'm overloaded, please slow down":</p>
+<ol>
+<li><strong>Application level:</strong> Queue full → reject with 503 + Retry-After header</li>
+<li><strong>Thread pool level:</strong> Bounded queue → reject when queue &gt; threshold</li>
+<li><strong>Connection level:</strong> TCP receive window shrinks → sender slows down</li>
+<li><strong>Load balancer:</strong> HTTP 429 / connection limit</li>
+<li><strong>Client level:</strong> Exponential backoff on errors</li>
+</ol>
+<p>Without backpressure: overload → crash → retry → faster crash → cascading failure.</p>
+<hr />
+<h2 id="19-circuit-breaking-cascading-prevention">19. Circuit Breaking &amp; Cascading Prevention<a class="headerlink" href="#19-circuit-breaking-cascading-prevention" title="Permanent link">&para;</a></h2>
+<h3 id="191-circuit-breaker-pattern">19.1 Circuit Breaker pattern<a class="headerlink" href="#191-circuit-breaker-pattern" title="Permanent link">&para;</a></h3>
+<p>The circuit breaker operates as a finite state machine:</p>
+<ul>
+<li><strong>CLOSED</strong> (normal): requests pass through, failures counted</li>
+<li><strong>OPEN</strong> (protecting): all requests fail-fast immediately, no load on downstream</li>
+<li><strong>HALF-OPEN</strong> (testing): allows 1 test request — success → CLOSED, failure → OPEN</li>
+</ul>
+<p><strong>AIOps metrics:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># Envoy circuit breaker state</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="nv">envoy_cluster_circuit_breakers_default_cx_open</span><span class="w">  </span><span class="c1"># 0 = closed, 1 = open</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="c1"># Application-level (Resilience4j)</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="nv">resilience4j_circuitbreaker_state</span><span class="w">               </span><span class="c1"># 0=closed, 1=open, 2=half_open</span>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="nv">resilience4j_circuitbreaker_failure_rate</span><span class="w">         </span><span class="c1"># Current failure rate (%)</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p><strong>AIOps correlation:</strong> Circuit breaker OPEN is strong evidence for RCA. When CB opens on service A → service B, it means A has detected B as unhealthy. Combined with (1) B's error rate, (2) B's latency, (3) deployment events on B → the RCA engine has a clear chain of evidence.</p>
+</div>
+<hr />
+<h1 id="section-3-data-storage-layer">SECTION 3 — DATA &amp; STORAGE LAYER<a class="headerlink" href="#section-3-data-storage-layer" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><em>Databases and caches are the center of every application. Slow queries cause latency spikes, connection starvation causes timeout cascades, cache failures cause thundering herds. Understanding the physical nature of the storage layer is the key to preventing AIOps from confusing symptoms (high latency) with causes (lock contention).</em></p>
+</blockquote>
+<hr />
+<h2 id="20-caching-architecture">20. Caching Architecture<a class="headerlink" href="#20-caching-architecture" title="Permanent link">&para;</a></h2>
+<h3 id="201-cache-access-patterns">20.1 Cache access patterns<a class="headerlink" href="#201-cache-access-patterns" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Read-Aside (Cache-Aside):</strong> Client checks cache → hit: return. Miss: query DB → store in cache → return. Most common.</li>
+<li><strong>Write-Through:</strong> Write to cache and DB synchronously. Always consistent, writes slower.</li>
+<li><strong>Write-Behind:</strong> Write to cache, async batch write to DB. Fast, risk of data loss on cache crash.</li>
+<li><strong>Read-Through:</strong> Cache itself queries DB on miss. Cache acts as abstraction layer.</li>
+</ul>
+<h3 id="202-cache-hit-ratio-the-north-star-metric">20.2 Cache hit ratio — the north star metric<a class="headerlink" href="#202-cache-hit-ratio-the-north-star-metric" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>Hit Ratio = cache_hits / (cache_hits + cache_misses) × 100%
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>&gt; 95%  → Excellent
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>90-95% → Good
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>80-90% → Needs investigation
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>&lt; 80%  → Cache not effective
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>Impact: dropping from 95% → 80% hit ratio means DB load increases 4x!
+</code></pre></div>
+<h3 id="203-redismemcached-metrics-for-aiops">20.3 Redis/Memcached metrics for AIOps<a class="headerlink" href="#203-redismemcached-metrics-for-aiops" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Meaning</th>
+<th>Alert Threshold</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>used_memory</code> / <code>maxmemory</code></td>
+<td>Memory utilization</td>
+<td>&gt; 90% → evictions imminent</td>
+</tr>
+<tr>
+<td><code>evicted_keys</code></td>
+<td>Keys removed due to memory full</td>
+<td>&gt; 0 sustained → need more memory</td>
+</tr>
+<tr>
+<td><code>keyspace_hits</code> / <code>keyspace_misses</code></td>
+<td>Hit ratio</td>
+<td>&lt; 90% → investigate</td>
+</tr>
+<tr>
+<td><code>connected_clients</code></td>
+<td>Connection count</td>
+<td>&gt; 80% of <code>maxclients</code></td>
+</tr>
+<tr>
+<td><code>blocked_clients</code></td>
+<td>Clients on blocking commands</td>
+<td>&gt; 0 → BLPOP/BRPOP</td>
+</tr>
+<tr>
+<td><code>instantaneous_ops_per_sec</code></td>
+<td>Throughput</td>
+<td>Baseline for anomaly detection</td>
+</tr>
+<tr>
+<td><code>latency_percentiles_usec</code></td>
+<td>Command latency distribution</td>
+<td>P99 &gt; 1ms → investigate</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="21-cache-failure-patterns">21. Cache Failure Patterns<a class="headerlink" href="#21-cache-failure-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="211-cache-avalanche">21.1 Cache Avalanche<a class="headerlink" href="#211-cache-avalanche" title="Permanent link">&para;</a></h3>
+<p>Many cache keys expire simultaneously (same TTL) → all requests hit DB at once → DB overload.</p>
+<p><strong>Prevention:</strong> Jittered TTL (<code>TTL = base_ttl + random(0, jitter_range)</code>), pre-warming, circuit breaker on DB.</p>
+<h3 id="212-cache-stampede-thundering-herd-on-cache">21.2 Cache Stampede (Thundering Herd on Cache)<a class="headerlink" href="#212-cache-stampede-thundering-herd-on-cache" title="Permanent link">&para;</a></h3>
+<p>One hot key expires → N concurrent requests all query DB for the same data.</p>
+<p><strong>Prevention:</strong> Probabilistic early expiration, mutex/lock (one thread fetches, others wait), stale-while-revalidate.</p>
+<h3 id="213-cache-penetration">21.3 Cache Penetration<a class="headerlink" href="#213-cache-penetration" title="Permanent link">&para;</a></h3>
+<p>Requests for keys that don't exist in cache OR DB → every request bypasses cache and hits DB.</p>
+<p><strong>Prevention:</strong> Cache null results (short TTL), Bloom Filter before cache, request validation.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>AIOps detection:</strong> Cache penetration is often confused with "cache performance degradation." Distinguishing signal: hit ratio drops BUT <code>cache_get</code> latency is very low (because it's just a fast miss). If DB query count spikes with a pattern of "same query, same empty result" → cache penetration, usually from malicious traffic or an application bug generating invalid keys.</p>
+</div>
+<hr />
+<h2 id="22-database-connection-management">22. Database Connection Management<a class="headerlink" href="#22-database-connection-management" title="Permanent link">&para;</a></h2>
+<h3 id="221-connection-starvation-patterns">22.1 Connection starvation patterns<a class="headerlink" href="#221-connection-starvation-patterns" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Pattern 1: Slow query:</strong> A slow query (5s) holds a connection 500x longer than normal (10ms) → pool throughput drops from 100 qps to 4 qps → queue → timeout → 503.</li>
+<li><strong>Pattern 2: Connection leak:</strong> Code doesn't <code>close()</code> in error paths → available connections decrease monotonically → pool exhausted.</li>
+<li><strong>Pattern 3: Scale-out storm:</strong> 5 pods × 20 pool = 100 connections. Scale to 20 pods × 20 pool = 400 → exceeds DB <code>max_connections=200</code> → new pods can't connect → health check fails → scale-down → scale-up loop.</li>
+</ul>
+<p><strong>Key metrics:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c1"># HikariCP (Java)</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="nv">hikaricp_connections_active</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="nv">hikaricp_connections_pending</span><span class="w">     </span><span class="c1"># &gt; 0 → pool contention</span>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="nv">hikaricp_connections_timeout_total</span><span class="w">  </span><span class="c1"># &gt; 0 → connection starvation</span>
+</code></pre></div>
+<hr />
+<h2 id="23-query-performance-lock-contention">23. Query Performance &amp; Lock Contention<a class="headerlink" href="#23-query-performance-lock-contention" title="Permanent link">&para;</a></h2>
+<h3 id="231-slow-query-anatomy">23.1 Slow query anatomy<a class="headerlink" href="#231-slow-query-anatomy" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Full table scan:</strong> O(n) — reads every row. 1M rows × 1KB = 1GB read = seconds.</li>
+<li><strong>Index scan:</strong> O(log n) — reads through B-tree. 1M rows → ~20 levels → ~20 reads = milliseconds.</li>
+<li>Missing an index turns a 5ms query into a 5-second query (1000x slower).</li>
+</ul>
+<h3 id="232-deadlocks">23.2 Deadlocks<a class="headerlink" href="#232-deadlocks" title="Permanent link">&para;</a></h3>
+<p>Two transactions each hold a lock the other needs → neither can proceed → DB detects and kills one → retry overhead and potential cascading effects.</p>
+<p><strong>Metrics:</strong></p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Source</th>
+<th>AIOps Signal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pg_stat_statements.mean_time</code></td>
+<td>PostgreSQL</td>
+<td>Slow query detection</td>
+</tr>
+<tr>
+<td><code>pg_locks.granted=false</code> count</td>
+<td>PostgreSQL</td>
+<td>Lock contention</td>
+</tr>
+<tr>
+<td><code>pg_stat_user_tables.seq_scan</code></td>
+<td>PostgreSQL</td>
+<td>Missing indexes</td>
+</tr>
+<tr>
+<td><code>deadlocks</code> counter</td>
+<td>PostgreSQL/MySQL</td>
+<td>Deadlock frequency</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="24-replication-lag-consistency">24. Replication Lag &amp; Consistency<a class="headerlink" href="#24-replication-lag-consistency" title="Permanent link">&para;</a></h2>
+<h3 id="241-async-replication-lag">24.1 Async replication lag<a class="headerlink" href="#241-async-replication-lag" title="Permanent link">&para;</a></h3>
+<p>In primary-replica setups, writes commit on the primary but take time to reach the replica (shipping + apply delay). If a client reads from the replica immediately after writing to the primary, it may see stale data — "read-after-write inconsistency."</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>Thresholds:
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>  &lt; 100ms:   Acceptable for most reads
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>  100ms-1s:  Careful with read-after-write patterns
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>  &gt; 1s:      Investigate immediately
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>  &gt; 10s:     Critical — replica may be broken
+</code></pre></div>
+<p><strong>AIOps implication:</strong> Intermittent "not found" errors that correlate with replication lag metrics → root cause is replication lag, not application bug. The detector must correlate error patterns with <code>pg_stat_replication.replay_lag</code> or <code>Seconds_Behind_Master</code>.</p>
+<hr />
+<h2 id="25-storage-io-fundamentals">25. Storage I/O Fundamentals<a class="headerlink" href="#25-storage-io-fundamentals" title="Permanent link">&para;</a></h2>
+<h3 id="251-three-dimensions-of-storage-performance">25.1 Three dimensions of storage performance<a class="headerlink" href="#251-three-dimensions-of-storage-performance" title="Permanent link">&para;</a></h3>
+<p>Storage performance has 3 independent dimensions:</p>
+<ul>
+<li><strong>IOPS</strong> (I/O Operations Per Second): important for random reads, key-value lookups, index access</li>
+<li><strong>Throughput</strong> (MB/s): important for sequential reads/writes, backup, log shipping</li>
+<li><strong>Latency</strong> (ms/μs): important for transaction commits, cache misses, user-facing queries</li>
+</ul>
+<p><strong>Relationship:</strong> When utilization exceeds ~80%, queue depth builds and latency increases exponentially (hockey stick curve from queuing theory).</p>
+<h3 id="252-aws-ebs-storage-tiers">25.2 AWS EBS storage tiers<a class="headerlink" href="#252-aws-ebs-storage-tiers" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--wide table-scroll--cols-6" role="region" tabindex="0" aria-label="Scrollable data table"><table>
+<thead>
+<tr>
+<th>Volume Type</th>
+<th>IOPS Baseline</th>
+<th>Max IOPS</th>
+<th>Throughput</th>
+<th>Latency</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>gp3</td>
+<td>3000</td>
+<td>16,000</td>
+<td>125–1000 MB/s</td>
+<td>~1ms</td>
+<td>General purpose, databases</td>
+</tr>
+<tr>
+<td>io2 Block Express</td>
+<td>Provisioned</td>
+<td>256,000</td>
+<td>4,000 MB/s</td>
+<td>sub-ms</td>
+<td>Critical databases</td>
+</tr>
+<tr>
+<td>st1</td>
+<td>N/A</td>
+<td>500</td>
+<td>500 MB/s</td>
+<td>~5ms</td>
+<td>Sequential (logs)</td>
+</tr>
+<tr>
+<td>sc1</td>
+<td>N/A</td>
+<td>250</td>
+<td>250 MB/s</td>
+<td>~10ms</td>
+<td>Cold, infrequent access</td>
+</tr>
+</tbody>
+</table></div>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p><strong>EBS burst credit trap:</strong> gp2 (legacy) uses a burst credit model: baseline = volume_size_GB × 3, burst to 3000. A 100GB gp2 volume has 300 IOPS baseline, burst to 3000. When burst credits deplete → IOPS drops from 3000 → 300 (10x decrease) → latency increases 10x → DB meltdown. AIOps must monitor the <code>BurstBalance</code> metric on EBS gp2 volumes.</p>
+</div>
+<hr />
+<h1 id="section-4-distributed-systems-failure-patterns">SECTION 4 — DISTRIBUTED SYSTEMS &amp; FAILURE PATTERNS<a class="headerlink" href="#section-4-distributed-systems-failure-patterns" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><em>Distributed systems fail in ways monoliths don't: partial failures, inconsistent views, cascading collapses. This is why AIOps matters — humans can't monitor hundreds of services simultaneously. But AI must understand the mechanics of distributed failure to distinguish root causes from propagation effects.</em></p>
+</blockquote>
+<hr />
+<h2 id="26-distributed-tracing-internals">26. Distributed Tracing Internals<a class="headerlink" href="#26-distributed-tracing-internals" title="Permanent link">&para;</a></h2>
+<h3 id="261-context-propagation">26.1 Context Propagation<a class="headerlink" href="#261-context-propagation" title="Permanent link">&para;</a></h3>
+<p>Distributed tracing works by propagating a shared <code>TraceID</code> across service boundaries via HTTP headers (W3C Trace Context: <code>traceparent</code>) or gRPC metadata. Each service creates a span with the same TraceID and its own SpanID, linking to its parent.</p>
+<h3 id="262-critical-path-analysis">26.2 Critical Path Analysis<a class="headerlink" href="#262-critical-path-analysis" title="Permanent link">&para;</a></h3>
+<p>The <strong>critical path</strong> is the longest dependency chain in a trace. Optimizing operations not on the critical path has zero impact on end-to-end latency.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p><strong>AIOps application:</strong> Critical path analysis automatically identifies the <strong>bottleneck span</strong> in a trace. If an anomaly detector flags "latency spike on Service A," the RCA engine should decompose the trace → find the critical path → identify which span increased → that is the root cause candidate, not Service A itself. This is why distributed tracing is essential for accurate RCA.</p>
+</div>
+<h3 id="263-sampling-challenges">26.3 Sampling challenges<a class="headerlink" href="#263-sampling-challenges" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Head-based:</strong> Decides at entry point. Simple, but misses rare errors (1% sample = only 1% of errors captured).</li>
+<li><strong>Tail-based:</strong> Decides after trace completes. Keeps 100% of error/slow traces. Complex, requires buffering.</li>
+<li><strong>AIOps implication:</strong> Head sampling at 1% means anomaly detectors may not have enough trace evidence for rare failures → RCA quality suffers. Tail sampling at 100% for errors ensures every failure has a trace → RCA is always well-evidenced.</li>
+</ul>
+<hr />
+<h2 id="27-cascading-failures-error-storms">27. Cascading Failures &amp; Error Storms<a class="headerlink" href="#27-cascading-failures-error-storms" title="Permanent link">&para;</a></h2>
+<h3 id="271-cascading-failure-chain">27.1 Cascading failure chain<a class="headerlink" href="#271-cascading-failure-chain" title="Permanent link">&para;</a></h3>
+<p>A typical cascade: DB slow → Service C connections fill → Service B threads block → Service A retries → amplification → full outage. The root cause (DB) is 5 hops away from the symptom (user-facing errors on Service A).</p>
+<h3 id="272-retry-storm">27.2 Retry Storm<a class="headerlink" href="#272-retry-storm" title="Permanent link">&para;</a></h3>
+<p>Without a retry budget, retries amplify exponentially: 100 original requests + 30% errors × 3 retries → 273 → 464 → complete failure. Prevention: retry budget (max 20% extra), exponential backoff with jitter, circuit breaker, deadline propagation.</p>
+<h3 id="273-thundering-herd">27.3 Thundering Herd<a class="headerlink" href="#273-thundering-herd" title="Permanent link">&para;</a></h3>
+<p>Cache restart → all data lost → all requests miss → all hit DB simultaneously → DB overload. Prevention: staggered restarts, cache warming, request coalescing (singleflight pattern), rate limiting on cache miss path.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>AIOps detection insight:</strong> Thundering herd creates a distinctive pattern: cache hit ratio drops abruptly <strong>100% → ~0%</strong> simultaneously with a 10x–100x DB query rate spike. The detector must correlate cache restart events + hit ratio + DB load. Seeing only the DB overload without the cache restart context leads to the wrong conclusion of "DB performance degradation" and unnecessary DB scaling.</p>
+</div>
+<hr />
+<h2 id="28-gray-failures-partial-outages">28. Gray Failures &amp; Partial Outages<a class="headerlink" href="#28-gray-failures-partial-outages" title="Permanent link">&para;</a></h2>
+<h3 id="281-gray-failures-the-hardest-to-detect">28.1 Gray failures — the hardest to detect<a class="headerlink" href="#281-gray-failures-the-hardest-to-detect" title="Permanent link">&para;</a></h3>
+<p>A gray failure is when a service appears "working" but is degraded: 5% of requests timeout (95% OK), returns wrong results with 200 status, P99 increases 10x but P50 is normal, or fails only for one region/tenant.</p>
+<h3 id="282-differential-observability">28.2 Differential observability<a class="headerlink" href="#282-differential-observability" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Technique</th>
+<th>Detects</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Multi-dimensional breakdown</td>
+<td>Error rate per region/endpoint/tenant</td>
+<td>APAC 5% error, US 0.1%</td>
+</tr>
+<tr>
+<td>Latency distribution comparison</td>
+<td>Histogram changes, not just averages</td>
+<td>P99 up 5x, P50 normal</td>
+</tr>
+<tr>
+<td>Canary comparison</td>
+<td>Canary vs baseline populations</td>
+<td>Canary 3% error, baseline 0.1%</td>
+</tr>
+<tr>
+<td>Peer comparison</td>
+<td>Instance A vs Instance B</td>
+<td>Pod-3 latency 2x others</td>
+</tr>
+<tr>
+<td>Business metric correlation</td>
+<td>Revenue, conversion, signup rate</td>
+<td>Conversion drop 8%, no infra alert</td>
+</tr>
+</tbody>
+</table></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>Gray failures are why AIOps matters more than simple monitoring.</strong> Threshold-based alerts miss gray failures because overall metrics stay in the "normal" range. AIOps needs: (1) multi-dimensional anomaly detection, (2) automatic breakdown by dimensions, (3) peer comparison, (4) business metric correlation. This is the unique value proposition of AI in operations.</p>
+</div>
+<hr />
+<h1 id="section-5-aiml-infrastructure-internals-2026-edition">SECTION 5 — AI/ML INFRASTRUCTURE INTERNALS (2026 EDITION)<a class="headerlink" href="#section-5-aiml-infrastructure-internals-2026-edition" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><em>With the explosion of LLMs, RAG pipelines, and AI agents in production, AIOps engineers need to understand GPU compute pipelines, inference bottlenecks, and vector database mechanics. This is a new system layer that traditional monitoring hasn't fully covered.</em></p>
+</blockquote>
+<hr />
+<h2 id="29-gpu-compute-saturation">29. GPU Compute &amp; Saturation<a class="headerlink" href="#29-gpu-compute-saturation" title="Permanent link">&para;</a></h2>
+<h3 id="291-gpu-architecture-for-operations-engineers">29.1 GPU architecture for operations engineers<a class="headerlink" href="#291-gpu-architecture-for-operations-engineers" title="Permanent link">&para;</a></h3>
+<p>Key components: Streaming Multiprocessors (SMs) with CUDA/Tensor Cores, HBM memory (H100: 80GB at 3.35 TB/s, H200: 141GB at 4.8 TB/s), NVLink for GPU-to-GPU communication (900 GB/s on H100), PCIe for host connection (128 GB/s — much slower than NVLink).</p>
+<h3 id="292-gpu-utilization-cpu-utilization">29.2 GPU utilization ≠ CPU utilization<a class="headerlink" href="#292-gpu-utilization-cpu-utilization" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>GPU &quot;utilization&quot; (nvidia-smi):
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>  GPU-Util = % of time at least 1 kernel is running on the GPU
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>  BUT: GPU-Util = 100% does NOT mean the GPU is fully utilized!
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>  → 1 small kernel running on 1 SM = 100% utilization
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>  → 107 other SMs idle!
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>Better metrics:
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>  SM Occupancy = % active warps / max warps per SM
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a>  Memory bandwidth utilization = actual / peak
+<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>  Tensor Core utilization = % time tensor cores active
+<a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>
+<a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a>For LLM inference:
+<a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a>  Memory bandwidth is usually the bottleneck, NOT compute
+<a id="__codelineno-21-15" name="__codelineno-21-15" href="#__codelineno-21-15"></a>  → &quot;Memory-bound&quot; workload
+<a id="__codelineno-21-16" name="__codelineno-21-16" href="#__codelineno-21-16"></a>  → GPU compute utilization may be low but performance is maxed out
+</code></pre></div>
+<h3 id="293-gpu-monitoring-metrics">29.3 GPU monitoring metrics<a class="headerlink" href="#293-gpu-monitoring-metrics" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Source</th>
+<th>Meaning</th>
+<th>Alert Threshold</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gpu_utilization</code></td>
+<td>DCGM</td>
+<td>SM activity %</td>
+<td>&lt; 30% (underutilized) or sustained 100%</td>
+</tr>
+<tr>
+<td><code>gpu_memory_used</code></td>
+<td>DCGM</td>
+<td>VRAM usage</td>
+<td>&gt; 90% → OOM risk</td>
+</tr>
+<tr>
+<td><code>tensor_active</code></td>
+<td>DCGM</td>
+<td>Tensor core utilization</td>
+<td>Low → not using GPU efficiently</td>
+</tr>
+<tr>
+<td><code>gpu_temperature</code></td>
+<td>DCGM</td>
+<td>Temperature (°C)</td>
+<td>&gt; 83°C → thermal throttling</td>
+</tr>
+<tr>
+<td><code>gpu_power_usage</code></td>
+<td>DCGM</td>
+<td>Watts</td>
+<td>Near TDP → max performance</td>
+</tr>
+<tr>
+<td><code>ecc_errors</code></td>
+<td>DCGM</td>
+<td>Memory errors</td>
+<td>Any uncorrectable → hardware issue</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="294-multi-gpu-scheduling-in-kubernetes">29.4 Multi-GPU scheduling in Kubernetes<a class="headerlink" href="#294-multi-gpu-scheduling-in-kubernetes" title="Permanent link">&para;</a></h3>
+<p>GPU sharing strategies: Exclusive (1 GPU per pod), MIG (Multi-Instance GPU — hard isolation), MPS (Multi-Process Service — flexible sharing), Time-slicing (context switching). Each has different isolation, overhead, and monitoring implications for AIOps.</p>
+<hr />
+<h2 id="30-llm-inference-mechanics">30. LLM Inference Mechanics<a class="headerlink" href="#30-llm-inference-mechanics" title="Permanent link">&para;</a></h2>
+<h3 id="301-two-phase-inference-pipeline">30.1 Two-phase inference pipeline<a class="headerlink" href="#301-two-phase-inference-pipeline" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>Phase 1: PREFILL (Prompt Processing)
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>  - Process ALL input tokens in parallel
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>  - Compute-bound (matrix multiplication)
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>  - Metric: TTFT (Time To First Token)
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>Phase 2: DECODE (Token Generation)  
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>  - Generate 1 token at a time (autoregressive)
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>  - Memory-bandwidth-bound (reading KV cache)
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a>  - Metric: TPOT (Time Per Output Token)
+<a id="__codelineno-22-10" name="__codelineno-22-10" href="#__codelineno-22-10"></a>
+<a id="__codelineno-22-11" name="__codelineno-22-11" href="#__codelineno-22-11"></a>Total latency = TTFT + (num_output_tokens × TPOT)
+</code></pre></div>
+<h3 id="302-kv-cache-the-memory-killer">30.2 KV Cache — the memory killer<a class="headerlink" href="#302-kv-cache-the-memory-killer" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>KV Cache size per request:
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>  = 2 × num_layers × hidden_dim × context_length × precision_bytes
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>Example (Llama 3.1 70B, FP16):
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>  = 2 × 80 × 8192 × 4096 × 2 = 10.7 GB per request!
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>32 concurrent requests = 342 GB KV cache + 140 GB model = 482 GB VRAM!
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a>
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a>PagedAttention (vLLM): Allocates KV cache in pages like OS virtual memory
+<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a>  → Eliminates fragmentation, enables prefix sharing
+<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a>  → 2-4x throughput improvement over naive allocation
+</code></pre></div>
+<h3 id="303-llm-inference-metrics-for-aiops">30.3 LLM inference metrics for AIOps<a class="headerlink" href="#303-llm-inference-metrics-for-aiops" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Meaning</th>
+<th>AIOps Application</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>TTFT</strong></td>
+<td>Prefill latency</td>
+<td>User-perceived responsiveness</td>
+</tr>
+<tr>
+<td><strong>TPOT</strong></td>
+<td>Decode speed per token</td>
+<td>Streaming smoothness</td>
+</tr>
+<tr>
+<td><strong>TPS</strong></td>
+<td>Tokens per second (throughput)</td>
+<td>Capacity planning</td>
+</tr>
+<tr>
+<td><strong>Queue depth</strong></td>
+<td>Waiting requests</td>
+<td>Leading indicator for TTFT spike</td>
+</tr>
+<tr>
+<td><strong>KV Cache utilization</strong></td>
+<td>VRAM used for KV cache</td>
+<td>&gt; 90% → rejection/latency spike</td>
+</tr>
+<tr>
+<td><strong>Batch size</strong></td>
+<td>Requests in batch</td>
+<td>TPOT impact (continuous batching)</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="304-continuous-batching">30.4 Continuous batching<a class="headerlink" href="#304-continuous-batching" title="Permanent link">&para;</a></h3>
+<p>Static batching wastes GPU cycles waiting for the longest request. <strong>Continuous batching</strong> (vLLM, TRT-LLM) adds new requests to the batch as soon as others complete — 2-4x higher throughput and lower TTFT.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p><strong>AIOps detection for LLM services:</strong> When TTFT spikes, distinguish: (1) Queue depth increasing → capacity issue, scale up, (2) KV cache &gt; 95% → memory pressure, evict cached contexts, (3) Prompt length increasing → long-context requests crowding short ones, add priority queuing, (4) GPU temperature rising → thermal throttling, check cooling. Each root cause has a different mitigation.</p>
+</div>
+<hr />
+<h2 id="31-vector-database-embedding-pipeline">31. Vector Database &amp; Embedding Pipeline<a class="headerlink" href="#31-vector-database-embedding-pipeline" title="Permanent link">&para;</a></h2>
+<h3 id="311-vector-search-internals">31.1 Vector search internals<a class="headerlink" href="#311-vector-search-internals" title="Permanent link">&para;</a></h3>
+<p>In a RAG pipeline: documents are embedded into vectors → stored in an index → at query time, the user query is embedded → K-nearest neighbors are found → fed to the LLM as context.</p>
+<h3 id="312-index-types-and-trade-offs">31.2 Index types and trade-offs<a class="headerlink" href="#312-index-types-and-trade-offs" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--wide table-scroll--cols-5" role="region" tabindex="0" aria-label="Scrollable data table"><table>
+<thead>
+<tr>
+<th>Index</th>
+<th>Search Time</th>
+<th>Memory</th>
+<th>Recall</th>
+<th>When to Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Flat</strong></td>
+<td>O(N×D)</td>
+<td>O(N×D)</td>
+<td>100%</td>
+<td>N &lt; 10K, accuracy critical</td>
+</tr>
+<tr>
+<td><strong>IVF</strong></td>
+<td>O(√N×D)</td>
+<td>O(N×D)</td>
+<td>95-99%</td>
+<td>N &lt; 10M, balanced</td>
+</tr>
+<tr>
+<td><strong>HNSW</strong></td>
+<td>O(log N×D)</td>
+<td>O(N×D×1.5)</td>
+<td>98-99.5%</td>
+<td>N &lt; 100M, low latency</td>
+</tr>
+<tr>
+<td><strong>IVF-PQ</strong></td>
+<td>O(√N×D/M)</td>
+<td>O(N×M)</td>
+<td>90-97%</td>
+<td>N &gt; 100M, memory constrained</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="313-rag-pipeline-bottleneck-analysis">31.3 RAG pipeline bottleneck analysis<a class="headerlink" href="#313-rag-pipeline-bottleneck-analysis" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>User Query → [Embedding] → [Vector Search] → [Reranking] → [LLM]
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>               5-20ms        10-50ms          50-200ms     100ms-5s
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>Bottleneck identification via distributed tracing:
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>- Embedding latency up → GPU contention
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>- Vector search up → index update running or cache eviction
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>- LLM up → context too long or batch size too high
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p><strong>AIOps for RAG pipelines:</strong> Monitor each stage's latency separately using distributed tracing spans. When end-to-end latency spikes, decompose by stage to identify the bottleneck. This is critical path analysis (Section 26) applied to AI pipelines.</p>
+</div>
+<hr />
+<h1 id="section-6-synthesis-system-thinking-for-aiops">SECTION 6 — SYNTHESIS: SYSTEM THINKING FOR AIOPS<a class="headerlink" href="#section-6-synthesis-system-thinking-for-aiops" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><em>Each previous section taught the mechanics of a single layer. This section synthesizes: how to use system knowledge to build AIOps pipelines that are intelligent, accurate, and free of false positives.</em></p>
+</blockquote>
+<hr />
+<h2 id="32-use-red-methods">32. USE &amp; RED Methods<a class="headerlink" href="#32-use-red-methods" title="Permanent link">&para;</a></h2>
+<h3 id="321-use-method-for-infrastructure-resources">32.1 USE Method — for infrastructure resources<a class="headerlink" href="#321-use-method-for-infrastructure-resources" title="Permanent link">&para;</a></h3>
+<p><strong>Utilization, Saturation, Errors</strong> — applied to each resource:</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Utilization</th>
+<th>Saturation</th>
+<th>Errors</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CPU</strong></td>
+<td><code>cpu_usage_percent</code></td>
+<td>Run queue, PSI <code>cpu some</code></td>
+<td>Machine check exceptions</td>
+</tr>
+<tr>
+<td><strong>Memory</strong></td>
+<td><code>memory_used / total</code></td>
+<td>Swap, PSI <code>memory some</code>, OOM</td>
+<td>ECC errors, OOM kills</td>
+</tr>
+<tr>
+<td><strong>Disk</strong></td>
+<td><code>%util</code> (iostat)</td>
+<td>Queue depth, PSI <code>io</code></td>
+<td>Disk errors, SMART warnings</td>
+</tr>
+<tr>
+<td><strong>Network</strong></td>
+<td><code>bytes / bandwidth</code></td>
+<td>TCP retransmits, buffer overflows</td>
+<td><code>rx_errors</code>, <code>tx_dropped</code></td>
+</tr>
+<tr>
+<td><strong>GPU</strong></td>
+<td><code>gpu_utilization</code></td>
+<td>Queue depth, memory bandwidth</td>
+<td>ECC errors, thermal events</td>
+</tr>
+<tr>
+<td><strong>Connection Pool</strong></td>
+<td><code>active / max</code></td>
+<td>Wait queue, wait duration</td>
+<td>Timeouts, errors</td>
+</tr>
+<tr>
+<td><strong>Thread Pool</strong></td>
+<td><code>active / max</code></td>
+<td>Queue depth, wait time</td>
+<td>Rejected tasks</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="322-red-method-for-services">32.2 RED Method — for services<a class="headerlink" href="#322-red-method-for-services" title="Permanent link">&para;</a></h3>
+<p><strong>Rate, Errors, Duration</strong> — applied to each service endpoint:</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Metric</th>
+<th>AIOps Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Rate</strong></td>
+<td><code>http_requests_total</code> (rate)</td>
+<td>Baseline, detect sudden changes</td>
+</tr>
+<tr>
+<td><strong>Errors</strong></td>
+<td>Error ratio (5xx / total)</td>
+<td>Error rate anomaly detection</td>
+</tr>
+<tr>
+<td><strong>Duration</strong></td>
+<td><code>http_request_duration_seconds</code></td>
+<td>Latency anomaly, SLO compliance</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="323-combined-approach">32.3 Combined approach<a class="headerlink" href="#323-combined-approach" title="Permanent link">&para;</a></h3>
+<p>When an incident occurs:
+1. <strong>RED:</strong> Identify the affected service
+2. <strong>Tracing:</strong> Identify the bottleneck layer
+3. <strong>USE:</strong> Identify the saturated resource
+4. <strong>Change correlation:</strong> Identify what changed</p>
+<hr />
+<h2 id="33-cross-layer-correlation">33. Cross-Layer Correlation<a class="headerlink" href="#33-cross-layer-correlation" title="Permanent link">&para;</a></h2>
+<h3 id="331-decision-tree-which-layer-is-causing-the-problem">33.1 Decision tree: which layer is causing the problem?<a class="headerlink" href="#331-decision-tree-which-layer-is-causing-the-problem" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>HIGH LATENCY ALERT
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>    │
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>    ├── CPU high?
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>    │     ├── user% high → app logic
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>    │     ├── system% high → syscall overhead
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>    │     ├── iowait% high → DISK bottleneck
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a>    │     └── steal% high → noisy neighbor
+<a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a>    │
+<a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a>    ├── CPU LOW but latency high?
+<a id="__codelineno-25-10" name="__codelineno-25-10" href="#__codelineno-25-10"></a>    │     ├── Thread pool exhausted → blocked on downstream
+<a id="__codelineno-25-11" name="__codelineno-25-11" href="#__codelineno-25-11"></a>    │     ├── Connection pool exhausted → waiting for DB
+<a id="__codelineno-25-12" name="__codelineno-25-12" href="#__codelineno-25-12"></a>    │     ├── Lock contention → mutex/row lock wait
+<a id="__codelineno-25-13" name="__codelineno-25-13" href="#__codelineno-25-13"></a>    │     ├── DNS slow → 5s timeout per external call
+<a id="__codelineno-25-14" name="__codelineno-25-14" href="#__codelineno-25-14"></a>    │     └── GC pause → stop-the-world collection
+<a id="__codelineno-25-15" name="__codelineno-25-15" href="#__codelineno-25-15"></a>    │
+<a id="__codelineno-25-16" name="__codelineno-25-16" href="#__codelineno-25-16"></a>    ├── Memory pressure?
+<a id="__codelineno-25-17" name="__codelineno-25-17" href="#__codelineno-25-17"></a>    │     ├── OOMKilled → memory limit too low
+<a id="__codelineno-25-18" name="__codelineno-25-18" href="#__codelineno-25-18"></a>    │     ├── Major page faults → swapping
+<a id="__codelineno-25-19" name="__codelineno-25-19" href="#__codelineno-25-19"></a>    │     ├── Working set growing → memory leak
+<a id="__codelineno-25-20" name="__codelineno-25-20" href="#__codelineno-25-20"></a>    │     └── High total memory but low RSS → page cache (OK)
+<a id="__codelineno-25-21" name="__codelineno-25-21" href="#__codelineno-25-21"></a>    │
+<a id="__codelineno-25-22" name="__codelineno-25-22" href="#__codelineno-25-22"></a>    ├── Network issue?
+<a id="__codelineno-25-23" name="__codelineno-25-23" href="#__codelineno-25-23"></a>    │     ├── Retransmits &gt; 1% → packet loss
+<a id="__codelineno-25-24" name="__codelineno-25-24" href="#__codelineno-25-24"></a>    │     ├── TIME_WAIT high → port exhaustion
+<a id="__codelineno-25-25" name="__codelineno-25-25" href="#__codelineno-25-25"></a>    │     ├── Connection refused → target overloaded
+<a id="__codelineno-25-26" name="__codelineno-25-26" href="#__codelineno-25-26"></a>    │     └── DNS NXDOMAIN → service discovery misconfigured
+<a id="__codelineno-25-27" name="__codelineno-25-27" href="#__codelineno-25-27"></a>    │
+<a id="__codelineno-25-28" name="__codelineno-25-28" href="#__codelineno-25-28"></a>    └── Storage issue?
+<a id="__codelineno-25-29" name="__codelineno-25-29" href="#__codelineno-25-29"></a>          ├── IOPS near limit → scale or cache
+<a id="__codelineno-25-30" name="__codelineno-25-30" href="#__codelineno-25-30"></a>          ├── Queue depth &gt; 4 → disk saturated
+<a id="__codelineno-25-31" name="__codelineno-25-31" href="#__codelineno-25-31"></a>          ├── EBS burst balance depleted → IOPS cliff
+<a id="__codelineno-25-32" name="__codelineno-25-32" href="#__codelineno-25-32"></a>          └── Replication lag → read inconsistency
+</code></pre></div>
+<h3 id="332-temporal-correlation-sequence-matters">33.2 Temporal correlation — sequence matters<a class="headerlink" href="#332-temporal-correlation-sequence-matters" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>Typical incident timeline (DB connection pool exhaustion):
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>T-5min:  DB slow query appears (plan change after table growth)
+<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>T-3min:  Connection hold time: 10ms → 500ms
+<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>T-2min:  Pool utilization: 30% → 80%
+<a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>T=0:     Pool exhausted (100%), new requests timeout
+<a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a>T+1min:  Error rate spikes (503s)
+<a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a>T+3min:  Alert fires: &quot;High error rate on Service X&quot;
+<a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a>T+4min:  Auto-scaler adds pods → MORE connections → DB overloaded!
+<a id="__codelineno-26-10" name="__codelineno-26-10" href="#__codelineno-26-10"></a>
+<a id="__codelineno-26-11" name="__codelineno-26-11" href="#__codelineno-26-11"></a>Root cause: Slow query (T-5min)
+<a id="__codelineno-26-12" name="__codelineno-26-12" href="#__codelineno-26-12"></a>Final symptom: High error rate alert (T+3min)
+<a id="__codelineno-26-13" name="__codelineno-26-13" href="#__codelineno-26-13"></a>Time from cause → alert: 8 MINUTES
+<a id="__codelineno-26-14" name="__codelineno-26-14" href="#__codelineno-26-14"></a>
+<a id="__codelineno-26-15" name="__codelineno-26-15" href="#__codelineno-26-15"></a>Good AIOps: Detects slow query at T-5min or pool trend at T-2min
+<a id="__codelineno-26-16" name="__codelineno-26-16" href="#__codelineno-26-16"></a>Good RCA: Traces 503 → pool exhausted → long hold time → slow query
+</code></pre></div>
+<hr />
+<h2 id="34-anti-patterns-chapter-summary">34. Anti-Patterns &amp; Chapter Summary<a class="headerlink" href="#34-anti-patterns-chapter-summary" title="Permanent link">&para;</a></h2>
+<h3 id="341-top-10-aiops-anti-patterns-from-a-systems-perspective">34.1 Top 10 AIOps anti-patterns from a systems perspective<a class="headerlink" href="#341-top-10-aiops-anti-patterns-from-a-systems-perspective" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Anti-pattern</th>
+<th>Missing System Knowledge</th>
+<th>Consequence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Alert on CPU% &gt; 80% without distinguishing us/sy/wa/st</td>
+<td>CPU time breakdown</td>
+<td>Alert noise, wrong root cause</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Detect "memory leak" from <code>memory.current</code> instead of working set</td>
+<td>Page cache vs RSS</td>
+<td>False positive memory alerts</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Auto-scale on CPU% when thread pool is actually exhausted</td>
+<td>Thread blocking vs CPU busy</td>
+<td>Scaling doesn't help, wastes money</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Ignore CPU throttling because utilization &lt; limit</td>
+<td>CFS bandwidth control</td>
+<td>Miss latency root cause</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Retry without budget/backoff</td>
+<td>Retry amplification</td>
+<td>Self-inflicted cascading failure</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Liveness probe checks dependency</td>
+<td>Probe semantics</td>
+<td>Mass restart storm</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Set low requests, high limits</td>
+<td>QoS classes, overcommit</td>
+<td>Random evictions</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Ignore replication lag when debugging data inconsistency</td>
+<td>Async replication</td>
+<td>Blame wrong service</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Conclude "network down" from a timeout</td>
+<td>TIME_WAIT, DNS, pool</td>
+<td>Wrong root cause</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Monitor GPU utilization % without memory bandwidth</td>
+<td>GPU memory-bound workloads</td>
+<td>Miss LLM inference bottleneck</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="342-building-system-intuition-checklist-for-aiops-engineers">34.2 Building system intuition — checklist for AIOps engineers<a class="headerlink" href="#342-building-system-intuition-checklist-for-aiops-engineers" title="Permanent link">&para;</a></h3>
+<p>Before building or tuning any AIOps model, answer:</p>
+<ul>
+<li>[ ] What does this metric measure at the physical layer?</li>
+<li>[ ] When can this metric be misleading?</li>
+<li>[ ] When this metric is abnormal, which layer could the root cause be in?</li>
+<li>[ ] Is this metric a CAUSE or a SYMPTOM?</li>
+<li>[ ] Are there feedback loops that amplify the problem?</li>
+<li>[ ] Does system behavior change at scale?</li>
+</ul>
+<h3 id="343-quick-reference-system-metrics-by-layer">34.3 Quick reference — system metrics by layer<a class="headerlink" href="#343-quick-reference-system-metrics-by-layer" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Golden Metrics</th>
+<th>Tool</th>
+<th>eBPF Alternative</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CPU</strong></td>
+<td>Utilization (by type), throttle ratio, PSI</td>
+<td>cAdvisor, node_exporter</td>
+<td><code>runqlat</code>, <code>cpudist</code></td>
+</tr>
+<tr>
+<td><strong>Memory</strong></td>
+<td>Working set, OOM events, major faults, PSI</td>
+<td>cAdvisor, node_exporter</td>
+<td><code>memleak</code>, <code>oomsnoop</code></td>
+</tr>
+<tr>
+<td><strong>Disk</strong></td>
+<td>IOPS, throughput, latency, queue depth</td>
+<td>node_exporter, iostat</td>
+<td><code>biolatency</code>, <code>biotop</code></td>
+</tr>
+<tr>
+<td><strong>Network</strong></td>
+<td>Retransmits, connections by state, DNS latency</td>
+<td>node_exporter, CoreDNS</td>
+<td><code>tcpretrans</code>, <code>tcpconnect</code></td>
+</tr>
+<tr>
+<td><strong>Container</strong></td>
+<td>CPU throttle, memory working set, restarts</td>
+<td>cAdvisor, kube-state-metrics</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Kubernetes</strong></td>
+<td>Pod phase, node conditions, endpoint readiness</td>
+<td>kube-state-metrics</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Connection Pool</strong></td>
+<td>Active/idle/wait, timeout count</td>
+<td>App metrics</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Cache</strong></td>
+<td>Hit ratio, evictions, latency, memory</td>
+<td>Redis INFO, Memcached stats</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Database</strong></td>
+<td>Connections, slow queries, locks, replication lag</td>
+<td>pg_stat, performance_schema</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>GPU</strong></td>
+<td>SM utilization, memory used, temperature, ECC</td>
+<td>DCGM exporter</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>LLM Inference</strong></td>
+<td>TTFT, TPOT, queue depth, KV cache usage</td>
+<td>vLLM/TRT-LLM metrics</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Vector DB</strong></td>
+<td>Search latency, recall, index size</td>
+<td>Milvus/Weaviate metrics</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="production-review">Production Review<a class="headerlink" href="#production-review" title="Permanent link">&para;</a></h2>
+<h3 id="checklist-for-this-chapter">Checklist for this chapter<a class="headerlink" href="#checklist-for-this-chapter" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] Understand the 7 types of CPU time and what each means for AIOps detection</li>
+<li>[ ] Distinguish minor vs major page faults and their impact on latency</li>
+<li>[ ] Explain CFS CPU throttling and why it hides behind CPU utilization</li>
+<li>[ ] Answer: why does a pod get OOMKilled even though the memory metric is below the limit?</li>
+<li>[ ] Describe the 5 steps in a cascading failure chain</li>
+<li>[ ] Explain retry storm mechanics and prevention strategies</li>
+<li>[ ] Distinguish cache avalanche, stampede, and penetration</li>
+<li>[ ] Explain KV cache in LLMs and why it's the memory bottleneck</li>
+<li>[ ] Apply USE + RED + Tracing when debugging incidents</li>
+<li>[ ] Identify at least 5 anti-patterns in AIOps system monitoring</li>
+</ul>
+<hr />
+<p><em>Next chapter: <a href="../01-observability/">01 — Observability</a> — designing evidence packs from the system signals covered in this chapter.</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../../vi/20-aiops-governance/README.vi/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 20 Governance &amp; Model Risk">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                20 Governance & Model Risk
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../00-introduction/" class="md-footer__link md-footer__link--next" aria-label="Next: 00 Introduction">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                00 Introduction
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/mermaid-zoom.js"></script>
+      
+    
+  </body>
+</html>

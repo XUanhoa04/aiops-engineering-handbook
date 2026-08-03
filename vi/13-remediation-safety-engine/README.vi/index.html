@@ -1,0 +1,6867 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Production-grade AIOps handbook — observability to remediation (Vietnamese + English)">
+      
+      
+        <meta name="author" content="XUanhoa04">
+      
+      
+        <link rel="canonical" href="https://xuanhoa04.github.io/aiops-engineering-handbook/vi/13-remediation-safety-engine/README.vi/">
+      
+      
+        <link rel="prev" href="../../12-investigation-engine/README.vi/">
+      
+      
+        <link rel="next" href="../../14-production-engine/README.vi/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>13 Remediation Safety - AIOps Engineering Handbook</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#chapter-13-remediation-safety-engine-hanh-ong-co-gioi-han-phuc-hoi-co-chung-minh" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="AIOps Engineering Handbook" class="md-header__button md-logo" aria-label="AIOps Engineering Handbook" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AIOps Engineering Handbook
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              13 Remediation Safety
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="deep-purple"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    XUanhoa04/aiops-engineering-handbook
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../CURRICULUM/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Curriculum
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../00-introduction.vi/" class="md-tabs__link">
+          
+  
+  
+  Tiếng Việt
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../en/system-fundamentals/" class="md-tabs__link">
+          
+  
+  
+  English
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../assets/diagrams/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Diagrams
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="AIOps Engineering Handbook" class="md-nav__button md-logo" aria-label="AIOps Engineering Handbook" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AIOps Engineering Handbook
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    XUanhoa04/aiops-engineering-handbook
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../CURRICULUM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Curriculum
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tiếng Việt
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tiếng Việt
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bắt đầu
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bắt đầu
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../00-introduction.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    00 Từ sự cố đến AIOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../acceptance-template.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acceptance Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nền tảng hệ thống
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Nền tảng hệ thống
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../system-fundamentals/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nền tảng evidence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Nền tảng evidence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01-observability/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02-opentelemetry/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 Telemetry contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03-prometheus/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 Metric evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04-loki/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 Log evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05-tempo/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 Trace causality
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06-data-plane/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 Data & Feature Plane
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07-kafka/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 Event Transport
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../08-topology-change/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 Topology & Change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligence engines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Intelligence engines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../09-anomaly-detection/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 Persistent Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../10-alert-correlation/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 Alert Correlation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../11-root-cause-analysis/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 Root Cause Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../12-investigation-engine/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12 Investigation Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13 Remediation Safety
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13 Remediation Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sau-chapter-nay-nguoi-oc-phai-lam-uoc-gi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sau chapter này, người đọc phải làm được gì?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-case-xuyen-suot-biet-ung-nguyen-nhan-van-co-the-sua-sai" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Case xuyên suốt: biết đúng nguyên nhân vẫn có thể sửa sai
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Case xuyên suốt: biết đúng nguyên nhân vẫn có thể sửa sai">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-su-co-thu-hai-luc-1037" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Sự cố thứ hai lúc 10:37
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-safety-engine-la-mot-he-thong-phan-quyen-khong-phai-executor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Safety Engine là một hệ thống phân quyền, không phải executor
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-action-contract-proposal-phai-cu-the-va-bat-bien" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Action contract: proposal phải cụ thể và bất biến
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Action contract: proposal phải cụ thể và bất biến">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-desired-state-thay-vi-thao-tac-tuong-oi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Desired state thay vì thao tác tương đối
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-catalog-id-khong-u-neu-semantic-mo-ho" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Catalog ID không đủ nếu semantic mơ hồ
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-state-machine-remediation-khong-phai-mot-api-call" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. State machine: remediation không phải một API call
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. State machine: remediation không phải một API call">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-time-of-checktime-of-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Time-of-check/time-of-use
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-approval-cung-het-han" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Approval cũng hết hạn
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-hard-gates-confidence-cao-khong-uoc-bu-policy-fail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Hard gates: confidence cao không được bù policy fail
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-risk-va-blast-radius-tinh-theo-hau-qua-that" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Risk và blast radius: tính theo hậu quả thật
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Risk và blast radius: tính theo hậu quả thật">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-bon-truc-risk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Bốn trục risk
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-vi-du-giam-retry-tren-canary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Ví dụ giảm retry trên canary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-vi-du-tang-pool-gap-oi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Ví dụ tăng pool gấp đôi
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-traffic-exposure-khac-instance-exposure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Traffic exposure khác instance exposure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#65-risk-floor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5 Risk floor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-chon-automation-tier-theo-action-khong-theo-o-truong-thanh-chung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Chọn automation tier theo action, không theo “độ trưởng thành chung”
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-canary-la-mot-thi-nghiem-an-toan-khong-chi-trien-khai-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Canary là một thí nghiệm an toàn, không chỉ triển khai ít
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Canary là một thí nghiệm an toàn, không chỉ triển khai ít">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-canary-qua-nho-khong-tao-bang-chung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Canary quá nhỏ không tạo bằng chứng
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-control-cohort" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Control cohort
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#83-cohort-phai-so-sanh-uoc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.3 Cohort phải so sánh được
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#84-progressive-expansion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.4 Progressive expansion
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-verification-chung-minh-recovery-bang-ba-tang-tin-hieu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Verification: chứng minh recovery bằng ba tầng tín hiệu
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Verification: chứng minh recovery bằng ba tầng tín hiệu">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-outcome-khach-hang" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 Outcome khách hàng
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-mechanism" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 Mechanism
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#93-harm-guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.3 Harm guardrails
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#94-recovery-gia-do-traffic-giam" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.4 Recovery giả do traffic giảm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#95-hai-cua-so-thoi-gian" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.5 Hai cửa sổ thời gian
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#96-partial-success" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.6 Partial success
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-rollback-mot-action-production-oc-lap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Rollback: một action production độc lập
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Rollback: một action production độc lập">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101-rollback-phai-uoc-chung-minh-truoc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 Rollback phải được chứng minh trước
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#102-rollback-trigger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.2 Rollback trigger
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#103-rollback-cung-co-the-gay-hai" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.3 Rollback cũng có thể gây hại
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#104-rollback-failed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4 Rollback failed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#105-irreversible-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.5 Irreversible action
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-concurrent-incident-va-resource-coordination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Concurrent incident và resource coordination
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Concurrent incident và resource coordination">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#111-read-set-va-write-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.1 Read set và write set
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#112-khong-dung-global-lock" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.2 Không dùng global lock
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#113-lease-phai-co-ttl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.3 Lease phải có TTL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#114-hai-action-khac-nhau-nhung-cung-hau-qua" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.4 Hai action khác nhau nhưng cùng hậu quả
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-delivery-trung-timeout-va-trang-thai-khong-chac-chan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Delivery trùng, timeout và trạng thái không chắc chắn
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Delivery trùng, timeout và trạng thái không chắc chắn">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#121-at-least-once-delivery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.1 At-least-once delivery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#122-executor-timeout-khong-co-nghia-action-fail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.2 Executor timeout không có nghĩa action fail
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#123-split-brain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.3 Split brain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#124-stale-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.4 Stale command
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-khi-rca-sai-hoac-chua-ay-u" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Khi RCA sai hoặc chưa đầy đủ
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. Khi RCA sai hoặc chưa đầy đủ">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#131-rca-sai-nhung-metric-tinh-co-tot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.1 RCA sai nhưng metric tình cờ tốt
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#132-action-ung-trieu-chung-sai-goc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.2 Action đúng triệu chứng, sai gốc
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#133-hai-root-cause-ong-thoi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.3 Hai root cause đồng thời
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#134-confidence-cao-nhung-action-effect-khong-chac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.4 Confidence cao nhưng action effect không chắc
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-telemetry-hong-trong-luc-remediation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Telemetry hỏng trong lúc remediation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. Telemetry hỏng trong lúc remediation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#141-verifier-mat-metric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.1 Verifier mất metric
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#142-missing-khong-uoc-coi-la-zero" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.2 Missing không được coi là zero
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#143-audit-sink-hong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.3 Audit sink hỏng
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#144-topology-stale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.4 Topology stale
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-human-approval-luc-3-gio-sang" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Human approval lúc 3 giờ sáng
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="15. Human approval lúc 3 giờ sáng">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#151-mot-man-hinh-can-gi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15.1 Một màn hình cần gì?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#152-lua-chon-co-gioi-han" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15.2 Lựa chọn có giới hạn
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#153-chong-approval-stale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15.3 Chống approval stale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#154-fatigue-va-rubber-stamping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15.4 Fatigue và rubber stamping
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-security-va-quyen-luc-cua-remediation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Security và quyền lực của remediation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="16. Security và quyền lực của remediation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#161-khong-dung-credential-chung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16.1 Không dùng credential chung
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#162-llm-khong-cham-credential" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16.2 LLM không chạm credential
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#163-target-binding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16.3 Target binding
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#164-separation-of-duties" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16.4 Separation of duties
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#165-break-glass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16.5 Break-glass
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-kill-switch-va-circuit-breaker-cua-chinh-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Kill switch và circuit breaker của chính engine
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="17. Kill switch và circuit breaker của chính engine">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#171-ba-muc-dung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.1 Ba mức dừng
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#172-failure-domain-oc-lap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.2 Failure domain độc lập
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#173-circuit-breaker-tu-ong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.3 Circuit breaker tự động
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#18-audit-tai-dung-ai-biet-gi-quyet-inh-gi-production-oi-gi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18. Audit: tái dựng “ai biết gì, quyết định gì, production đổi gì”
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="18. Audit: tái dựng “ai biết gì, quyết định gì, production đổi gì”">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#181-moi-record-can-gi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.1 Mỗi record cần gì?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#182-audit-khong-phai-log-debug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.2 Audit không phải log debug
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#183-privacy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.3 Privacy
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#19-verification-oi-voi-cac-action-class-thuong-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19. Verification đối với các action class thường gặp
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="19. Verification đối với các action class thường gặp">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#191-restart-stateless-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.1 Restart stateless instance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#192-scale-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.2 Scale out
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#193-giam-retry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.3 Giảm retry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#194-circuit-breaker-dependency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.4 Circuit breaker dependency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#195-traffic-shift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.5 Traffic shift
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#196-featureconfig-rollback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.6 Feature/config rollback
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-edge-case-production-kho-nhung-thuong-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. Edge case production khó nhưng thường gặp
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20. Edge case production khó nhưng thường gặp">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#201-retry-storm-sau-remediation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.1 Retry storm sau remediation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#202-capacity-cliff" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.2 Capacity cliff
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#203-recovery-trung-voi-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.3 Recovery trùng với action
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#204-action-overlap-voi-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.4 Action overlap với deploy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#205-queue-backlog-bung-sau-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.5 Queue backlog bùng sau recovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#206-partial-regional-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.6 Partial regional recovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#207-metric-gaming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.7 Metric gaming
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#208-hidden-shared-dependency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.8 Hidden shared dependency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#209-manual-action-ngoai-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.9 Manual action ngoài engine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2010-operator-revoke-giua-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.10 Operator revoke giữa execution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#21-game-day-va-replay-chung-minh-safety-truoc-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21. Game day và replay: chứng minh safety trước production
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21. Game day và replay: chứng minh safety trước production">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#211-bo-kich-ban-toi-thieu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.1 Bộ kịch bản tối thiểu
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#212-expected-result-phai-inh-truoc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.2 Expected result phải định trước
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#213-replay-thoi-iem-lich-su" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.3 Replay thời điểm lịch sử
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#214-fault-injection-vao-safety-plane" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.4 Fault injection vào safety plane
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#22-metrics-van-hanh-ung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22. Metrics vận hành đúng
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="22. Metrics vận hành đúng">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#221-slice-bat-buoc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.1 Slice bắt buộc
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#222-near-miss" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.2 Near-miss
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#23-rollout-safety-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23. Rollout Safety Engine
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="23. Rollout Safety Engine">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-1-catalog-va-audit-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 1 — Catalog và audit only
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-2-proposal-shadow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 2 — Proposal shadow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-3-human-approved-canary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 3 — Human-approved canary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-4-auto-canary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 4 — Auto-canary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-5-bounded-closed-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 5 — Bounded closed loop
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#24-production-acceptance-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24. Production acceptance criteria
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#25-checklist-thiet-ke-cho-tung-action-catalog-entry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        25. Checklist thiết kế cho từng action catalog entry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="25. Checklist thiết kế cho từng action catalog entry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#muc-ich" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mục đích
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#target-va-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Target và scope
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#preconditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Preconditions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rollback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rollback
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#governance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Governance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#26-anti-patterns-can-loai-bo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        26. Anti-patterns cần loại bỏ
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="26. Anti-patterns cần loại bỏ">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#confidence-tren-80-thi-execute" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        “Confidence trên 80% thì execute”
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#action-co-rollback-nen-an-toan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        “Action có rollback nên an toàn”
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#canary-1-pod-la-u" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        “Canary 1 pod là đủ”
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metric-xanh-la-thanh-cong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        “Metric xanh là thành công”
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chi-cho-phep-script-trong-git-la-an-toan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        “Chỉ cho phép script trong Git là an toàn”
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mot-remediation-tai-mot-thoi-iem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        “Một remediation tại một thời điểm”
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operator-a-duyet-thi-engine-khong-chiu-trach-nhiem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        “Operator đã duyệt thì engine không chịu trách nhiệm”
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tang-automation-rate-la-tien-bo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        “Tăng automation rate là tiến bộ”
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ket-luan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kết luận
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tai-lieu-lien-quan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tài liệu liên quan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-contract-cua-chapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance contract của chapter
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production, learning & governance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Production, learning & governance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../14-production-engine/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14 Production Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../15-aiops-pattern-library/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15 Pattern Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../16-aiops-domain-packs/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16 Domain Packs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../17-aiops-benchmark-replay/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17 Benchmark Replay
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../18-predictive-operations/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18 Predictive Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../19-incident-operations/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19 Incident Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../20-aiops-governance/README.vi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20 Governance & Model Risk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    English
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    English
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    System Fundamentals
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/system-fundamentals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Architecture Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Foundations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Foundations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/00-introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    00 Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/01-observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01 Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/02-opentelemetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02 OpenTelemetry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/03-prometheus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03 Prometheus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/04-loki/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04 Loki
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/05-tempo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05 Tempo
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/06-data-plane/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06 Data Plane
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/07-kafka/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07 Kafka
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/08-topology-change/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08 Topology & Change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Intelligence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/09-anomaly-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09 Anomaly Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/10-alert-correlation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10 Alert Correlation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/11-root-cause-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11 Root Cause Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/12-investigation-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12 Investigation Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/13-remediation-safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13 Remediation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production & cases
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Production & cases
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/14-production-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14 Production
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/15-bigtech-aiops/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15 Big Tech AIOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/16-ecommerce-banking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16 E-commerce & Banking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../en/17-famous-incidents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17 Famous Incidents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../assets/diagrams/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Diagrams
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sau-chapter-nay-nguoi-oc-phai-lam-uoc-gi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sau chapter này, người đọc phải làm được gì?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-case-xuyen-suot-biet-ung-nguyen-nhan-van-co-the-sua-sai" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Case xuyên suốt: biết đúng nguyên nhân vẫn có thể sửa sai
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Case xuyên suốt: biết đúng nguyên nhân vẫn có thể sửa sai">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-su-co-thu-hai-luc-1037" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Sự cố thứ hai lúc 10:37
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-safety-engine-la-mot-he-thong-phan-quyen-khong-phai-executor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Safety Engine là một hệ thống phân quyền, không phải executor
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-action-contract-proposal-phai-cu-the-va-bat-bien" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Action contract: proposal phải cụ thể và bất biến
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Action contract: proposal phải cụ thể và bất biến">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-desired-state-thay-vi-thao-tac-tuong-oi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Desired state thay vì thao tác tương đối
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-catalog-id-khong-u-neu-semantic-mo-ho" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Catalog ID không đủ nếu semantic mơ hồ
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-state-machine-remediation-khong-phai-mot-api-call" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. State machine: remediation không phải một API call
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. State machine: remediation không phải một API call">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-time-of-checktime-of-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Time-of-check/time-of-use
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-approval-cung-het-han" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Approval cũng hết hạn
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-hard-gates-confidence-cao-khong-uoc-bu-policy-fail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Hard gates: confidence cao không được bù policy fail
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-risk-va-blast-radius-tinh-theo-hau-qua-that" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Risk và blast radius: tính theo hậu quả thật
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Risk và blast radius: tính theo hậu quả thật">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-bon-truc-risk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Bốn trục risk
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-vi-du-giam-retry-tren-canary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Ví dụ giảm retry trên canary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-vi-du-tang-pool-gap-oi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Ví dụ tăng pool gấp đôi
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-traffic-exposure-khac-instance-exposure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Traffic exposure khác instance exposure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#65-risk-floor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5 Risk floor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-chon-automation-tier-theo-action-khong-theo-o-truong-thanh-chung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Chọn automation tier theo action, không theo “độ trưởng thành chung”
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-canary-la-mot-thi-nghiem-an-toan-khong-chi-trien-khai-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Canary là một thí nghiệm an toàn, không chỉ triển khai ít
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Canary là một thí nghiệm an toàn, không chỉ triển khai ít">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-canary-qua-nho-khong-tao-bang-chung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Canary quá nhỏ không tạo bằng chứng
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-control-cohort" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Control cohort
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#83-cohort-phai-so-sanh-uoc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.3 Cohort phải so sánh được
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#84-progressive-expansion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.4 Progressive expansion
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-verification-chung-minh-recovery-bang-ba-tang-tin-hieu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Verification: chứng minh recovery bằng ba tầng tín hiệu
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Verification: chứng minh recovery bằng ba tầng tín hiệu">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-outcome-khach-hang" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 Outcome khách hàng
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-mechanism" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 Mechanism
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#93-harm-guardrails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.3 Harm guardrails
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#94-recovery-gia-do-traffic-giam" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.4 Recovery giả do traffic giảm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#95-hai-cua-so-thoi-gian" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.5 Hai cửa sổ thời gian
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#96-partial-success" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.6 Partial success
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-rollback-mot-action-production-oc-lap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Rollback: một action production độc lập
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Rollback: một action production độc lập">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101-rollback-phai-uoc-chung-minh-truoc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 Rollback phải được chứng minh trước
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#102-rollback-trigger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.2 Rollback trigger
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#103-rollback-cung-co-the-gay-hai" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.3 Rollback cũng có thể gây hại
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#104-rollback-failed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4 Rollback failed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#105-irreversible-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.5 Irreversible action
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-concurrent-incident-va-resource-coordination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Concurrent incident và resource coordination
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Concurrent incident và resource coordination">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#111-read-set-va-write-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.1 Read set và write set
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#112-khong-dung-global-lock" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.2 Không dùng global lock
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#113-lease-phai-co-ttl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.3 Lease phải có TTL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#114-hai-action-khac-nhau-nhung-cung-hau-qua" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.4 Hai action khác nhau nhưng cùng hậu quả
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-delivery-trung-timeout-va-trang-thai-khong-chac-chan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Delivery trùng, timeout và trạng thái không chắc chắn
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Delivery trùng, timeout và trạng thái không chắc chắn">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#121-at-least-once-delivery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.1 At-least-once delivery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#122-executor-timeout-khong-co-nghia-action-fail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.2 Executor timeout không có nghĩa action fail
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#123-split-brain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.3 Split brain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#124-stale-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.4 Stale command
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-khi-rca-sai-hoac-chua-ay-u" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Khi RCA sai hoặc chưa đầy đủ
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. Khi RCA sai hoặc chưa đầy đủ">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#131-rca-sai-nhung-metric-tinh-co-tot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.1 RCA sai nhưng metric tình cờ tốt
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#132-action-ung-trieu-chung-sai-goc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.2 Action đúng triệu chứng, sai gốc
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#133-hai-root-cause-ong-thoi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.3 Hai root cause đồng thời
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#134-confidence-cao-nhung-action-effect-khong-chac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.4 Confidence cao nhưng action effect không chắc
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-telemetry-hong-trong-luc-remediation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Telemetry hỏng trong lúc remediation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. Telemetry hỏng trong lúc remediation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#141-verifier-mat-metric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.1 Verifier mất metric
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#142-missing-khong-uoc-coi-la-zero" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.2 Missing không được coi là zero
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#143-audit-sink-hong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.3 Audit sink hỏng
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#144-topology-stale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14.4 Topology stale
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-human-approval-luc-3-gio-sang" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Human approval lúc 3 giờ sáng
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="15. Human approval lúc 3 giờ sáng">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#151-mot-man-hinh-can-gi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15.1 Một màn hình cần gì?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#152-lua-chon-co-gioi-han" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15.2 Lựa chọn có giới hạn
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#153-chong-approval-stale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15.3 Chống approval stale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#154-fatigue-va-rubber-stamping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15.4 Fatigue và rubber stamping
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-security-va-quyen-luc-cua-remediation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Security và quyền lực của remediation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="16. Security và quyền lực của remediation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#161-khong-dung-credential-chung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16.1 Không dùng credential chung
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#162-llm-khong-cham-credential" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16.2 LLM không chạm credential
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#163-target-binding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16.3 Target binding
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#164-separation-of-duties" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16.4 Separation of duties
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#165-break-glass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16.5 Break-glass
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-kill-switch-va-circuit-breaker-cua-chinh-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Kill switch và circuit breaker của chính engine
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="17. Kill switch và circuit breaker của chính engine">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#171-ba-muc-dung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.1 Ba mức dừng
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#172-failure-domain-oc-lap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.2 Failure domain độc lập
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#173-circuit-breaker-tu-ong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.3 Circuit breaker tự động
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#18-audit-tai-dung-ai-biet-gi-quyet-inh-gi-production-oi-gi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18. Audit: tái dựng “ai biết gì, quyết định gì, production đổi gì”
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="18. Audit: tái dựng “ai biết gì, quyết định gì, production đổi gì”">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#181-moi-record-can-gi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.1 Mỗi record cần gì?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#182-audit-khong-phai-log-debug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.2 Audit không phải log debug
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#183-privacy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.3 Privacy
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#19-verification-oi-voi-cac-action-class-thuong-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19. Verification đối với các action class thường gặp
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="19. Verification đối với các action class thường gặp">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#191-restart-stateless-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.1 Restart stateless instance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#192-scale-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.2 Scale out
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#193-giam-retry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.3 Giảm retry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#194-circuit-breaker-dependency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.4 Circuit breaker dependency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#195-traffic-shift" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.5 Traffic shift
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#196-featureconfig-rollback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19.6 Feature/config rollback
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-edge-case-production-kho-nhung-thuong-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. Edge case production khó nhưng thường gặp
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20. Edge case production khó nhưng thường gặp">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#201-retry-storm-sau-remediation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.1 Retry storm sau remediation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#202-capacity-cliff" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.2 Capacity cliff
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#203-recovery-trung-voi-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.3 Recovery trùng với action
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#204-action-overlap-voi-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.4 Action overlap với deploy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#205-queue-backlog-bung-sau-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.5 Queue backlog bùng sau recovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#206-partial-regional-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.6 Partial regional recovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#207-metric-gaming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.7 Metric gaming
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#208-hidden-shared-dependency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.8 Hidden shared dependency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#209-manual-action-ngoai-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.9 Manual action ngoài engine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2010-operator-revoke-giua-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20.10 Operator revoke giữa execution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#21-game-day-va-replay-chung-minh-safety-truoc-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21. Game day và replay: chứng minh safety trước production
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21. Game day và replay: chứng minh safety trước production">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#211-bo-kich-ban-toi-thieu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.1 Bộ kịch bản tối thiểu
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#212-expected-result-phai-inh-truoc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.2 Expected result phải định trước
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#213-replay-thoi-iem-lich-su" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.3 Replay thời điểm lịch sử
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#214-fault-injection-vao-safety-plane" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.4 Fault injection vào safety plane
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#22-metrics-van-hanh-ung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22. Metrics vận hành đúng
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="22. Metrics vận hành đúng">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#221-slice-bat-buoc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.1 Slice bắt buộc
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#222-near-miss" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.2 Near-miss
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#23-rollout-safety-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23. Rollout Safety Engine
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="23. Rollout Safety Engine">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-1-catalog-va-audit-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 1 — Catalog và audit only
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-2-proposal-shadow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 2 — Proposal shadow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-3-human-approved-canary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 3 — Human-approved canary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-4-auto-canary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 4 — Auto-canary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#giai-oan-5-bounded-closed-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Giai đoạn 5 — Bounded closed loop
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#24-production-acceptance-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24. Production acceptance criteria
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#25-checklist-thiet-ke-cho-tung-action-catalog-entry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        25. Checklist thiết kế cho từng action catalog entry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="25. Checklist thiết kế cho từng action catalog entry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#muc-ich" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mục đích
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#target-va-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Target và scope
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#preconditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Preconditions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rollback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rollback
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#governance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Governance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#26-anti-patterns-can-loai-bo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        26. Anti-patterns cần loại bỏ
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="26. Anti-patterns cần loại bỏ">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#confidence-tren-80-thi-execute" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        “Confidence trên 80% thì execute”
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#action-co-rollback-nen-an-toan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        “Action có rollback nên an toàn”
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#canary-1-pod-la-u" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        “Canary 1 pod là đủ”
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metric-xanh-la-thanh-cong" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        “Metric xanh là thành công”
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chi-cho-phep-script-trong-git-la-an-toan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        “Chỉ cho phép script trong Git là an toàn”
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mot-remediation-tai-mot-thoi-iem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        “Một remediation tại một thời điểm”
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operator-a-duyet-thi-engine-khong-chiu-trach-nhiem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        “Operator đã duyệt thì engine không chịu trách nhiệm”
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tang-automation-rate-la-tien-bo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        “Tăng automation rate là tiến bộ”
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ket-luan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kết luận
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tai-lieu-lien-quan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tài liệu liên quan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-contract-cua-chapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance contract của chapter
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="chapter-13-remediation-safety-engine-hanh-ong-co-gioi-han-phuc-hoi-co-chung-minh">Chapter 13 — Remediation Safety Engine: hành động có giới hạn, phục hồi có chứng minh<a class="headerlink" href="#chapter-13-remediation-safety-engine-hanh-ong-co-gioi-han-phuc-hoi-co-chung-minh" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Automated remediation không phải chạy script nhanh hơn con người. Nó là một safety engine độc lập, biến một đề xuất có bằng chứng thành quyết định có policy, blast radius, canary, verification và rollback. Engine tốt không được thưởng vì thực hiện nhiều action; nó được đánh giá bằng số sự cố giảm MTTR mà không tạo customer harm, không vượt quyền và không che giấu thất bại.</strong></p>
+</blockquote>
+<p><img alt="Remediation safety engine" src="../../../assets/diagrams/05-remediation-safety.png" /></p>
+<p><em>Poster: proposal có kiểu dữ liệu đi qua policy, canary, independent verification và rollback; không có đường tắt từ chat tới production.</em></p>
+<hr />
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../../11-root-cause-analysis/README.vi/">11 — Root Cause Analysis</a>: đưa ra candidate và causal evidence, không phải quyền hành động.</li>
+<li><a href="../../12-investigation-engine/README.vi/">12 — Investigation Engine</a>: cung cấp incident revision, hypothesis, evidence và proposal có giới hạn.</li>
+<li><a href="../../08-topology-change/README.vi/">08 — Topology &amp; Change Intelligence</a>: cung cấp dependency, ownership, shared resource và change state.</li>
+<li><a href="../../14-production-engine/README.vi/">14 — Production Engine</a>: quy định degraded mode, audit, disaster recovery và kill switch.</li>
+</ul>
+<h2 id="sau-chapter-nay-nguoi-oc-phai-lam-uoc-gi">Sau chapter này, người đọc phải làm được gì?<a class="headerlink" href="#sau-chapter-nay-nguoi-oc-phai-lam-uoc-gi" title="Permanent link">&para;</a></h2>
+<p>Bạn phải thiết kế được một remediation engine trả lời rõ:</p>
+<ol>
+<li>Action nào được phép tồn tại và tham số nào bị giới hạn?</li>
+<li>Evidence còn đủ mới để hành động không?</li>
+<li>Ai hoặc policy nào có quyền phê duyệt?</li>
+<li>Blast radius thật theo traffic và dependency là bao nhiêu?</li>
+<li>Làm sao thử action trên phạm vi đủ nhỏ nhưng vẫn có đủ mẫu để kết luận?</li>
+<li>Tín hiệu nào chứng minh khách hàng phục hồi, tín hiệu nào buộc dừng?</li>
+<li>Làm sao xử lý action trùng, action stale, incident chồng và rollback thất bại?</li>
+<li>Khi telemetry, policy hoặc audit hỏng, engine phải degrade thế nào?</li>
+</ol>
+<p>Chapter này không chứa code, YAML, shell command hay hướng dẫn copy–paste. Nội dung tập trung vào decision contract và edge case production.</p>
+<hr />
+<h2 id="1-case-xuyen-suot-biet-ung-nguyen-nhan-van-co-the-sua-sai">1. Case xuyên suốt: biết đúng nguyên nhân vẫn có thể sửa sai<a class="headerlink" href="#1-case-xuyen-suot-biet-ung-nguyen-nhan-van-co-the-sua-sai" title="Permanent link">&para;</a></h2>
+<p>Investigation Engine chuyển incident <code>INC-8421</code>, revision 7 sang Safety Engine lúc 10:16.</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-2" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Fact</th>
+<th style="text-align: right;">Giá trị</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Checkout success</td>
+<td style="text-align: right;">71,4%</td>
+</tr>
+<tr>
+<td>Payment timeout</td>
+<td style="text-align: right;">24,9%</td>
+</tr>
+<tr>
+<td>DB pool wait p95</td>
+<td style="text-align: right;">1.840 ms</td>
+</tr>
+<tr>
+<td>Retry amplification</td>
+<td style="text-align: right;">4,6 request/giao dịch</td>
+</tr>
+<tr>
+<td>Leading hypothesis</td>
+<td style="text-align: right;">Retry làm cạn connection pool của payment</td>
+</tr>
+<tr>
+<td>Calibrated confidence</td>
+<td style="text-align: right;">0,86</td>
+</tr>
+<tr>
+<td>Trace coverage</td>
+<td style="text-align: right;">94%</td>
+</tr>
+<tr>
+<td>Customer regions</td>
+<td style="text-align: right;">Region A, chủ yếu tenant retail</td>
+</tr>
+</tbody>
+</table></div>
+<p>Engine nhận ba proposal:</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Proposal</th>
+<th>Tác dụng kỳ vọng</th>
+<th>Rủi ro production</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Giảm retry từ 3 xuống 1</td>
+<td>Chặn khuếch đại tải</td>
+<td>Một số timeout tạm thời không được retry</td>
+</tr>
+<tr>
+<td>Tăng pool từ 80 lên 160</td>
+<td>Giảm queue ở payment</td>
+<td>Đẩy thêm connection xuống shared database, ảnh hưởng refund/fraud</td>
+</tr>
+<tr>
+<td>Restart toàn bộ payment</td>
+<td>Xóa connection kẹt</td>
+<td>Reconnect storm và mất capacity đồng thời</td>
+</tr>
+</tbody>
+</table></div>
+<p>RCA đúng không làm ba action an toàn như nhau. Action thứ hai có vẻ hợp logic nhưng có thể biến pool exhaustion cục bộ thành database outage toàn hệ thống. Action thứ ba có thể làm checkout rơi về 0% trong lúc rollout.</p>
+<p>Safety Engine chọn đánh giá proposal giảm retry, nhưng chưa thực thi ngay. Nó còn phải kiểm tra target, policy, traffic, invariant, conflict và khả năng xác minh.</p>
+<h3 id="11-su-co-thu-hai-luc-1037">1.1 Sự cố thứ hai lúc 10:37<a class="headerlink" href="#11-su-co-thu-hai-luc-1037" title="Permanent link">&para;</a></h3>
+<p>Trong khi payment canary còn chạy, auth-service lỗi certificate. Engine nhận proposal rotate certificate cho <code>INC-8422</code>.</p>
+<p>Hai remediation có thể chạy song song nếu write set tách biệt. Tuy nhiên proposal restart shared gateway phải bị chặn vì cùng ảnh hưởng cả payment và auth. Đây là lý do lock toàn cục quá thô còn không lock thì nguy hiểm.</p>
+<hr />
+<h2 id="2-safety-engine-la-mot-he-thong-phan-quyen-khong-phai-executor">2. Safety Engine là một hệ thống phân quyền, không phải executor<a class="headerlink" href="#2-safety-engine-la-mot-he-thong-phan-quyen-khong-phai-executor" title="Permanent link">&para;</a></h2>
+<p>Không một thành phần nào được vừa đề xuất, tự duyệt, thực thi và tuyên bố thành công.</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Thành phần</th>
+<th>Trách nhiệm</th>
+<th>Không được làm</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Investigation Engine</td>
+<td>Đưa incident revision, evidence và action catalog ID gợi ý</td>
+<td>Gọi hạ tầng production</td>
+</tr>
+<tr>
+<td>Policy Decision Point</td>
+<td>Kiểm tra quyền, risk, freeze, invariant</td>
+<td>Sửa proposal để làm nó “hợp lệ”</td>
+</tr>
+<tr>
+<td>Approval Service</td>
+<td>Thu chữ ký đúng thẩm quyền</td>
+<td>Duyệt request đã thay đổi</td>
+</tr>
+<tr>
+<td>Resource Coordinator</td>
+<td>Phát hiện write-set conflict và giữ lease</td>
+<td>Khóa toàn nền tảng vô thời hạn</td>
+</tr>
+<tr>
+<td>Bounded Executor</td>
+<td>Đạt desired state trong target đã ký</td>
+<td>Nhận lệnh tự do hoặc mở rộng selector</td>
+</tr>
+<tr>
+<td>Verifier</td>
+<td>So outcome, mechanism và harm guardrail</td>
+<td>Dùng một metric kích hoạt làm bằng chứng duy nhất</td>
+</tr>
+<tr>
+<td>Audit Service</td>
+<td>Lưu chuỗi quyết định bất biến</td>
+<td>Phụ thuộc quyền sửa của executor</td>
+</tr>
+<tr>
+<td>Kill Switch</td>
+<td>Dừng action hoặc thu hồi quyền</td>
+<td>Nằm cùng failure domain với executor</td>
+</tr>
+</tbody>
+</table></div>
+<p>Kiến trúc này giả định mọi thành phần đều có thể lỗi: model hallucinate, policy cache stale, operator bấm nhầm, message giao trùng, executor timeout và verifier mất telemetry.</p>
+<hr />
+<h2 id="3-action-contract-proposal-phai-cu-the-va-bat-bien">3. Action contract: proposal phải cụ thể và bất biến<a class="headerlink" href="#3-action-contract-proposal-phai-cu-the-va-bat-bien" title="Permanent link">&para;</a></h2>
+<p>Proposal không phải câu “hãy giảm retry”. Nó là một đối tượng quyết định với đủ ngữ cảnh.</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Trường</th>
+<th>Ví dụ</th>
+<th>Lý do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Incident identity</td>
+<td><code>INC-8421</code>, revision 7</td>
+<td>Chặn action dựa trên incident cũ</td>
+</tr>
+<tr>
+<td>Catalog action</td>
+<td>Giảm retry policy, version 3</td>
+<td>Không chấp nhận freeform mutation</td>
+</tr>
+<tr>
+<td>Target identity</td>
+<td>Payment workload revision 912, region A</td>
+<td>Selector không được tự mở rộng</td>
+</tr>
+<tr>
+<td>Scope</td>
+<td>5% traffic, tối đa 4 instance</td>
+<td>Giới hạn blast radius</td>
+</tr>
+<tr>
+<td>Parameters</td>
+<td>Retry 3 → 1, TTL 15 phút</td>
+<td>Range và thời gian rõ ràng</td>
+</tr>
+<tr>
+<td>Evidence snapshot</td>
+<td>Fact IDs lúc 10:16</td>
+<td>Tái tạo được quyết định</td>
+</tr>
+<tr>
+<td>Evidence expiry</td>
+<td>5 phút</td>
+<td>Không hành động trên trạng thái stale</td>
+</tr>
+<tr>
+<td>Preconditions</td>
+<td>DB healthy, revision khớp, verifier fresh</td>
+<td>Ngăn race condition</td>
+</tr>
+<tr>
+<td>Expected outcome</td>
+<td>Success tăng ít nhất 8 điểm sau 5 phút</td>
+<td>Định nghĩa thành công trước khi chạy</td>
+</tr>
+<tr>
+<td>Harm guardrails</td>
+<td>Duplicate charge, DB CPU, refund error</td>
+<td>Phát hiện sửa chỗ này hỏng chỗ khác</td>
+</tr>
+<tr>
+<td>Abort condition</td>
+<td>Success giảm 2 điểm hoặc DB CPU &gt;85%</td>
+<td>Dừng tự động</td>
+</tr>
+<tr>
+<td>Rollback</td>
+<td>Trả retry về 3 trong dưới 60 giây</td>
+<td>Khả năng đảo ngược đã đo</td>
+</tr>
+<tr>
+<td>Idempotency key</td>
+<td>Incident/revision/action/target</td>
+<td>Delivery trùng không tạo thay đổi trùng</td>
+</tr>
+</tbody>
+</table></div>
+<p>Toàn bộ request được băm và ký sau khi policy/approval hoàn tất. Nếu target, tham số, catalog version, evidence revision hoặc expected outcome đổi, chữ ký hết hiệu lực.</p>
+<h3 id="31-desired-state-thay-vi-thao-tac-tuong-oi">3.1 Desired state thay vì thao tác tương đối<a class="headerlink" href="#31-desired-state-thay-vi-thao-tac-tuong-oi" title="Permanent link">&para;</a></h3>
+<p>Action “scale thêm 2” nguy hiểm khi message được giao lại năm lần. Action nên mô tả trạng thái đích có min/max và TTL. Executor đọc current state, so với precondition rồi hội tụ tới desired state. Cùng idempotency key trả lại kết quả cũ, không thay đổi lần nữa.</p>
+<h3 id="32-catalog-id-khong-u-neu-semantic-mo-ho">3.2 Catalog ID không đủ nếu semantic mơ hồ<a class="headerlink" href="#32-catalog-id-khong-u-neu-semantic-mo-ho" title="Permanent link">&para;</a></h3>
+<p>Catalog entry phải định nghĩa:</p>
+<ul>
+<li>Failure mode mà action xử lý.</li>
+<li>Service/resource class được phép.</li>
+<li>Parameter range.</li>
+<li>Preconditions và invariant.</li>
+<li>Scope tối đa cho từng automation tier.</li>
+<li>Verification window và minimum sample.</li>
+<li>Rollback method, rollback SLO và known failure.</li>
+<li>Credential, owner và approval class.</li>
+<li>Telemetry bắt buộc.</li>
+<li>Ngày review, version và trạng thái retired/active.</li>
+</ul>
+<p>Catalog entry không được dùng chung một action “restart service” cho mọi workload. Stateful service, stateless API và queue consumer có rủi ro hoàn toàn khác.</p>
+<hr />
+<h2 id="4-state-machine-remediation-khong-phai-mot-api-call">4. State machine: remediation không phải một API call<a class="headerlink" href="#4-state-machine-remediation-khong-phai-mot-api-call" title="Permanent link">&para;</a></h2>
+<p>Lifecycle chuẩn:</p>
+<p>Proposal → Validate → Risk Assess → Await Approval → Authorize → Acquire Lease → Execute Canary → Verify → Expand → Verify Stable → Succeed</p>
+<p>Các nhánh kết thúc:</p>
+<ul>
+<li>Rejected: vi phạm hard gate.</li>
+<li>Expired: incident/evidence/approval không còn mới.</li>
+<li>Conflicted: write set bị action khác giữ.</li>
+<li>Aborted: guardrail bị vi phạm trước hoặc trong execution.</li>
+<li>Inconclusive: không đủ bằng chứng action có tác dụng.</li>
+<li>Rolling Back: đang đảo thay đổi.</li>
+<li>Rolled Back: trở về trạng thái trước đã xác minh.</li>
+<li>Rollback Failed: không thể khôi phục bằng đường chuẩn.</li>
+<li>Partially Successful: giảm impact nhưng chưa đạt recovery criteria.</li>
+</ul>
+<p>Mỗi transition có timestamp, actor, input revision, policy version, reason và observed state. Không cho phép nhảy từ Proposal thẳng tới Succeeded.</p>
+<h3 id="41-time-of-checktime-of-use">4.1 Time-of-check/time-of-use<a class="headerlink" href="#41-time-of-checktime-of-use" title="Permanent link">&para;</a></h3>
+<p>Proposal được duyệt lúc 10:18 cho workload revision 912. Lúc 10:19, deployment revision 913 bắt đầu. Dù action chưa chạy, precondition đã sai. Engine chuyển request sang Expired và đánh giá lại. Không suy luận “thay đổi nhỏ chắc không liên quan”.</p>
+<h3 id="42-approval-cung-het-han">4.2 Approval cũng hết hạn<a class="headerlink" href="#42-approval-cung-het-han" title="Permanent link">&para;</a></h3>
+<p>Operator duyệt một target, parameter và evidence snapshot cụ thể. Approval không phải vé dùng lại. Nếu incident revision đổi hoặc scope tăng từ 5% lên 25%, cần decision mới theo policy.</p>
+<hr />
+<h2 id="5-hard-gates-confidence-cao-khong-uoc-bu-policy-fail">5. Hard gates: confidence cao không được bù policy fail<a class="headerlink" href="#5-hard-gates-confidence-cao-khong-uoc-bu-policy-fail" title="Permanent link">&para;</a></h2>
+<p>Một số điều kiện là bắt buộc và không được cộng điểm để bù nhau.</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>Điều kiện đạt</th>
+<th>Hành vi khi fail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Catalog</td>
+<td>Action active, signed, đúng service class</td>
+<td>Reject</td>
+</tr>
+<tr>
+<td>Identity</td>
+<td>Workload UID/revision khớp</td>
+<td>Expire và resolve lại target</td>
+</tr>
+<tr>
+<td>Evidence freshness</td>
+<td>Source chính trong TTL</td>
+<td>Expire</td>
+</tr>
+<tr>
+<td>Telemetry coverage</td>
+<td>Đủ outcome và harm guardrail</td>
+<td>Detection-only</td>
+</tr>
+<tr>
+<td>Topology freshness</td>
+<td>Shared dependency xác định được</td>
+<td>Cấm auto-action phạm vi rộng</td>
+</tr>
+<tr>
+<td>Business invariant</td>
+<td>Không vượt connection/data/security budget</td>
+<td>Reject hoặc thu nhỏ scope</td>
+</tr>
+<tr>
+<td>Change policy</td>
+<td>Không vi phạm freeze/maintenance</td>
+<td>Chuyển human approval</td>
+</tr>
+<tr>
+<td>Authorization</td>
+<td>Principal có đúng tenant/env/action scope</td>
+<td>Reject</td>
+</tr>
+<tr>
+<td>Conflict</td>
+<td>Không có write-set conflict</td>
+<td>Queue hoặc từ chối</td>
+</tr>
+<tr>
+<td>Audit</td>
+<td>Audit sink sẵn sàng</td>
+<td>Không execute action mới</td>
+</tr>
+<tr>
+<td>Rollback readiness</td>
+<td>Artifact và đường rollback đã kiểm tra</td>
+<td>Không auto-execute</td>
+</tr>
+</tbody>
+</table></div>
+<p>Confidence 0,99 không vượt được audit gate. “Production đang cháy” cũng không biến freeform shell thành hợp lệ; trường hợp khẩn cấp dùng break-glass riêng, có TTL, MFA và hậu kiểm.</p>
+<hr />
+<h2 id="6-risk-va-blast-radius-tinh-theo-hau-qua-that">6. Risk và blast radius: tính theo hậu quả thật<a class="headerlink" href="#6-risk-va-blast-radius-tinh-theo-hau-qua-that" title="Permanent link">&para;</a></h2>
+<h3 id="61-bon-truc-risk">6.1 Bốn trục risk<a class="headerlink" href="#61-bon-truc-risk" title="Permanent link">&para;</a></h3>
+<p>Một mô hình dễ thảo luận gồm:</p>
+<ul>
+<li>Uncertainty: khả năng diagnosis hoặc effect estimate sai.</li>
+<li>Impact: mức độ quan trọng của customer journey/resource.</li>
+<li>Irreversibility: khó quay lại trạng thái trước tới đâu.</li>
+<li>Exposure: bao nhiêu traffic, tenant, region và dependency bị chạm.</li>
+</ul>
+<p>Có thể dùng tích số để so proposal cùng lớp, nhưng không để điểm trung bình che hard risk. Shared database, identity, security control, data mutation và multi-region action cần risk floor.</p>
+<h3 id="62-vi-du-giam-retry-tren-canary">6.2 Ví dụ giảm retry trên canary<a class="headerlink" href="#62-vi-du-giam-retry-tren-canary" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Trục</th>
+<th style="text-align: right;">Điểm 0–1</th>
+<th>Giải thích</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Uncertainty</td>
+<td style="text-align: right;">0,14</td>
+<td>Hypothesis confidence 0,86</td>
+</tr>
+<tr>
+<td>Impact</td>
+<td style="text-align: right;">0,70</td>
+<td>Payment nằm trên đường doanh thu</td>
+</tr>
+<tr>
+<td>Irreversibility</td>
+<td style="text-align: right;">0,10</td>
+<td>Config có TTL, rollback nhanh</td>
+</tr>
+<tr>
+<td>Exposure</td>
+<td style="text-align: right;">0,047</td>
+<td>5% instance tương ứng 4,7% request</td>
+</tr>
+</tbody>
+</table></div>
+<p>Điểm thô thấp, nhưng engine vẫn kiểm tra shared DB và duplicate-charge invariant. Action không trở thành “an toàn tuyệt đối”; nó chỉ đủ điều kiện auto-canary trong scope nhỏ.</p>
+<h3 id="63-vi-du-tang-pool-gap-oi">6.3 Ví dụ tăng pool gấp đôi<a class="headerlink" href="#63-vi-du-tang-pool-gap-oi" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-2" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Yếu tố</th>
+<th>Quan sát</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Target trực tiếp</td>
+<td>Payment pool</td>
+</tr>
+<tr>
+<td>Downstream thật</td>
+<td>Shared database phục vụ payment, refund và fraud</td>
+</tr>
+<tr>
+<td>Connection delta tối đa</td>
+<td>+80 mỗi instance × 40 instance = +3.200</td>
+</tr>
+<tr>
+<td>DB connection headroom</td>
+<td>Chỉ còn khoảng 900</td>
+</tr>
+<tr>
+<td>Kết luận</td>
+<td>Vi phạm invariant trước khi cần tính confidence</td>
+</tr>
+</tbody>
+</table></div>
+<p>Action bị reject. Đây là lý do blast radius không thể tính bằng “một config ở một service”.</p>
+<h3 id="64-traffic-exposure-khac-instance-exposure">6.4 Traffic exposure khác instance exposure<a class="headerlink" href="#64-traffic-exposure-khac-instance-exposure" title="Permanent link">&para;</a></h3>
+<p>5% pod không nhất thiết là 5% traffic. Một pod gateway có sticky tenant lớn có thể giữ 30% request. Engine dùng observed traffic, tenant mix và dependency fan-out. Khi mapping không chắc, lấy upper bound bảo thủ.</p>
+<h3 id="65-risk-floor">6.5 Risk floor<a class="headerlink" href="#65-risk-floor" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-2" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Action class</th>
+<th>Risk floor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Restart stateless canary có replica dư</td>
+<td>Thấp–trung bình</td>
+</tr>
+<tr>
+<td>Thay retry/circuit breaker có TTL</td>
+<td>Trung bình</td>
+</tr>
+<tr>
+<td>Scale connection tới shared DB</td>
+<td>Cao</td>
+</tr>
+<tr>
+<td>Thay auth/security policy</td>
+<td>Cao, cần dual control</td>
+</tr>
+<tr>
+<td>Data/schema mutation</td>
+<td>Rất cao, thường không autonomous</td>
+</tr>
+<tr>
+<td>Multi-region traffic shift</td>
+<td>Rất cao</td>
+</tr>
+</tbody>
+</table></div>
+<p>Không dùng confidence để hạ risk floor.</p>
+<hr />
+<h2 id="7-chon-automation-tier-theo-action-khong-theo-o-truong-thanh-chung">7. Chọn automation tier theo action, không theo “độ trưởng thành chung”<a class="headerlink" href="#7-chon-automation-tier-theo-action-khong-theo-o-truong-thanh-chung" title="Permanent link">&para;</a></h2>
+<div class="table-scroll table-scroll--fit table-scroll--cols-3" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Điều kiện</th>
+<th>Ví dụ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Observe only</td>
+<td>Action mới, evidence yếu, rollback chưa đo</td>
+<td>Đề xuất cho operator</td>
+</tr>
+<tr>
+<td>Human approved canary</td>
+<td>Shared dependency hoặc impact trung bình</td>
+<td>Giảm retry payment 5%</td>
+</tr>
+<tr>
+<td>Auto-canary</td>
+<td>Reversible, scope nhỏ, verifier khỏe, pass replay</td>
+<td>Restart một stateless replica lỗi</td>
+</tr>
+<tr>
+<td>Auto-expand</td>
+<td>Canary/control chứng minh effect và guardrail ổn</td>
+<td>Mở từ 5% lên 25%</td>
+</tr>
+<tr>
+<td>Dual control</td>
+<td>Security, data, multi-region, irreversible</td>
+<td>Rotate root credential, schema change</td>
+</tr>
+<tr>
+<td>Prohibited</td>
+<td>Không có catalog/rollback/audit</td>
+<td>Freeform command từ LLM</td>
+</tr>
+</tbody>
+</table></div>
+<p>Một tổ chức có thể tự động restart cache nhưng vẫn cấm tự động sửa database. Không có một con số “Level 4” cho mọi action.</p>
+<hr />
+<h2 id="8-canary-la-mot-thi-nghiem-an-toan-khong-chi-trien-khai-it">8. Canary là một thí nghiệm an toàn, không chỉ triển khai ít<a class="headerlink" href="#8-canary-la-mot-thi-nghiem-an-toan-khong-chi-trien-khai-it" title="Permanent link">&para;</a></h2>
+<h3 id="81-canary-qua-nho-khong-tao-bang-chung">8.1 Canary quá nhỏ không tạo bằng chứng<a class="headerlink" href="#81-canary-qua-nho-khong-tao-bang-chung" title="Permanent link">&para;</a></h3>
+<p>Nếu canary 1% chỉ nhận 12 request/phút, sau 5 phút có 60 mẫu. Chênh lệch success 8 điểm có thể chỉ là nhiễu. Canary 20% đủ mẫu nhưng quá nguy hiểm giữa outage.</p>
+<p>Trong case payment, 5% traffic có khoảng 620 request/phút. Sau 5 phút có gần 3.100 request, đủ để phát hiện mức cải thiện tối thiểu 8 điểm với độ tin cậy vận hành hợp lý.</p>
+<h3 id="82-control-cohort">8.2 Control cohort<a class="headerlink" href="#82-control-cohort" title="Permanent link">&para;</a></h3>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Cohort</th>
+<th style="text-align: right;">Trước action</th>
+<th style="text-align: right;">Sau 5 phút</th>
+<th style="text-align: right;">Thay đổi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Canary retry 1</td>
+<td style="text-align: right;">71,8%</td>
+<td style="text-align: right;">91,2%</td>
+<td style="text-align: right;">+19,4 điểm</td>
+</tr>
+<tr>
+<td>Control retry 3</td>
+<td style="text-align: right;">71,5%</td>
+<td style="text-align: right;">74,0%</td>
+<td style="text-align: right;">+2,5 điểm</td>
+</tr>
+<tr>
+<td>Phần còn lại</td>
+<td style="text-align: right;">71,3%</td>
+<td style="text-align: right;">73,1%</td>
+<td style="text-align: right;">+1,8 điểm</td>
+</tr>
+</tbody>
+</table></div>
+<p>Chênh canary–control gần 16,9 điểm là evidence tốt hơn việc toàn hệ thống cùng cải thiện. Nếu cả canary và control tăng 18 điểm, có thể traffic tự giảm hoặc dependency hồi phục; action bị đánh dấu Inconclusive.</p>
+<h3 id="83-cohort-phai-so-sanh-uoc">8.3 Cohort phải so sánh được<a class="headerlink" href="#83-cohort-phai-so-sanh-uoc" title="Permanent link">&para;</a></h3>
+<p>Canary và control nên gần nhau về:</p>
+<ul>
+<li>Region/AZ.</li>
+<li>Tenant mix.</li>
+<li>Request type.</li>
+<li>Workload revision.</li>
+<li>Traffic weight.</li>
+<li>Dependency shard.</li>
+</ul>
+<p>Không so canary tenant nhỏ với control tenant enterprise rồi kết luận action có tác dụng.</p>
+<h3 id="84-progressive-expansion">8.4 Progressive expansion<a class="headerlink" href="#84-progressive-expansion" title="Permanent link">&para;</a></h3>
+<p>Mỗi bước 5% → 25% → 50% → 100% là một decision mới. Engine kiểm tra lại evidence freshness, conflict, sample, guardrail và approval policy. Không cấp một approval 5% rồi tự hiểu là được lên 100%.</p>
+<p>Hold window cần đủ dài để thấy delayed harm: duplicate payment, queue backlog hoặc memory leak có thể xuất hiện sau khi latency đã tốt.</p>
+<hr />
+<h2 id="9-verification-chung-minh-recovery-bang-ba-tang-tin-hieu">9. Verification: chứng minh recovery bằng ba tầng tín hiệu<a class="headerlink" href="#9-verification-chung-minh-recovery-bang-ba-tang-tin-hieu" title="Permanent link">&para;</a></h2>
+<h3 id="91-outcome-khach-hang">9.1 Outcome khách hàng<a class="headerlink" href="#91-outcome-khach-hang" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Checkout success.</li>
+<li>Latency theo percentile.</li>
+<li>Giao dịch hoàn tất trên mỗi phút.</li>
+<li>Error-budget burn.</li>
+<li>Tenant/region bị ảnh hưởng.</li>
+</ul>
+<h3 id="92-mechanism">9.2 Mechanism<a class="headerlink" href="#92-mechanism" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Retry amplification giảm.</li>
+<li>DB pool wait giảm.</li>
+<li>Connection acquire timeout giảm.</li>
+<li>Queue depth hoặc saturation trở lại vùng an toàn.</li>
+</ul>
+<h3 id="93-harm-guardrails">9.3 Harm guardrails<a class="headerlink" href="#93-harm-guardrails" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Duplicate charge.</li>
+<li>Refund/fraud error.</li>
+<li>Database CPU và connection usage.</li>
+<li>Error rate ở dependency khác.</li>
+<li>Capacity và queue sau action.</li>
+</ul>
+<p>Action chỉ thành công khi outcome cải thiện, cơ chế thay đổi đúng hướng và guardrail không xấu.</p>
+<h3 id="94-recovery-gia-do-traffic-giam">9.4 Recovery giả do traffic giảm<a class="headerlink" href="#94-recovery-gia-do-traffic-giam" title="Permanent link">&para;</a></h3>
+<p>Success rate có thể tăng khi request volume giảm từ 10.000 xuống 1.000/phút. Vì vậy verifier xem cả ratio, count và control. Nếu số giao dịch thành công tuyệt đối vẫn thấp, chưa thể tuyên bố khách hàng hồi phục.</p>
+<h3 id="95-hai-cua-so-thoi-gian">9.5 Hai cửa sổ thời gian<a class="headerlink" href="#95-hai-cua-so-thoi-gian" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Cửa sổ nhanh khoảng 2–5 phút để bắt regression nghiêm trọng.</li>
+<li>Cửa sổ chậm khoảng 15–30 phút để loại dao động và delayed harm.</li>
+</ul>
+<p>Ngưỡng phụ thuộc service. Không dùng ba điểm metric cho mọi action.</p>
+<h3 id="96-partial-success">9.6 Partial success<a class="headerlink" href="#96-partial-success" title="Permanent link">&para;</a></h3>
+<p>Giảm retry đưa checkout từ 71,4% lên 91,2%, trong khi SLO recovery là 98,5%. Engine ghi Partially Successful:</p>
+<ul>
+<li>Giữ mitigation có TTL nếu guardrail ổn.</li>
+<li>Không đóng incident.</li>
+<li>Không xóa hypothesis còn lại.</li>
+<li>Tiếp tục điều tra phần 7,3 điểm thiếu.</li>
+</ul>
+<p>“Tốt hơn” không đồng nghĩa “đã sửa gốc”.</p>
+<hr />
+<h2 id="10-rollback-mot-action-production-oc-lap">10. Rollback: một action production độc lập<a class="headerlink" href="#10-rollback-mot-action-production-oc-lap" title="Permanent link">&para;</a></h2>
+<h3 id="101-rollback-phai-uoc-chung-minh-truoc">10.1 Rollback phải được chứng minh trước<a class="headerlink" href="#101-rollback-phai-uoc-chung-minh-truoc" title="Permanent link">&para;</a></h3>
+<p>Catalog cần số liệu:</p>
+<ul>
+<li>Rollback success rate.</li>
+<li>Thời gian p50/p95/p99.</li>
+<li>Dependency cần để rollback.</li>
+<li>Trạng thái không thể đảo.</li>
+<li>Artifact/version trước có còn hợp lệ không.</li>
+<li>Điều gì xảy ra nếu rollback chạy trùng.</li>
+</ul>
+<p>Nói “config có thể rollback” là chưa đủ.</p>
+<h3 id="102-rollback-trigger">10.2 Rollback trigger<a class="headerlink" href="#102-rollback-trigger" title="Permanent link">&para;</a></h3>
+<p>Rollback tự động khi:</p>
+<ul>
+<li>Customer outcome giảm quá abort threshold.</li>
+<li>Harm guardrail vi phạm.</li>
+<li>Executor tạo observed state khác desired state.</li>
+<li>Verifier mất tín hiệu trong action có policy fail-safe rollback.</li>
+<li>Lease/action TTL hết mà chưa verify.</li>
+<li>Dependency mới trở nên unhealthy.</li>
+</ul>
+<h3 id="103-rollback-cung-co-the-gay-hai">10.3 Rollback cũng có thể gây hại<a class="headerlink" href="#103-rollback-cung-co-the-gay-hai" title="Permanent link">&para;</a></h3>
+<p>Nếu traffic đã thích nghi với retry 1, trả ngay về retry 3 có thể tái tạo storm. Rollback đôi khi phải staged hoặc dùng safe state khác trạng thái ban đầu. “Quay về trước” không luôn đồng nghĩa an toàn.</p>
+<h3 id="104-rollback-failed">10.4 Rollback failed<a class="headerlink" href="#104-rollback-failed" title="Permanent link">&para;</a></h3>
+<p>Khi API control plane lỗi hoặc revision cũ không tương thích:</p>
+<ol>
+<li>Dừng mọi expansion cùng write set.</li>
+<li>Chuyển action sang Rollback Failed, không retry vô hạn.</li>
+<li>Kích hoạt kill switch hoặc recovery path độc lập.</li>
+<li>Page service owner và platform owner.</li>
+<li>Giữ immutable evidence về observed state.</li>
+<li>Chỉ chạy recovery action khác nếu đã có catalog và precondition riêng.</li>
+</ol>
+<p>Rollback failure phải là game-day bắt buộc, không phải chú thích cuối runbook.</p>
+<h3 id="105-irreversible-action">10.5 Irreversible action<a class="headerlink" href="#105-irreversible-action" title="Permanent link">&para;</a></h3>
+<p>Schema drop, data rewrite, key revocation hoặc destructive cleanup không có rollback thật. Backup restore là disaster recovery, không phải rollback tức thời. Các action này thường chỉ được đề xuất, cần dual control và kế hoạch recovery riêng.</p>
+<hr />
+<h2 id="11-concurrent-incident-va-resource-coordination">11. Concurrent incident và resource coordination<a class="headerlink" href="#11-concurrent-incident-va-resource-coordination" title="Permanent link">&para;</a></h2>
+<h3 id="111-read-set-va-write-set">11.1 Read set và write set<a class="headerlink" href="#111-read-set-va-write-set" title="Permanent link">&para;</a></h3>
+<p>Mỗi action khai báo tài nguyên đọc và ghi.</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-4" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Incident/action</th>
+<th>Read set</th>
+<th>Write set</th>
+<th>Quyết định</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Payment giảm retry</td>
+<td>DB health, checkout</td>
+<td>Payment retry config</td>
+<td>Có thể tiếp tục</td>
+</tr>
+<tr>
+<td>Auth rotate certificate</td>
+<td>Cert state, login</td>
+<td>Auth secret và auth rollout</td>
+<td>Có thể chạy riêng</td>
+</tr>
+<tr>
+<td>Restart shared gateway</td>
+<td>Payment/auth traffic</td>
+<td>Gateway replicas</td>
+<td>Bị conflict</td>
+</tr>
+<tr>
+<td>Tăng DB connections</td>
+<td>DB capacity</td>
+<td>Shared DB connection budget</td>
+<td>Bị invariant chặn</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="112-khong-dung-global-lock">11.2 Không dùng global lock<a class="headerlink" href="#112-khong-dung-global-lock" title="Permanent link">&para;</a></h3>
+<p>Global lock “một thời điểm chỉ một remediation” làm incident auth phải chờ payment, kéo dài impact. Lock theo resource/service/config key cho phép fault độc lập xử lý song song.</p>
+<h3 id="113-lease-phai-co-ttl">11.3 Lease phải có TTL<a class="headerlink" href="#113-lease-phai-co-ttl" title="Permanent link">&para;</a></h3>
+<p>Executor chết không được giữ lock mãi. Lease có owner, fencing token và TTL. Executor cũ tỉnh lại với token cũ không được ghi state sau executor mới.</p>
+<h3 id="114-hai-action-khac-nhau-nhung-cung-hau-qua">11.4 Hai action khác nhau nhưng cùng hậu quả<a class="headerlink" href="#114-hai-action-khac-nhau-nhung-cung-hau-qua" title="Permanent link">&para;</a></h3>
+<p>Payment scale up và database maintenance có write set tên khác nhưng cùng tiêu thụ connection budget. Coordinator phải hiểu shared invariant, không chỉ khóa theo resource ID.</p>
+<hr />
+<h2 id="12-delivery-trung-timeout-va-trang-thai-khong-chac-chan">12. Delivery trùng, timeout và trạng thái không chắc chắn<a class="headerlink" href="#12-delivery-trung-timeout-va-trang-thai-khong-chac-chan" title="Permanent link">&para;</a></h2>
+<h3 id="121-at-least-once-delivery">12.1 At-least-once delivery<a class="headerlink" href="#121-at-least-once-delivery" title="Permanent link">&para;</a></h3>
+<p>Message bus có thể giao action năm lần. Idempotency key và desired state bảo đảm chỉ có một thay đổi logic. Audit vẫn ghi duplicate delivery để vận hành thấy transport issue.</p>
+<h3 id="122-executor-timeout-khong-co-nghia-action-fail">12.2 Executor timeout không có nghĩa action fail<a class="headerlink" href="#122-executor-timeout-khong-co-nghia-action-fail" title="Permanent link">&para;</a></h3>
+<p>API response timeout có thể xảy ra sau khi production đã đổi. Executor không được gửi lại mù. Nó đọc observed state, đối chiếu action digest rồi quyết định complete, continue hay conflict.</p>
+<h3 id="123-split-brain">12.3 Split brain<a class="headerlink" href="#123-split-brain" title="Permanent link">&para;</a></h3>
+<p>Hai executor nghĩ mình giữ lease có thể tạo action cạnh tranh. Fencing token tại điểm ghi là bắt buộc; distributed lock chỉ ở coordinator không đủ nếu target system không kiểm tra generation.</p>
+<h3 id="124-stale-command">12.4 Stale command<a class="headerlink" href="#124-stale-command" title="Permanent link">&para;</a></h3>
+<p>Action nằm trong queue 11 phút do Kafka lag. Dù approval còn chữ ký, evidence TTL đã hết. Engine expire và không chạy. Queue recovery không được biến mọi backlog thành mutation storm.</p>
+<hr />
+<h2 id="13-khi-rca-sai-hoac-chua-ay-u">13. Khi RCA sai hoặc chưa đầy đủ<a class="headerlink" href="#13-khi-rca-sai-hoac-chua-ay-u" title="Permanent link">&para;</a></h2>
+<h3 id="131-rca-sai-nhung-metric-tinh-co-tot">13.1 RCA sai nhưng metric tình cờ tốt<a class="headerlink" href="#131-rca-sai-nhung-metric-tinh-co-tot" title="Permanent link">&para;</a></h3>
+<p>Traffic giảm đúng lúc canary restart. Outcome canary và control cùng tăng, mechanism không đổi. Verifier ghi Inconclusive và rollback/giữ scope theo policy; không expand.</p>
+<h3 id="132-action-ung-trieu-chung-sai-goc">13.2 Action đúng triệu chứng, sai gốc<a class="headerlink" href="#132-action-ung-trieu-chung-sai-goc" title="Permanent link">&para;</a></h3>
+<p>Scale up làm latency giảm nhưng memory leak tiếp tục. Action có thể là mitigation hữu ích, nhưng incident vẫn open và TTL buộc đánh giá lại. Report phân biệt mitigation với permanent fix.</p>
+<h3 id="133-hai-root-cause-ong-thoi">13.3 Hai root cause đồng thời<a class="headerlink" href="#133-hai-root-cause-ong-thoi" title="Permanent link">&para;</a></h3>
+<p>Retry storm và một shard database chậm có thể cùng tồn tại. Giảm retry cải thiện phần lớn traffic nhưng một tenant vẫn lỗi. Engine không ép một action giải thích toàn incident; correlation/investigation có thể split fault partition mới.</p>
+<h3 id="134-confidence-cao-nhung-action-effect-khong-chac">13.4 Confidence cao nhưng action effect không chắc<a class="headerlink" href="#134-confidence-cao-nhung-action-effect-khong-chac" title="Permanent link">&para;</a></h3>
+<p>Biết certificate hết hạn chắc chắn không có nghĩa mọi cách rotate certificate đều an toàn. Action suitability phụ thuộc rollout, trust chain, cache và rollback, tách khỏi root-cause confidence.</p>
+<hr />
+<h2 id="14-telemetry-hong-trong-luc-remediation">14. Telemetry hỏng trong lúc remediation<a class="headerlink" href="#14-telemetry-hong-trong-luc-remediation" title="Permanent link">&para;</a></h2>
+<h3 id="141-verifier-mat-metric">14.1 Verifier mất metric<a class="headerlink" href="#141-verifier-mat-metric" title="Permanent link">&para;</a></h3>
+<p>Không có evidence thành công thì không auto-expand. Policy theo action class:</p>
+<ul>
+<li>Action dễ đảo: rollback về safe state.</li>
+<li>Rollback rủi ro: giữ canary nhỏ, chuyển Human Only.</li>
+<li>Harm signal mất: dừng ngay action mới vì không biết đang gây hại hay không.</li>
+</ul>
+<h3 id="142-missing-khong-uoc-coi-la-zero">14.2 Missing không được coi là zero<a class="headerlink" href="#142-missing-khong-uoc-coi-la-zero" title="Permanent link">&para;</a></h3>
+<p>Duplicate-charge metric không có sample không có nghĩa duplicate charge bằng 0. Verifier cần freshness và coverage guard.</p>
+<h3 id="143-audit-sink-hong">14.3 Audit sink hỏng<a class="headerlink" href="#143-audit-sink-hong" title="Permanent link">&para;</a></h3>
+<p>Engine chuyển Detection Only cho action mới. Action đang chạy có thể tiếp tục tới safe stopping point hoặc rollback theo catalog. Không cho phép “ghi audit sau” nếu không có buffer bất biến đã thiết kế trước.</p>
+<h3 id="144-topology-stale">14.4 Topology stale<a class="headerlink" href="#144-topology-stale" title="Permanent link">&para;</a></h3>
+<p>Không biết target dùng shared database nào thì cấm expansion. Có thể giữ canary nếu observed guardrail đầy đủ và policy cho phép, nhưng risk bị nâng.</p>
+<hr />
+<h2 id="15-human-approval-luc-3-gio-sang">15. Human approval lúc 3 giờ sáng<a class="headerlink" href="#15-human-approval-luc-3-gio-sang" title="Permanent link">&para;</a></h2>
+<p>Approval UI phải hỗ trợ quyết định, không đổ telemetry cho on-call.</p>
+<h3 id="151-mot-man-hinh-can-gi">15.1 Một màn hình cần gì?<a class="headerlink" href="#151-mot-man-hinh-can-gi" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Customer impact, thời điểm bắt đầu và trend.</li>
+<li>Leading hypothesis, calibrated confidence và contradiction mạnh nhất.</li>
+<li>Action catalog, parameter, target, traffic exposure và TTL.</li>
+<li>Shared dependency và business invariant.</li>
+<li>Expected outcome, sample/window và control cohort.</li>
+<li>Abort/rollback condition.</li>
+<li>Người sở hữu, policy và change đang diễn ra.</li>
+<li>Evidence freshness countdown.</li>
+</ul>
+<h3 id="152-lua-chon-co-gioi-han">15.2 Lựa chọn có giới hạn<a class="headerlink" href="#152-lua-chon-co-gioi-han" title="Permanent link">&para;</a></h3>
+<p>Operator có thể:</p>
+<ul>
+<li>Approve once.</li>
+<li>Reject với reason.</li>
+<li>Reduce scope trong range cho phép rồi đánh giá lại.</li>
+<li>Escalate dual control.</li>
+<li>Yêu cầu thêm evidence.</li>
+</ul>
+<p>Không có “approve all future actions”. Tăng scope hoặc sửa parameter làm proposal có revision mới.</p>
+<h3 id="153-chong-approval-stale">15.3 Chống approval stale<a class="headerlink" href="#153-chong-approval-stale" title="Permanent link">&para;</a></h3>
+<p>Nếu operator mở card ở revision 7 nhưng incident đã sang revision 9, nút approve bị khóa. UI hiển thị delta: RCA đổi, target đổi hay telemetry mất. Người trực không ký vào một sự thật đã cũ.</p>
+<h3 id="154-fatigue-va-rubber-stamping">15.4 Fatigue và rubber stamping<a class="headerlink" href="#154-fatigue-va-rubber-stamping" title="Permanent link">&para;</a></h3>
+<p>Nếu 95% proposal đều được duyệt, chưa chắc policy tốt; có thể UI tạo thói quen bấm. Đo thời gian đọc, rejection reason, scope reduction và near-miss. Action lặp lại đủ an toàn mới cân nhắc auto-canary, không thúc người trực duyệt nhanh hơn.</p>
+<hr />
+<h2 id="16-security-va-quyen-luc-cua-remediation">16. Security và quyền lực của remediation<a class="headerlink" href="#16-security-va-quyen-luc-cua-remediation" title="Permanent link">&para;</a></h2>
+<h3 id="161-khong-dung-credential-chung">16.1 Không dùng credential chung<a class="headerlink" href="#161-khong-dung-credential-chung" title="Permanent link">&para;</a></h3>
+<p>Credential tách theo environment, action class, tenant và target. Executor chỉ nhận token ngắn hạn sau authorization, không giữ cloud admin key.</p>
+<h3 id="162-llm-khong-cham-credential">16.2 LLM không chạm credential<a class="headerlink" href="#162-llm-khong-cham-credential" title="Permanent link">&para;</a></h3>
+<p>LLM chỉ đề xuất catalog ID và rationale. Nó không thấy secret, không tạo command và không gọi executor. Prompt injection trong log/runbook không thể mở rộng tool scope.</p>
+<h3 id="163-target-binding">16.3 Target binding<a class="headerlink" href="#163-target-binding" title="Permanent link">&para;</a></h3>
+<p>Authorization gắn với immutable workload identity, không chỉ tên service. Nếu tên bị tái sử dụng hoặc selector match thêm resource, execution fail closed.</p>
+<h3 id="164-separation-of-duties">16.4 Separation of duties<a class="headerlink" href="#164-separation-of-duties" title="Permanent link">&para;</a></h3>
+<p>Người viết catalog action nguy hiểm không tự duyệt policy và tự phê chuẩn production execution. Security/data action cần dual control từ domain owner phù hợp.</p>
+<h3 id="165-break-glass">16.5 Break-glass<a class="headerlink" href="#165-break-glass" title="Permanent link">&para;</a></h3>
+<p>Break-glass có:</p>
+<ul>
+<li>MFA và identity rõ.</li>
+<li>Scope/TTL tối thiểu.</li>
+<li>Reason bắt buộc.</li>
+<li>Notification độc lập.</li>
+<li>Audit bất biến.</li>
+<li>Review sau sự cố.</li>
+</ul>
+<p>Nó không phải nút bỏ qua mọi kiểm soát.</p>
+<hr />
+<h2 id="17-kill-switch-va-circuit-breaker-cua-chinh-engine">17. Kill switch và circuit breaker của chính engine<a class="headerlink" href="#17-kill-switch-va-circuit-breaker-cua-chinh-engine" title="Permanent link">&para;</a></h2>
+<h3 id="171-ba-muc-dung">17.1 Ba mức dừng<a class="headerlink" href="#171-ba-muc-dung" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Global: dừng action mới toàn nền tảng.</li>
+<li>Scoped: dừng theo tenant, region, service hoặc action class.</li>
+<li>Credential: thu hồi executor identity/admission permission.</li>
+</ul>
+<h3 id="172-failure-domain-oc-lap">17.2 Failure domain độc lập<a class="headerlink" href="#172-failure-domain-oc-lap" title="Permanent link">&para;</a></h3>
+<p>Kill switch không dùng cùng controller, queue và IAM path với executor. Nếu remediation storm làm Kafka nghẽn, lệnh dừng vẫn phải tới được enforcement point.</p>
+<h3 id="173-circuit-breaker-tu-ong">17.3 Circuit breaker tự động<a class="headerlink" href="#173-circuit-breaker-tu-ong" title="Permanent link">&para;</a></h3>
+<p>Engine tự chuyển sang Detection Only khi:</p>
+<ul>
+<li>Harmful/rollback rate vượt ngưỡng.</li>
+<li>Action volume tăng bất thường.</li>
+<li>Policy/model revision mới tạo disagreement lớn.</li>
+<li>Audit/verifier/identity dependency lỗi.</li>
+<li>Nhiều action cùng class thất bại liên tiếp.</li>
+<li>Cost hoặc queue age vượt safety budget.</li>
+</ul>
+<p>Circuit breaker mở không được tắt detection và paging.</p>
+<hr />
+<h2 id="18-audit-tai-dung-ai-biet-gi-quyet-inh-gi-production-oi-gi">18. Audit: tái dựng “ai biết gì, quyết định gì, production đổi gì”<a class="headerlink" href="#18-audit-tai-dung-ai-biet-gi-quyet-inh-gi-production-oi-gi" title="Permanent link">&para;</a></h2>
+<p>Audit chain nối:</p>
+<p>Incident revision → Evidence snapshot → Hypothesis/proposal → Policy decision → Approval → Action digest → Lease → Executor observation → Verification → Expansion/Rollback → Closure</p>
+<h3 id="181-moi-record-can-gi">18.1 Mỗi record cần gì?<a class="headerlink" href="#181-moi-record-can-gi" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Event-time và processing-time.</li>
+<li>Actor/principal và delegated authority.</li>
+<li>Input/output digest.</li>
+<li>Policy/catalog/model version.</li>
+<li>Target identity và observed revision.</li>
+<li>Reason code.</li>
+<li>Link tới artifact đã redact.</li>
+<li>Previous record hash hoặc cơ chế integrity tương đương.</li>
+</ul>
+<h3 id="182-audit-khong-phai-log-debug">18.2 Audit không phải log debug<a class="headerlink" href="#182-audit-khong-phai-log-debug" title="Permanent link">&para;</a></h3>
+<p>Log debug có thể rotate, chứa secret và không bảo đảm thứ tự. Audit là append-only, retention theo policy, quyền sửa tách khỏi executor và có thể export cho review.</p>
+<h3 id="183-privacy">18.3 Privacy<a class="headerlink" href="#183-privacy" title="Permanent link">&para;</a></h3>
+<p>Không lưu raw payment data để “đầy đủ bằng chứng”. Lưu aggregate, tokenized identifier và artifact reference theo least privilege. Điều tra được không đồng nghĩa sao chép dữ liệu nhạy cảm.</p>
+<hr />
+<h2 id="19-verification-oi-voi-cac-action-class-thuong-gap">19. Verification đối với các action class thường gặp<a class="headerlink" href="#19-verification-oi-voi-cac-action-class-thuong-gap" title="Permanent link">&para;</a></h2>
+<h3 id="191-restart-stateless-instance">19.1 Restart stateless instance<a class="headerlink" href="#191-restart-stateless-instance" title="Permanent link">&para;</a></h3>
+<p>Precondition:</p>
+<ul>
+<li>Replica dư đủ tải.</li>
+<li>Instance không giữ state độc quyền.</li>
+<li>Pod lỗi khác control pod khỏe.</li>
+<li>Restart rate limit chưa vượt.</li>
+</ul>
+<p>Success:</p>
+<ul>
+<li>Readiness thật và request success hồi phục.</li>
+<li>Không tạo reconnect/traffic storm.</li>
+<li>Queue không tăng.</li>
+</ul>
+<p>Không dùng khi nhiều replica cùng lỗi do dependency chung; restart hàng loạt chỉ khuếch đại outage.</p>
+<h3 id="192-scale-out">19.2 Scale out<a class="headerlink" href="#192-scale-out" title="Permanent link">&para;</a></h3>
+<p>Precondition:</p>
+<ul>
+<li>Bottleneck thực sự ở capacity của target.</li>
+<li>Downstream còn headroom.</li>
+<li>Scheduler/quota đủ.</li>
+<li>Workload có thể scale ngang.</li>
+</ul>
+<p>Success:</p>
+<ul>
+<li>Queue/latency giảm cùng throughput tăng.</li>
+<li>Downstream không bão hòa.</li>
+</ul>
+<p>Không dùng cho deadlock, bad query hoặc retry storm chưa chặn; scale có thể khuếch đại tải.</p>
+<h3 id="193-giam-retry">19.3 Giảm retry<a class="headerlink" href="#193-giam-retry" title="Permanent link">&para;</a></h3>
+<p>Precondition:</p>
+<ul>
+<li>Retry đang khuếch đại lỗi transient.</li>
+<li>Business semantics cho phép giảm attempt.</li>
+<li>Không làm mất thao tác quan trọng không idempotent.</li>
+</ul>
+<p>Success:</p>
+<ul>
+<li>Request amplification và pool wait giảm.</li>
+<li>Transaction completion tăng.</li>
+<li>Không tăng permanent failure quá guardrail.</li>
+</ul>
+<h3 id="194-circuit-breaker-dependency">19.4 Circuit breaker dependency<a class="headerlink" href="#194-circuit-breaker-dependency" title="Permanent link">&para;</a></h3>
+<p>Precondition:</p>
+<ul>
+<li>Có fallback hợp lệ.</li>
+<li>Dependency lỗi có scope rõ.</li>
+<li>Fallback không vi phạm correctness.</li>
+</ul>
+<p>Success:</p>
+<ul>
+<li>Upstream latency/error giảm.</li>
+<li>Fallback quality trong ngưỡng.</li>
+<li>Dependency có thời gian hồi phục.</li>
+</ul>
+<p>Không dùng cho payment authorization nếu fallback đồng nghĩa chấp nhận giao dịch không kiểm tra.</p>
+<h3 id="195-traffic-shift">19.5 Traffic shift<a class="headerlink" href="#195-traffic-shift" title="Permanent link">&para;</a></h3>
+<p>Precondition:</p>
+<ul>
+<li>Region đích đủ capacity và dữ liệu đồng bộ.</li>
+<li>Session/DNS/cache behavior đã hiểu.</li>
+<li>Compliance cho phép dữ liệu đi region mới.</li>
+</ul>
+<p>Success:</p>
+<ul>
+<li>Customer outcome ở cohort shift tốt hơn.</li>
+<li>Region đích không tiến tới saturation.</li>
+<li>Không tạo split-brain dữ liệu.</li>
+</ul>
+<h3 id="196-featureconfig-rollback">19.6 Feature/config rollback<a class="headerlink" href="#196-featureconfig-rollback" title="Permanent link">&para;</a></h3>
+<p>Precondition:</p>
+<ul>
+<li>Version trước tương thích schema và dependency hiện tại.</li>
+<li>Cohort lỗi khớp rollout.</li>
+<li>Artifact trước còn được ký và available.</li>
+</ul>
+<p>Success:</p>
+<ul>
+<li>Cohort rollback hội tụ về control.</li>
+<li>Không phá data written bởi version mới.</li>
+</ul>
+<hr />
+<h2 id="20-edge-case-production-kho-nhung-thuong-gap">20. Edge case production khó nhưng thường gặp<a class="headerlink" href="#20-edge-case-production-kho-nhung-thuong-gap" title="Permanent link">&para;</a></h2>
+<h3 id="201-retry-storm-sau-remediation">20.1 Retry storm sau remediation<a class="headerlink" href="#201-retry-storm-sau-remediation" title="Permanent link">&para;</a></h3>
+<p>Restart hoặc traffic shift làm hàng nghìn client retry cùng lúc. Engine cần jitter, ramp rate và downstream connection guard. Verification quan sát amplification, không chỉ health của target.</p>
+<h3 id="202-capacity-cliff">20.2 Capacity cliff<a class="headerlink" href="#202-capacity-cliff" title="Permanent link">&para;</a></h3>
+<p>Traffic tạm giảm khiến autoscaler đề xuất scale down trong incident. Khi traffic quay lại, capacity thiếu và lỗi thứ hai xuất hiện. Policy cấm auto scale-down khi incident active trừ workload class đã chứng minh an toàn.</p>
+<h3 id="203-recovery-trung-voi-action">20.3 Recovery trùng với action<a class="headerlink" href="#203-recovery-trung-voi-action" title="Permanent link">&para;</a></h3>
+<p>Dependency tự hồi đúng lúc canary chạy. Control group giúp nhận biết action không phải nguyên nhân. Nếu không có control, kết luận Inconclusive thay vì nhận công.</p>
+<h3 id="204-action-overlap-voi-deploy">20.4 Action overlap với deploy<a class="headerlink" href="#204-action-overlap-voi-deploy" title="Permanent link">&para;</a></h3>
+<p>Deploy mới bắt đầu giữa approval và execution. Target revision mismatch làm request expire. Không merge remediation vào deploy đang chạy một cách ngầm định.</p>
+<h3 id="205-queue-backlog-bung-sau-recovery">20.5 Queue backlog bùng sau recovery<a class="headerlink" href="#205-queue-backlog-bung-sau-recovery" title="Permanent link">&para;</a></h3>
+<p>Service xanh nhưng backlog cũ đổ xuống database, tạo outage thứ hai. Verification phải bao gồm queue age, drain rate và downstream headroom qua cửa sổ chậm.</p>
+<h3 id="206-partial-regional-recovery">20.6 Partial regional recovery<a class="headerlink" href="#206-partial-regional-recovery" title="Permanent link">&para;</a></h3>
+<p>Metric global đạt ngưỡng vì region khỏe có traffic lớn, trong khi region A còn lỗi. Success criteria đo theo affected cohort, không chỉ aggregate.</p>
+<h3 id="207-metric-gaming">20.7 Metric gaming<a class="headerlink" href="#207-metric-gaming" title="Permanent link">&para;</a></h3>
+<p>Action drop request sớm có thể làm latency giảm đẹp nhưng success/count xấu. Outcome set phải ngăn tối ưu một metric đơn.</p>
+<h3 id="208-hidden-shared-dependency">20.8 Hidden shared dependency<a class="headerlink" href="#208-hidden-shared-dependency" title="Permanent link">&para;</a></h3>
+<p>Topology không ghi payment và refund dùng cùng credential quota. Action payment ăn hết quota làm refund lỗi. Shared invariant và topology freshness là gate; unknown dependency làm risk tăng.</p>
+<h3 id="209-manual-action-ngoai-engine">20.9 Manual action ngoài engine<a class="headerlink" href="#209-manual-action-ngoai-engine" title="Permanent link">&para;</a></h3>
+<p>Operator sửa production trực tiếp trong lúc workflow đang chạy. Change observer phát external mutation, invalidates lease/precondition và pause automation. Engine không được ghi đè để “đạt desired state”.</p>
+<h3 id="2010-operator-revoke-giua-execution">20.10 Operator revoke giữa execution<a class="headerlink" href="#2010-operator-revoke-giua-execution" title="Permanent link">&para;</a></h3>
+<p>Approval bị thu hồi sau canary nhưng trước expansion. Expansion bị cấm; canary được rollback hoặc giữ theo policy. Authorization phải được kiểm tra mỗi stage, không chỉ lúc bắt đầu.</p>
+<hr />
+<h2 id="21-game-day-va-replay-chung-minh-safety-truoc-production">21. Game day và replay: chứng minh safety trước production<a class="headerlink" href="#21-game-day-va-replay-chung-minh-safety-truoc-production" title="Permanent link">&para;</a></h2>
+<h3 id="211-bo-kich-ban-toi-thieu">21.1 Bộ kịch bản tối thiểu<a class="headerlink" href="#211-bo-kich-ban-toi-thieu" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Incident kéo dài 65 phút, evidence revision đổi nhiều lần.</li>
+<li>Auth fault nổ chồng phút 37.</li>
+<li>Traffic tự giảm đúng lúc action.</li>
+<li>Verifier mất metric bảy phút.</li>
+<li>Action message giao trùng năm lần.</li>
+<li>Deployment chen giữa approval và execution.</li>
+<li>Executor timeout sau khi target đã đổi.</li>
+<li>Rollback API thất bại.</li>
+<li>Topology stale che shared dependency.</li>
+<li>Audit sink unavailable.</li>
+<li>Prompt injection gợi ý bỏ policy.</li>
+<li>Operator manual change tranh chấp desired state.</li>
+</ol>
+<h3 id="212-expected-result-phai-inh-truoc">21.2 Expected result phải định trước<a class="headerlink" href="#212-expected-result-phai-inh-truoc" title="Permanent link">&para;</a></h3>
+<p>Mỗi scenario có:</p>
+<ul>
+<li>Mode transition mong đợi.</li>
+<li>Action/state transition hợp lệ.</li>
+<li>Customer harm guardrail.</li>
+<li>Page/escalation mong đợi.</li>
+<li>Audit artifact cần xuất hiện.</li>
+<li>Recovery/rollback deadline.</li>
+</ul>
+<p>Không đánh giá game day bằng cảm nhận “có vẻ hệ thống xử lý được”.</p>
+<h3 id="213-replay-thoi-iem-lich-su">21.3 Replay thời điểm lịch sử<a class="headerlink" href="#213-replay-thoi-iem-lich-su" title="Permanent link">&para;</a></h3>
+<p>Engine chỉ được thấy evidence đã tồn tại tại từng thời điểm. Không dùng postmortem conclusion để quyết định ở phút thứ năm. Đây là cách tránh benchmark gian lận vì hindsight.</p>
+<h3 id="214-fault-injection-vao-safety-plane">21.4 Fault injection vào safety plane<a class="headerlink" href="#214-fault-injection-vao-safety-plane" title="Permanent link">&para;</a></h3>
+<p>Không chỉ phá workload; phải phá policy cache, audit, lease coordinator, notification, verifier và identity provider. Safety Engine cần chứng minh fail closed cho mutation nhưng vẫn giữ detection/handoff.</p>
+<hr />
+<h2 id="22-metrics-van-hanh-ung">22. Metrics vận hành đúng<a class="headerlink" href="#22-metrics-van-hanh-ung" title="Permanent link">&para;</a></h2>
+<p>Automation rate một mình là metric nguy hiểm. Cần bộ cân bằng:</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-2" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Ý nghĩa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Eligible action rate</td>
+<td>Bao nhiêu incident thực sự thuộc catalog an toàn</td>
+</tr>
+<tr>
+<td>Proposal acceptance</td>
+<td>Proposal có hữu ích với on-call không</td>
+</tr>
+<tr>
+<td>Time-to-safe-mitigation</td>
+<td>Bao lâu đạt cải thiện đã xác minh</td>
+</tr>
+<tr>
+<td>Harmful action rate</td>
+<td>Action làm customer/invariant xấu đi</td>
+</tr>
+<tr>
+<td>False success rate</td>
+<td>Engine tuyên bố thành công nhưng outcome không hồi</td>
+</tr>
+<tr>
+<td>Canary abort rate</td>
+<td>Canary chặn được regression sớm ra sao</td>
+</tr>
+<tr>
+<td>Rollback success và latency</td>
+<td>Khả năng đảo action thật</td>
+</tr>
+<tr>
+<td>Stale action rejection</td>
+<td>TOCTOU guard hoạt động không</td>
+</tr>
+<tr>
+<td>Duplicate side effect</td>
+<td>Idempotency có hiệu lực không</td>
+</tr>
+<tr>
+<td>Human override/revoke</td>
+<td>Policy có lệch thực tế không</td>
+</tr>
+<tr>
+<td>Audit completeness</td>
+<td>Có tái dựng toàn lifecycle không</td>
+</tr>
+<tr>
+<td>Detection-only time</td>
+<td>Safety dependency có thiếu ổn định không</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="221-slice-bat-buoc">22.1 Slice bắt buộc<a class="headerlink" href="#221-slice-bat-buoc" title="Permanent link">&para;</a></h3>
+<p>Đo riêng theo:</p>
+<ul>
+<li>Action class.</li>
+<li>Service tier.</li>
+<li>Region/tenant.</li>
+<li>Automation tier.</li>
+<li>Telemetry quality.</li>
+<li>Model/policy/catalog version.</li>
+<li>Giờ làm việc và ngoài giờ.</li>
+</ul>
+<p>Tỷ lệ harm trung bình thấp có thể che một action class rất nguy hiểm.</p>
+<h3 id="222-near-miss">22.2 Near-miss<a class="headerlink" href="#222-near-miss" title="Permanent link">&para;</a></h3>
+<p>Action bị canary abort trước khi gây impact rộng là near-miss cần học, không phải “hệ thống hoạt động bình thường”. Review vì sao offline replay/policy không bắt sớm hơn.</p>
+<hr />
+<h2 id="23-rollout-safety-engine">23. Rollout Safety Engine<a class="headerlink" href="#23-rollout-safety-engine" title="Permanent link">&para;</a></h2>
+<h3 id="giai-oan-1-catalog-va-audit-only">Giai đoạn 1 — Catalog và audit only<a class="headerlink" href="#giai-oan-1-catalog-va-audit-only" title="Permanent link">&para;</a></h3>
+<p>Chuẩn hóa action, target, precondition, verification và rollback. Mọi execution vẫn do người làm nhưng đi qua audit contract.</p>
+<h3 id="giai-oan-2-proposal-shadow">Giai đoạn 2 — Proposal shadow<a class="headerlink" href="#giai-oan-2-proposal-shadow" title="Permanent link">&para;</a></h3>
+<p>Engine đánh giá risk và policy song song, không can thiệp. So với quyết định thật để tìm rule sai và missing invariant.</p>
+<h3 id="giai-oan-3-human-approved-canary">Giai đoạn 3 — Human-approved canary<a class="headerlink" href="#giai-oan-3-human-approved-canary" title="Permanent link">&para;</a></h3>
+<p>Chỉ action reversible, scope nhỏ, verifier khỏe. Mỗi proposal có expiry và approval rõ.</p>
+<h3 id="giai-oan-4-auto-canary">Giai đoạn 4 — Auto-canary<a class="headerlink" href="#giai-oan-4-auto-canary" title="Permanent link">&para;</a></h3>
+<p>Chỉ catalog entry đã pass replay/game day và có rollback reliability cao. Expansion vẫn cần người hoặc evidence gate nghiêm ngặt.</p>
+<h3 id="giai-oan-5-bounded-closed-loop">Giai đoạn 5 — Bounded closed loop<a class="headerlink" href="#giai-oan-5-bounded-closed-loop" title="Permanent link">&para;</a></h3>
+<p>Auto-canary và progressive expansion cho failure mode lặp lại, với circuit breaker toàn lớp. Không mở rộng sang irreversible action chỉ vì action đơn giản đã thành công.</p>
+<p>Mỗi model/policy/catalog revision đi qua shadow, canary và rollback giống code production.</p>
+<hr />
+<h2 id="24-production-acceptance-criteria">24. Production acceptance criteria<a class="headerlink" href="#24-production-acceptance-criteria" title="Permanent link">&para;</a></h2>
+<p>Trước khi bật autonomous action, cần chứng minh:</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-2" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Cổng</th>
+<th>Điều kiện pass</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Freeform execution</td>
+<td>Không tồn tại đường từ model tới lệnh tự do</td>
+</tr>
+<tr>
+<td>Authorization</td>
+<td>Target/action/environment bị ràng buộc và token ngắn hạn</td>
+</tr>
+<tr>
+<td>Evidence freshness</td>
+<td>Action stale bị từ chối 100% trong replay</td>
+</tr>
+<tr>
+<td>Idempotency</td>
+<td>Delivery trùng không tạo thêm side effect</td>
+</tr>
+<tr>
+<td>Conflict control</td>
+<td>Concurrent action cùng invariant không chạy chồng</td>
+</tr>
+<tr>
+<td>Canary</td>
+<td>Đủ sample và có control/benchmark phù hợp</td>
+</tr>
+<tr>
+<td>Verification</td>
+<td>Outcome + mechanism + harm guardrail</td>
+</tr>
+<tr>
+<td>Rollback</td>
+<td>Đã đo success rate và p95, có test failure path</td>
+</tr>
+<tr>
+<td>Audit</td>
+<td>Tái dựng đủ incident-to-closure chain</td>
+</tr>
+<tr>
+<td>Kill switch</td>
+<td>Hoạt động khi queue/controller chính hỏng</td>
+</tr>
+<tr>
+<td>Degraded mode</td>
+<td>Audit/verifier lỗi thì mutation dừng, detection còn</td>
+</tr>
+<tr>
+<td>Security</td>
+<td>Prompt/data injection không đổi tool/action scope</td>
+</tr>
+<tr>
+<td>Human UX</td>
+<td>Approval stale bị khóa, scope change cần duyệt lại</td>
+</tr>
+</tbody>
+</table></div>
+<p>Ngưỡng khởi đầu bảo thủ:</p>
+<div class="table-scroll table-scroll--fit table-scroll--cols-2" role="group" aria-label="Data table"><table>
+<thead>
+<tr>
+<th>Chỉ số</th>
+<th style="text-align: right;">Mục tiêu</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unauthorized execution</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td>Action ngoài catalog</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td>Severity-1 do autonomous action</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td>Stale action executed</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td>Duplicate side effect</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td>Missing telemetry bị coi là success</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td>Audit reconstruction completeness</td>
+<td style="text-align: right;">100%</td>
+</tr>
+<tr>
+<td>Rollback success cho auto-eligible action</td>
+<td style="text-align: right;">≥99,9%</td>
+</tr>
+<tr>
+<td>Regression bị bắt trước expansion</td>
+<td style="text-align: right;">≥99% golden scenarios</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="25-checklist-thiet-ke-cho-tung-action-catalog-entry">25. Checklist thiết kế cho từng action catalog entry<a class="headerlink" href="#25-checklist-thiet-ke-cho-tung-action-catalog-entry" title="Permanent link">&para;</a></h2>
+<h3 id="muc-ich">Mục đích<a class="headerlink" href="#muc-ich" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Failure mode cụ thể là gì?</li>
+<li>Action chữa root cause hay chỉ mitigation?</li>
+<li>Khi nào tuyệt đối không dùng?</li>
+</ul>
+<h3 id="target-va-scope">Target và scope<a class="headerlink" href="#target-va-scope" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Immutable identity nào được phép?</li>
+<li>Traffic/tenant/region exposure tối đa?</li>
+<li>Có shared dependency hoặc quota nào?</li>
+</ul>
+<h3 id="preconditions">Preconditions<a class="headerlink" href="#preconditions" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Evidence nào phải fresh?</li>
+<li>Topology/change revision nào phải khớp?</li>
+<li>Business invariant nào là hard gate?</li>
+<li>Có action/manual change nào conflict?</li>
+</ul>
+<h3 id="execution">Execution<a class="headerlink" href="#execution" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Desired state là gì?</li>
+<li>Idempotency và fencing hoạt động thế nào?</li>
+<li>Timeout/retry semantics ra sao?</li>
+<li>Action TTL và safe stopping point ở đâu?</li>
+</ul>
+<h3 id="verification">Verification<a class="headerlink" href="#verification" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Customer outcome nào phải cải thiện?</li>
+<li>Mechanism signal nào phải đổi?</li>
+<li>Harm guardrail nào không được xấu?</li>
+<li>Minimum sample, fast/slow window và control là gì?</li>
+</ul>
+<h3 id="rollback">Rollback<a class="headerlink" href="#rollback" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Trạng thái safe là trạng thái nào?</li>
+<li>Rollback có staged không?</li>
+<li>Success rate/p95 đã đo chưa?</li>
+<li>Nếu rollback fail, recovery và escalation là gì?</li>
+</ul>
+<h3 id="governance">Governance<a class="headerlink" href="#governance" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Automation tier và risk floor?</li>
+<li>Ai viết, review và approve?</li>
+<li>Policy/catalog expiry?</li>
+<li>Audit retention và data classification?</li>
+</ul>
+<p>Nếu câu trả lời chỉ là “runbook có hướng dẫn”, action chưa đủ chuẩn để tự động hóa.</p>
+<hr />
+<h2 id="26-anti-patterns-can-loai-bo">26. Anti-patterns cần loại bỏ<a class="headerlink" href="#26-anti-patterns-can-loai-bo" title="Permanent link">&para;</a></h2>
+<h3 id="confidence-tren-80-thi-execute">“Confidence trên 80% thì execute”<a class="headerlink" href="#confidence-tren-80-thi-execute" title="Permanent link">&para;</a></h3>
+<p>Sai vì confidence không chứa impact, irreversibility, exposure, policy và rollback readiness.</p>
+<h3 id="action-co-rollback-nen-an-toan">“Action có rollback nên an toàn”<a class="headerlink" href="#action-co-rollback-nen-an-toan" title="Permanent link">&para;</a></h3>
+<p>Sai nếu rollback chưa đo, phụ thuộc cùng control plane hoặc trạng thái cũ không còn tương thích.</p>
+<h3 id="canary-1-pod-la-u">“Canary 1 pod là đủ”<a class="headerlink" href="#canary-1-pod-la-u" title="Permanent link">&para;</a></h3>
+<p>Sai nếu pod đó không đại diện traffic hoặc không đủ sample.</p>
+<h3 id="metric-xanh-la-thanh-cong">“Metric xanh là thành công”<a class="headerlink" href="#metric-xanh-la-thanh-cong" title="Permanent link">&para;</a></h3>
+<p>Sai nếu traffic giảm, metric missing hoặc customer outcome chưa hồi.</p>
+<h3 id="chi-cho-phep-script-trong-git-la-an-toan">“Chỉ cho phép script trong Git là an toàn”<a class="headerlink" href="#chi-cho-phep-script-trong-git-la-an-toan" title="Permanent link">&para;</a></h3>
+<p>Script versioned vẫn có thể selector rộng, quyền cao, precondition stale và không verification.</p>
+<h3 id="mot-remediation-tai-mot-thoi-iem">“Một remediation tại một thời điểm”<a class="headerlink" href="#mot-remediation-tai-mot-thoi-iem" title="Permanent link">&para;</a></h3>
+<p>Global lock làm chậm incident độc lập; cần resource/invariant coordination.</p>
+<h3 id="operator-a-duyet-thi-engine-khong-chiu-trach-nhiem">“Operator đã duyệt thì engine không chịu trách nhiệm”<a class="headerlink" href="#operator-a-duyet-thi-engine-khong-chiu-trach-nhiem" title="Permanent link">&para;</a></h3>
+<p>Approval không thay hard gate, target binding, canary và verifier.</p>
+<h3 id="tang-automation-rate-la-tien-bo">“Tăng automation rate là tiến bộ”<a class="headerlink" href="#tang-automation-rate-la-tien-bo" title="Permanent link">&para;</a></h3>
+<p>Tiến bộ là giảm time-to-safe-mitigation và harm, không phải tăng số mutation.</p>
+<hr />
+<h2 id="ket-luan">Kết luận<a class="headerlink" href="#ket-luan" title="Permanent link">&para;</a></h2>
+<p>Một Remediation Safety Engine production vận hành theo chuỗi:</p>
+<p><strong>proposal có revision → hard gates → risk và blast radius → approval phù hợp → resource lease → canary đủ mẫu → verification outcome/mechanism/harm → progressive expansion hoặc rollback → audit closure</strong>.</p>
+<p>Trong case payment, engine không tăng gấp đôi pool dù RCA nói pool exhaustion, vì connection budget của shared database sẽ bị phá. Nó chọn giảm retry trên 5% traffic, so với control, quan sát checkout success tăng 19,4 điểm, retry và pool wait giảm, đồng thời kiểm tra duplicate charge và refund. Kết quả mới là Partial Success vì checkout chưa đạt 98,5%. Khi auth lỗi nổ chồng, engine dùng write set riêng; proposal restart gateway bị chặn do conflict. Khi telemetry hoặc audit hỏng, mutation dừng nhưng detection vẫn tiếp tục.</p>
+<p>Đó là khác biệt giữa “tự động chạy runbook” và một safety engine thật sự: <strong>không chỉ biết làm gì, mà biết khi nào không được làm, làm bao nhiêu là đủ, làm sao biết có tác dụng và làm gì khi chính remediation thất bại</strong>.</p>
+<h2 id="tai-lieu-lien-quan">Tài liệu liên quan<a class="headerlink" href="#tai-lieu-lien-quan" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../../12-investigation-engine/README.vi/">12 — Investigation Engine</a></li>
+<li><a href="../../14-production-engine/README.vi/">14 — Production Engine</a></li>
+<li><a href="../../16-aiops-domain-packs/README.vi/">16 — Domain Packs</a></li>
+<li><a href="../../17-aiops-benchmark-replay/README.vi/">17 — Benchmark Replay</a></li>
+</ul>
+<hr />
+<h2 id="acceptance-contract-cua-chapter">Acceptance contract của chapter<a class="headerlink" href="#acceptance-contract-cua-chapter" title="Permanent link">&para;</a></h2>
+<p>Chapter này tuân theo <a href="../../acceptance-template.vi/">Acceptance Template chung</a>: capability chỉ được coi là hoàn tất khi có scope, input quality, timeline scenario, expected output, negative control, hard gates, thresholds và evidence artifact tái tạo được. Checklist hoặc demo không thay thế benchmark/replay.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../../12-investigation-engine/README.vi/" class="md-footer__link md-footer__link--prev" aria-label="Previous: 12 Investigation Engine">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                12 Investigation Engine
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../../14-production-engine/README.vi/" class="md-footer__link md-footer__link--next" aria-label="Next: 14 Production Engine">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                14 Production Engine
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/XUanhoa04/aiops-engineering-handbook" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../../javascripts/mermaid-zoom.js"></script>
+      
+    
+  </body>
+</html>
