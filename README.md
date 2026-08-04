@@ -1,11 +1,11 @@
 # AIOps Engineering Handbook
 
-> **A production-grade reference for designing Autonomous Intelligent Operations platforms on AWS, Kubernetes, and cloud-native infrastructure — with full Vietnamese and English editions.**
+> **A production-grade reference for designing Autonomous Intelligent Operations platforms on AWS, Kubernetes, and cloud-native infrastructure — with a bilingual core curriculum and Vietnamese production extensions.**
 
 [![Status](https://img.shields.io/badge/status-active-brightgreen)](.)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Languages](https://img.shields.io/badge/languages-EN%20%7C%20VI-red)](.)
-[![Chapters](https://img.shields.io/badge/chapters-19%20%C3%97%202%20%2B%20System%20Fundamentals-blue)](docs/)
+[![Chapters](https://img.shields.io/badge/chapters-18%20shared%20%2B%203%20VI%20%2B%20System%20Fundamentals-blue)](docs/)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://xuanhoa04.github.io/aiops-engineering-handbook/)
 [![Audience](https://img.shields.io/badge/audience-SRE%20%7C%20DevOps%20%7C%20Platform%20%7C%20ML-orange)](.)
 [![GitHub](https://img.shields.io/badge/github-XUanhoa04%2Faiops--engineering--handbook-black)](https://github.com/XUanhoa04/aiops-engineering-handbook)
@@ -13,7 +13,7 @@
 | | |
 |---|---|
 | **Languages** | English (`docs/en/`) · Vietnamese (`docs/vi/`) |
-| **Chapters** | 18 per language (00–17) + System Fundamentals |
+| **Chapters** | 18 shared (00–17) + 3 Vietnamese extensions (18–20) + System Fundamentals |
 | **Docs site** | [xuanhoa04.github.io/aiops-engineering-handbook](https://xuanhoa04.github.io/aiops-engineering-handbook/) |
 | **Level** | Staff / Principal SRE depth (concepts first) |
 | **Repo** | [github.com/XUanhoa04/aiops-engineering-handbook](https://github.com/XUanhoa04/aiops-engineering-handbook) |
