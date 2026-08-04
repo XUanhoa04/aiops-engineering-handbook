@@ -447,3 +447,232 @@ Health check nên phản ánh khả năng **nhận work mới**, không biến t
 ---
 
 **Checkpoint Section 2:** trước khi gọi một failure là “network chập chờn”, phải định vị phase, state table, direction, route, payload class và failure domain.
+
+---
+
+# SECTION 3 — STORAGE, DATABASE VÀ DURABILITY
+
+## 9. Page cache, writeback và `fsync`
+
+### 9.1 `write()` thành công chưa chắc dữ liệu đã durable
+
+Application ghi file thường chỉ copy dữ liệu vào page cache và đánh dấu page là dirty. Kernel flush sau; storage controller và device cũng có cache riêng. Nếu durability contract yêu cầu dữ liệu sống qua power loss, application/database phải dùng cơ chế flush phù hợp như `fsync`, `fdatasync` hoặc direct I/O theo thiết kế.
+
+```mermaid
+flowchart LR
+    A[Application buffer] -->|write| B[Kernel page cache]
+    B -->|writeback| C[Block layer queue]
+    C --> D[Controller cache]
+    D --> E[Persistent media]
+    F[fsync / barrier] -. durability boundary .-> E
+```
+
+Điều cần phân biệt:
+
+- **accepted:** syscall nhận dữ liệu;
+- **visible:** process khác có thể đọc thấy;
+- **replicated:** bản sao khác đã nhận;
+- **durable:** dữ liệu tồn tại sau failure theo contract;
+- **committed:** state machine/database cho phép client dựa vào kết quả.
+
+Năm từ này không đồng nghĩa.
+
+### 9.2 Dirty page và writeback burst
+
+Kernel có thể gom nhiều dirty page rồi flush thành burst. Application latency ổn trong một thời gian, sau đó stall khi dirty limit bị chạm hoặc device queue bão hòa. Symptom thường có dạng răng cưa.
+
+```bash
+grep -E 'Dirty|Writeback|Cached' /proc/meminfo
+cat /proc/pressure/io
+iostat -x 1
+```
+
+Evidence nên gồm:
+
+- dirty/writeback bytes;
+- writeback rate và stall time;
+- device await, queue depth, utilization;
+- `fsync` latency histogram;
+- cgroup I/O throttling;
+- checkpoint/compaction/snapshot timeline;
+- noisy neighbor cùng device hoặc volume.
+
+### 9.3 Page cache tạo hai kiểu “memory issue”
+
+1. **Cache hữu ích bị reclaim:** read latency và physical I/O tăng dù process RSS không đổi nhiều.
+2. **Dirty cache gây pressure:** writeback không theo kịp, allocator/reclaim path chậm và process stall.
+
+Không chữa bằng cách nhìn `free memory` rồi kết luận thiếu RAM. Hãy kiểm tra working set, refault, PSI và device service time.
+
+## 10. Filesystem, inode và copy-on-write amplification
+
+### 10.1 Hết dung lượng không chỉ là hết byte
+
+Filesystem có thể từ chối ghi khi:
+
+- hết block;
+- hết inode vì quá nhiều file nhỏ;
+- hết metadata space;
+- quota user/project/container bị chạm;
+- reserved block không dành cho workload;
+- filesystem chuyển read-only sau I/O error;
+- deleted file vẫn được process mở nên space chưa được giải phóng.
+
+```bash
+df -h
+df -i
+findmnt -o TARGET,SOURCE,FSTYPE,OPTIONS
+lsof +L1
+```
+
+Metric filesystem phải mang identity của mount/device đúng. Gộp theo node mà không phân biệt mount có thể che volume nhỏ đang đầy.
+
+### 10.2 Copy-on-write và container layer
+
+Overlay filesystem giúp image layer dùng chung, nhưng write vào file từ lower layer có thể trigger copy-up. Workload ghi nhiều file lớn, unpack artifact hoặc database chạy trên writable container layer có thể chịu:
+
+- extra read/write;
+- metadata operation tăng;
+- inode pressure;
+- garbage collection image cạnh tranh I/O;
+- disk pressure khiến kubelet eviction.
+
+State lớn cần volume phù hợp; writable layer không phải persistent storage miễn phí.
+
+### 10.3 Snapshot không phải backup mặc định
+
+Snapshot storage thường là crash-consistent ở mức block. Nó có thể chứa WAL/data ở trạng thái mà database phải recovery, hoặc không nhất quán giữa nhiều volume. Một backup đáng tin cần:
+
+1. consistency contract rõ ràng;
+2. application/database coordination nếu cần;
+3. retention và immutability;
+4. restore test định kỳ;
+5. đo RPO/RTO bằng bằng chứng restore, không bằng việc job backup trả `success`.
+
+## 11. WAL, checkpoint và database durability
+
+### 11.1 Tại sao có Write-Ahead Log
+
+Database ghi thay đổi tuần tự vào WAL trước khi cập nhật data page ngẫu nhiên. WAL giúp recovery và group commit, nhưng đưa `fsync` latency vào commit path.
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant DB as Database
+    participant W as WAL
+    participant P as Data pages
+    C->>DB: COMMIT
+    DB->>W: append log record
+    W-->>DB: durable flush
+    DB-->>C: commit acknowledged
+    DB->>P: checkpoint later
+```
+
+Nếu cấu hình acknowledgment trước durable flush để tăng throughput, contract mất dữ liệu khi crash phải được chấp nhận rõ ràng; không gọi đó là “tối ưu miễn phí”.
+
+### 11.2 Group commit và latency shape
+
+Nhiều transaction có thể dùng chung một flush. Khi load vừa đủ, batching tăng throughput; khi load thấp, từng transaction có thể chờ batch timer; khi load quá cao, WAL device bão hòa và commit queue tăng.
+
+Do đó cần đo:
+
+- commit latency histogram;
+- WAL bytes/s và flushes/s;
+- transactions per flush;
+- WAL queue/wait time;
+- device latency;
+- replication acknowledgment latency nếu synchronous;
+- transaction abort/retry rate.
+
+### 11.3 Checkpoint storm
+
+Checkpoint flush nhiều dirty data page để giới hạn recovery time/WAL growth. Nếu checkpoint quá gấp:
+
+- write IOPS tăng mạnh;
+- read query bị cạnh tranh queue;
+- WAL recycle chậm;
+- replica lag tăng;
+- latency có chu kỳ trùng checkpoint.
+
+Mitigation có thể là spread checkpoint, tăng interval/target có kiểm soát, cấp I/O riêng hoặc giảm ingest. Tăng interval làm recovery lâu hơn và WAL giữ nhiều hơn; đây là trade-off giữa steady-state cost và recovery cost.
+
+### 11.4 Durability incident questions
+
+Khi có nghi ngờ mất/duplicate dữ liệu, trước khi restart:
+
+1. client đã nhận acknowledgment nào?
+2. acknowledgment đại diện cho accepted, replicated hay durable?
+3. leader term/epoch và replica position lúc đó là gì?
+4. có failover hoặc clock anomaly không?
+5. retry của client có idempotency key không?
+6. backup/restore point gần nhất đã được kiểm chứng là gì?
+
+Preserve WAL, audit log và topology timeline trước hành động làm mất evidence.
+
+## 12. LSM tree, B-tree, compaction và storage amplification
+
+### 12.1 Hai họ cấu trúc, hai kiểu cost
+
+| Đặc tính | B-tree/B+tree | LSM tree |
+|---|---|---|
+| Write path | cập nhật page theo vị trí | append WAL + memtable, flush thành sorted files |
+| Read path | tree traversal | kiểm tra memtable và nhiều level/file, thường có Bloom filter |
+| Background work | page split, vacuum/checkpoint | compaction |
+| Failure shape | random I/O, lock/latch, bloat | compaction debt, read/write amplification |
+
+Không có lựa chọn luôn tốt hơn. Workload read/write ratio, key distribution, range scan, durability và storage medium quyết định.
+
+### 12.2 Write amplification
+
+Application ghi 1 GB nhưng device có thể ghi nhiều GB vì WAL, replication, compaction, snapshot copy-on-write và filesystem metadata. Tỷ lệ này thay đổi theo workload.
+
+```text
+write_amplification = physical_bytes_written / logical_bytes_ingested
+```
+
+Đo ở cùng cửa sổ đủ dài; background work có thể trễ hơn ingest. Với managed service, dùng proxy signal như compaction bytes, volume write bytes và ingest bytes.
+
+### 12.3 Compaction debt là queue
+
+Nếu flush tạo sorted files nhanh hơn compaction hợp nhất chúng:
+
+- số file/level tăng;
+- read amplification tăng;
+- space amplification tăng;
+- compaction tranh I/O với foreground;
+- cuối cùng engine stall write để bảo vệ invariants.
+
+Evidence pack:
+
+- pending compaction bytes/tasks;
+- flush rate và memtable count;
+- level/file distribution;
+- read/write amplification;
+- Bloom filter hit/usefulness;
+- foreground stall duration;
+- disk bandwidth headroom.
+
+### 12.4 Hot key và partition mechanics
+
+Tổng cluster utilization có thể thấp trong khi một shard/partition bão hòa. Group theo shard, key range, tenant và leader placement. Các mitigation như split shard, salt key, cache hay repartition đều có correctness và migration cost.
+
+Không tự động shard lại trong incident nếu:
+
+- migration tăng I/O lên cluster đang bão hòa;
+- ordering hoặc transaction boundary phụ thuộc partition;
+- follower chưa đủ caught-up;
+- rollback topology chưa rõ.
+
+### 12.5 Storage decision table
+
+| Symptom | Hypothesis cạnh tranh | Discriminating evidence |
+|---|---|---|
+| commit p99 tăng | WAL flush, sync replica, lock | phase latency: WAL/replication/lock |
+| read p99 tăng theo chu kỳ | checkpoint, compaction, cache reclaim | background timeline + device queue + refault |
+| disk đầy nhanh | logical growth, WAL retention, snapshot/CoW, deleted-open file | bytes theo category + inode + open-deleted |
+| write stall | quota, dirty throttling, compaction debt | cgroup throttle + PSI + engine stall reason |
+| một shard nóng | skew key/tenant/leader | per-shard work, không chỉ request count |
+
+---
+
+**Checkpoint Section 3:** trước khi gọi một failure là “disk chậm”, phải xác định durability boundary, foreground/background work, logical/physical amplification, queue nào tăng và failure có lệch theo shard hay không.
