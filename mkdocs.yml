@@ -107,6 +107,7 @@ nav:
           - Acceptance Template: vi/acceptance-template.vi.md
       - Nền tảng hệ thống:
           - System Architecture Fundamentals: vi/system-fundamentals/README.vi.md
+          - System Fundamentals Next: vi/system-fundamentals-next/README.vi.md
       - Nền tảng evidence:
           - 01 Observability: vi/01-observability/README.vi.md
           - 02 Telemetry contract: vi/02-opentelemetry/README.vi.md
