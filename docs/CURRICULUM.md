@@ -1,6 +1,6 @@
 # Curriculum — AIOps Engineering Handbook
 
-Single source of truth for chapter order. Chapters 00–17 are dual-language (`docs/vi/` · `docs/en/`); the Vietnamese production track currently extends through Chapter 20.
+Single source of truth for chapter order. Chapters 00–17 are dual-language (`docs/vi/` · `docs/en/`); the Vietnamese track also includes the advanced System Fundamentals S2 and production Chapters 18–20.
 
 **Online site (GitHub Pages):** after first deploy →  
 `https://xuanhoa04.github.io/aiops-engineering-handbook/`
@@ -12,7 +12,8 @@ Local: `pip install -r requirements-docs.txt && mkdocs serve`
 ## Pipeline mental model
 
 ```
-System Fundamentals (S): compute · network · storage · distributed · AI/ML infra
+System Fundamentals (S): core compute · network · storage · distributed · AI/ML infra
+    → System Fundamentals Next (S2, VI): failure mechanics · coordination · overload · evidence
     ↓
 Collect (02–05)
     → Data plane (06): normalize · enrich · validate · store · feature
@@ -26,7 +27,8 @@ Collect (02–05)
 
 ```mermaid
 graph TD
-    C[02-05 Collect] --> DP[06 Data plane]
+    SF[S + S2 System Foundations] --> C[02-05 Collect]
+    C --> DP[06 Data plane]
     DP --> K[07 Kafka]
     K --> TC[08 Topology + Change]
     TC --> I[09-13 Intelligence + Action]
@@ -47,6 +49,7 @@ graph TD
 | # | Folder | Title (short) | Role |
 |---|--------|---------------|------|
 | S | `system-fundamentals` | System Architecture Fundamentals | Compute, network, storage, distributed systems, AI/ML infra |
+| S2 | `system-fundamentals-next` (VI) | System Fundamentals Next | Kernel-to-service failure mechanics, coordination, overload and evidence |
 | 00 | `00-introduction` | Introduction to AIOps | Philosophy, ROI, full pipeline map |
 | 01 | `01-observability` | Observability | Pillars, SLO, cardinality |
 | 02 | `02-opentelemetry` | OpenTelemetry | Collection pipeline |
