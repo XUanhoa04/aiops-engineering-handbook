@@ -15,7 +15,7 @@ Thanks for contributing. This is a **production-grade** dual-language handbook (
 | Edge cases | Real production failure modes (blameless, no employer secrets) |
 | Diagrams | Suggest hero architecture posters (PNG under `docs/assets/diagrams/`) |
 | Translate | Keep VI ↔ EN parity for the same section |
-| Structure | Cross-links between chapters 00–16 |
+| Structure | Cross-links between shared chapters 00–17 and Vietnamese extensions 18–20 |
 
 ---
 
@@ -23,7 +23,7 @@ Thanks for contributing. This is a **production-grade** dual-language handbook (
 
 See [docs/CURRICULUM.md](docs/CURRICULUM.md).
 
-**Order:** Collect (02–05) → **Data plane (06)** → Kafka (07) → Intelligence (08–11) → Action (12) → Production (13) → Case studies (14–16).
+**Order:** Collect (02–05) → **Data plane (06)** → Kafka (07) → Topology (08) → Intelligence (09–13) → Production and evidence (14–17) → Vietnamese operations and governance extensions (18–20).
 
 ---
 
