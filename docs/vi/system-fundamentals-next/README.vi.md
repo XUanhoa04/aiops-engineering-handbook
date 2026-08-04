@@ -930,3 +930,256 @@ flowchart TD
 ---
 
 **Checkpoint Section 4:** distributed correctness cần term, quorum, idempotency và fencing; overload safety cần queue hữu hạn, deadline, admission và retry budget. “Thêm replica” không thay thế các contract này.
+
+---
+
+# SECTION 5 — KUBERNETES CONTROL PLANE, PLACEMENT VÀ IDENTITY
+
+## 17. Kubernetes control-plane failure mechanics
+
+### 17.1 Reconciliation là eventually convergent
+
+Kubernetes controller quan sát desired state và actual state, rồi lặp lại reconcile. `kubectl apply` thành công chỉ cho biết API server chấp nhận object; nó không bảo đảm Pod đã schedule, image đã pull, volume đã attach hay endpoint đã nhận traffic.
+
+```mermaid
+flowchart LR
+    U[Client] --> A[kube-apiserver]
+    A --> E[(etcd)]
+    A --> W[Watch streams]
+    W --> C[Controllers]
+    W --> S[Scheduler]
+    C --> A
+    S --> A
+    A --> K[Kubelet]
+    K --> R[Runtime / Pod]
+    K --> A
+```
+
+Điều tra phải xác định state đang kẹt ở boundary nào:
+
+1. admission/API write;
+2. etcd commit;
+3. watch delivery/cache;
+4. controller work queue;
+5. scheduling;
+6. kubelet/runtime;
+7. network/volume readiness;
+8. endpoint propagation.
+
+### 17.2 API server và etcd overload
+
+Các nguồn tải thường bị bỏ sót:
+
+- client list toàn bộ resource thay vì list có selector;
+- watch reconnect storm sau network issue;
+- controller hot loop vì object không hội tụ;
+- CRD object lớn hoặc status update quá thường xuyên;
+- audit webhook chậm;
+- admission webhook gọi dependency ngoài;
+- lease/heartbeat volume lớn;
+- mass rollout/delete tạo write burst.
+
+Evidence pack:
+
+- API request rate/latency theo verb, resource, client và response code;
+- inflight requests và priority/fairness queue;
+- watch count, termination và relist;
+- etcd commit/apply latency, DB size, leader change;
+- admission latency/failure theo webhook;
+- controller queue depth, oldest work age và reconcile error.
+
+Không restart toàn control plane khi chưa biết dependency graph. Restart đồng thời có thể làm mất cache, gây relist storm và tăng tải etcd.
+
+### 17.3 Watch staleness và propagation delay
+
+Control plane có thể healthy ở mức request nhưng data plane nhận state chậm. Ví dụ Pod ready nhưng endpoint, proxy rule hoặc DNS record chưa propagate. Đo timeline bằng resource version và timestamp tại từng hop:
+
+```text
+Pod Ready
+  -> EndpointSlice updated
+  -> node/proxy consumed update
+  -> load balancer target healthy
+  -> first successful real request
+```
+
+Một metric deploy duration chung không cho biết hop nào chậm.
+
+### 17.4 Admission webhook là dependency trong write path
+
+Webhook chậm hoặc không reachable có thể chặn deploy toàn cluster. Với mỗi webhook cần rõ:
+
+- timeout;
+- failure policy;
+- scope/selector tối thiểu;
+- replica và failure-domain placement;
+- dependency có vòng lặp không;
+- certificate rotation;
+- bypass/break-glass được audit.
+
+`Fail` bảo vệ policy nhưng giảm availability; `Ignore` giữ availability nhưng có thể bỏ guardrail. Quyết định theo loại policy, không dùng một default cho mọi webhook.
+
+## 18. Scheduling, placement, disruption và rollout safety
+
+### 18.1 Pending Pod là kết quả của constraint intersection
+
+Scheduler phải tìm node thỏa đồng thời:
+
+- resource request;
+- node selector/affinity;
+- taint/toleration;
+- topology spread;
+- volume topology;
+- device/GPU availability;
+- inter-Pod affinity/anti-affinity;
+- policy/plugin constraint.
+
+Mỗi constraint riêng có vẻ hợp lý nhưng giao của chúng có thể rỗng. Capacity dashboard tổng cluster không chứng minh có **feasible capacity**.
+
+Đo unschedulable reason, pending age, feasible node count và fragmentation theo resource vector. CPU còn nhiều không giúp Pod cần GPU, huge page hoặc memory contiguous cụ thể.
+
+### 18.2 Resource fragmentation
+
+Ví dụ ba node mỗi node còn 2 CPU và 4 GiB; tổng còn 6 CPU/12 GiB nhưng Pod cần 4 CPU/2 GiB vẫn không schedule được. Cluster autoscaler phải hiểu shape của Pod, node group constraint và startup time.
+
+Mitigation:
+
+- right-size request dựa trên percentile và risk;
+- đa dạng node shape có chủ đích;
+- defragment bằng rescheduling có budget;
+- tách workload đặc thù;
+- ưu tiên/queue thay vì preempt bừa bãi.
+
+### 18.3 PDB không bảo vệ mọi loại outage
+
+PodDisruptionBudget giới hạn một số **voluntary disruptions** qua eviction API. Nó không ngăn node crash, OOM, application failure, direct Pod delete hoặc rollout bug. PDB quá chặt có thể chặn node drain/upgrade và kéo dài security exposure.
+
+Đánh giá PDB cùng:
+
+- replica thật sự available;
+- zone distribution;
+- startup/readiness time;
+- capacity để reschedule;
+- dependency quorum;
+- maintenance timeout và escalation.
+
+### 18.4 Rollout là một control loop
+
+```mermaid
+flowchart LR
+    A[Deploy small step] --> B[Observe guardrails]
+    B --> C{Healthy and enough evidence?}
+    C -->|Có| D[Increase exposure]
+    D --> B
+    C -->|Không| E[Pause / rollback / mitigate]
+```
+
+Guardrail tốt gồm cả:
+
+- error/latency/saturation;
+- restart/readiness;
+- dependency pressure;
+- business invariant;
+- traffic sample đủ đại diện;
+- version-tagged telemetry;
+- rollback viability.
+
+Nếu metric không gắn version, canary nhỏ có thể bị signal của stable fleet che mất. Nếu rollback database/schema không tương thích, “rollback tự động” có thể nguy hiểm hơn pause.
+
+### 18.5 Termination path và connection draining
+
+Một Pod dừng sạch cần phối hợp:
+
+1. ngừng nhận work mới;
+2. endpoint/load balancer nhận trạng thái draining;
+3. request đang chạy có deadline để hoàn tất;
+4. consumer dừng lấy message mới và commit offset đúng;
+5. application flush state cần thiết;
+6. process thoát trước grace period;
+7. hard kill chỉ là phương án cuối.
+
+Đừng dùng `preStop: sleep` như contract duy nhất. Đo propagation delay và active request thực tế.
+
+## 19. Identity, certificate và secret delivery path
+
+### 19.1 Identity là runtime dependency
+
+Một request thành công có thể cần chuỗi:
+
+```text
+workload identity
+  -> token projection/refresh
+  -> metadata or identity provider
+  -> STS/token exchange
+  -> policy evaluation
+  -> certificate/key/secret
+  -> target authorization
+```
+
+Failure ở chuỗi này thường trông giống network hoặc application error: `401`, `403`, TLS failure, credential timeout hay sudden retry.
+
+### 19.2 Token và certificate rotation
+
+Rotation an toàn yêu cầu producer và consumer chấp nhận overlap hợp lý. Các failure mode:
+
+- process đọc secret chỉ lúc start;
+- file update atomic nhưng application giữ file descriptor cũ;
+- trust bundle mới rollout sau leaf certificate;
+- token refresh cùng lúc tạo thundering herd;
+- clock skew làm token chưa có hiệu lực/hết hạn;
+- cache credential giữ quá TTL;
+- fallback dùng credential quyền rộng hơn.
+
+Metric/evidence:
+
+- expiry horizon distribution;
+- refresh success/latency/reason;
+- credential age trong process;
+- issuer, audience, subject và policy version;
+- auth failure theo workload/route;
+- clock health;
+- rollout timeline của trust và leaf.
+
+### 19.3 Secret delivery và blast radius
+
+Secret manager outage không nên khiến mọi replica restart đồng thời. Thiết kế cần quyết định:
+
+- credential hiện tại dùng được bao lâu;
+- cache encrypted/local có chấp nhận không;
+- fail-open/fail-closed theo operation;
+- refresh jitter;
+- emergency rotation;
+- audit và revocation;
+- dependency nào dùng chung identity path.
+
+Không log token/secret để debug. Log metadata không nhạy cảm như issuer, key ID, expiry, policy decision ID và reason code.
+
+### 19.4 Authorization regression
+
+Authn trả lời “bạn là ai”; authz trả lời “bạn được làm gì”. Một policy rollout có thể chỉ chặn tenant, route hoặc action cụ thể.
+
+Điều tra theo differential dimensions:
+
+- principal/workload identity;
+- resource/action;
+- tenant/account;
+- policy version;
+- region/cluster;
+- cached vs fresh decision;
+- deny reason.
+
+Mitigation không phải luôn tắt authz. Có thể rollback policy, giới hạn exception theo principal/action/time, hoặc chuyển read-only degraded mode. Break-glass phải time-bound và audit.
+
+### 19.5 Kubernetes investigation matrix
+
+| Symptom | Boundary cần kiểm tra | Evidence quyết định |
+|---|---|---|
+| apply chậm/lỗi | API/admission/etcd | verb-resource-client latency, webhook phase |
+| Pod Pending | scheduler constraints | unschedulable reason + feasible capacity |
+| Pod Ready nhưng chưa có traffic | endpoint/data-plane propagation | resource-version timeline |
+| rollout tạo 502 | draining/readiness/LB | last-new-request vs termination timeline |
+| credential lỗi theo đợt | refresh/rotation/clock | expiry cohort + issuer/policy version |
+| drain bị kẹt | PDB/capacity/volume | eviction reason + replacement feasibility |
+
+---
+
+**Checkpoint Section 5:** Kubernetes là nhiều reconciliation loop ghép lại; identity là một distributed dependency. Điều tra theo state transition và propagation boundary, không theo một nhãn chung như “cluster issue”.
