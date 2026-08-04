@@ -676,3 +676,257 @@ Không tự động shard lại trong incident nếu:
 ---
 
 **Checkpoint Section 3:** trước khi gọi một failure là “disk chậm”, phải xác định durability boundary, foreground/background work, logical/physical amplification, queue nào tăng và failure có lệch theo shard hay không.
+
+---
+
+# SECTION 4 — DISTRIBUTED COORDINATION VÀ OVERLOAD CONTROL
+
+## 13. Quorum, consensus, lease và fencing
+
+### 13.1 Consensus giải quyết thứ tự, không xóa mọi failure
+
+Một consensus group thường cần majority để commit. Với `N` voting member, quorum phổ biến là:
+
+```text
+quorum = floor(N / 2) + 1
+```
+
+Ba node chịu được một voting failure; bốn node vẫn chỉ chịu được một nếu quorum là ba. Thêm member chẵn có thể tăng cost mà không tăng fault tolerance.
+
+Consensus không tự giải quyết:
+
+- client retry và duplicate effect;
+- slow disk làm leader mất ổn định;
+- application side effect ngoài replicated log;
+- operator restore nhầm snapshot;
+- stale client giữ quyền thao tác resource ngoài group;
+- correlated failure cùng zone/power/network.
+
+### 13.2 Leader churn
+
+Leader thay đổi liên tục thường là symptom, không phải root cause. Evidence cần giữ:
+
+- term/epoch và election reason;
+- heartbeat round-trip;
+- WAL/fsync latency;
+- CPU scheduling stall và GC pause;
+- packet loss giữa member;
+- membership/configuration change;
+- node/zone placement.
+
+Tăng election timeout có thể giảm election giả nhưng kéo dài failover thật. Chỉ đổi sau khi biết heartbeat trễ vì network, scheduling hay storage.
+
+### 13.3 Lease và clock
+
+Lease cho phép một actor giữ quyền trong khoảng thời gian. Nếu correctness dựa vào wall clock đồng bộ tuyệt đối, clock jump/skew có thể tạo hai actor cùng tin rằng mình còn quyền.
+
+Thiết kế an toàn hơn dùng:
+
+- monotonic clock cho elapsed time trong một process;
+- server/authority quyết định lease;
+- term/epoch tăng đơn điệu;
+- margin cho uncertainty;
+- fencing token khi chạm resource bên ngoài.
+
+### 13.4 Fencing ngăn stale leader gây side effect
+
+Giả sử leader A bị network partition, leader B được bầu. A có thể chưa biết mình mất quyền và tiếp tục ghi storage. Chỉ lock/lease logic ở A không đủ. Resource nhận write phải từ chối token cũ.
+
+```mermaid
+sequenceDiagram
+    participant A as Old leader A, token 41
+    participant B as New leader B, token 42
+    participant S as Storage
+    B->>S: write(token=42)
+    S-->>B: accepted; highest=42
+    A->>S: write(token=41)
+    S-->>A: rejected as stale
+```
+
+Nếu resource không enforce fencing, “single leader” chỉ là hy vọng trong failure window.
+
+## 14. Idempotency, deduplication và transactional outbox
+
+### 14.1 Exactly-once là end-to-end contract
+
+Transport có thể deduplicate message nhưng side effect ở database, payment gateway hoặc email service vẫn lặp. “Exactly once” chỉ có nghĩa khi toàn bộ boundary được định nghĩa rõ.
+
+Thực tế thường xây bằng:
+
+- at-least-once delivery;
+- idempotency key ổn định theo business operation;
+- dedup store/unique constraint;
+- state transition có precondition;
+- retry cùng key và cùng intent;
+- audit log để reconcile.
+
+### 14.2 Idempotency key đúng
+
+Key phải đại diện cho **ý định business**, không phải một HTTP attempt. Các lỗi phổ biến:
+
+- tạo UUID mới mỗi lần retry;
+- TTL dedup ngắn hơn retry window;
+- cùng key nhưng payload khác;
+- check-then-write không atomic;
+- dedup theo user nhưng operation cần theo order/payment;
+- cache dedup mất khi restart.
+
+Server nên lưu key cùng fingerprint của request và kết quả. Cùng key, khác intent phải bị từ chối thay vì trả nhầm kết quả cũ.
+
+### 14.3 Dual write problem và outbox
+
+Application ghi database thành công nhưng publish event thất bại, hoặc ngược lại. Không có transaction chung, hai side effect có thể lệch.
+
+Transactional outbox ghi business state và outbox record trong cùng local transaction; relay publish sau và đánh dấu progress. Consumer vẫn cần idempotent vì relay có thể publish lại sau crash.
+
+```mermaid
+flowchart LR
+    A[Business transaction] --> B[(Business rows)]
+    A --> C[(Outbox row)]
+    C --> D[Relay / CDC]
+    D --> E[Event bus]
+    E --> F[Idempotent consumer]
+```
+
+Metric quan trọng:
+
+- outbox oldest age;
+- unpublished row count;
+- relay throughput/failure;
+- duplicate detection rate;
+- consumer lag;
+- reconciliation mismatch.
+
+## 15. Tail latency, fan-out và hedged requests
+
+### 15.1 Fan-out khuếch đại tail
+
+Một request gọi song song nhiều shard và chỉ hoàn thành khi tất cả trả lời sẽ kế thừa tail tệ nhất. Nếu xác suất một call con hoàn thành dưới target là `p` và giả sử độc lập, xác suất toàn bộ `n` call cùng đạt target xấp xỉ:
+
+```text
+P(all within target) = p^n
+```
+
+Với `p = 0.99` và `n = 100`, chỉ khoảng `0.99^100 ≈ 0.366` request tổng hoàn thành trong target. Độc lập là giả định đơn giản; correlated failure thường còn tệ hơn.
+
+### 15.2 Tách queue delay khỏi service time
+
+Tail latency có thể đến từ:
+
+- queue trước worker;
+- service time thật;
+- dependency fan-out;
+- retry/timeout overlap;
+- GC/scheduler pause;
+- hot shard;
+- network retransmit;
+- cold cache/cold start.
+
+Span chỉ bắt đầu khi handler chạy sẽ bỏ queue delay. Propagate deadline và timestamp ở admission point để giữ full path.
+
+### 15.3 Hedged request
+
+Hedging gửi request thứ hai khi request đầu vượt một delay percentile, lấy kết quả hợp lệ đầu tiên. Nó giảm tail khi straggler hiếm và còn capacity, nhưng tăng load chính lúc hệ thống có thể đang chậm.
+
+Chỉ dùng khi:
+
+- operation idempotent hoặc read-only;
+- hedge có budget toàn cục;
+- khác replica/failure domain hợp lý;
+- request thua được cancel;
+- overload detector có thể tắt hedge;
+- đo extra load và win rate.
+
+Không hedge write không idempotent hoặc dependency đang bão hòa.
+
+## 16. Admission control, load shedding và retry budget
+
+### 16.1 Queue hữu hạn bảo vệ latency
+
+Queue vô hạn biến overload thành memory pressure và latency không giới hạn. Một hệ thống khỏe phải có capacity contract:
+
+- concurrency tối đa;
+- queue size/wait tối đa;
+- deadline;
+- rejection semantics;
+- priority/fairness;
+- retry policy.
+
+Little's Law cho trạng thái ổn định:
+
+```text
+L = λ × W
+```
+
+Với arrival rate `λ` không đổi, thời gian `W` tăng sẽ làm work-in-system `L` tăng. Nếu capacity không theo kịp, queue tự khuếch đại.
+
+### 16.2 Admission ở đâu?
+
+| Lớp | Ưu điểm | Rủi ro |
+|---|---|---|
+| edge/gateway | loại tải sớm, policy tenant | thiếu context sâu |
+| service | biết route/cost/dependency | request đã tiêu network/CPU phía trước |
+| worker queue | bảo vệ executor | có thể queue quá lâu |
+| database | giữ correctness cuối cùng | quá muộn; toàn path đã chịu tải |
+
+Thường cần nhiều lớp với budget nhất quán, không phải một rate limit duy nhất.
+
+### 16.3 Load shedding có chủ đích
+
+Shedding tốt ưu tiên giữ work quan trọng và trả lỗi nhanh, có thể retry có kiểm soát. Cần xác định:
+
+- critical vs optional traffic;
+- tenant fairness;
+- stale/read-only/degraded response có hợp lệ không;
+- `Retry-After` hoặc backoff hint;
+- queue age thay vì chỉ queue length;
+- audit cho request bị shed.
+
+HTTP `503` nhanh có thể tốt hơn timeout 30 giây nếu client hiểu contract. Nhưng nếu mọi client retry đồng thời, rejection lại thành retry storm.
+
+### 16.4 Retry budget
+
+Retry phải là phần nhỏ có giới hạn của request volume, không phải multiplier vô hạn.
+
+Ví dụ policy:
+
+```text
+allowed_retry_rate <= min(
+  fixed_retry_cap,
+  retry_ratio * successful_original_rate
+)
+```
+
+Kết hợp:
+
+- exponential backoff;
+- jitter;
+- deadline propagation;
+- retry only on classified transient failure;
+- max attempt và max elapsed time;
+- token bucket/budget;
+- circuit breaker/adaptive concurrency.
+
+### 16.5 Overload decision flow
+
+```mermaid
+flowchart TD
+    A[Latency / queue tăng] --> B{Arrival vượt admission capacity?}
+    B -->|Có| C[Reject/degrade theo priority]
+    B -->|Không| D{Service time tăng?}
+    D -->|Có| E[Giảm concurrency và tìm dependency/resource]
+    D -->|Không| F{Retry/fan-out tăng?}
+    F -->|Có| G[Cắt retry/hedge, propagate deadline]
+    F -->|Không| H[Kiểm tra fairness, hot key, placement]
+    C --> I[Theo dõi recovery và rejected work]
+    E --> I
+    G --> I
+    H --> I
+```
+
+> [!IMPORTANT]
+> Autoscaling phản ứng chậm hơn admission control và không tạo capacity cho dependency đã bão hòa. Trong overload, scale-out có thể tăng connection, cache miss và retry lên backend. Guardrail phải tồn tại trước scaler.
+
+---
+
+**Checkpoint Section 4:** distributed correctness cần term, quorum, idempotency và fencing; overload safety cần queue hữu hạn, deadline, admission và retry budget. “Thêm replica” không thay thế các contract này.
