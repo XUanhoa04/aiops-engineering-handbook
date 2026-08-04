@@ -1183,3 +1183,354 @@ Mitigation không phải luôn tắt authz. Có thể rollback policy, giới h�
 ---
 
 **Checkpoint Section 5:** Kubernetes là nhiều reconciliation loop ghép lại; identity là một distributed dependency. Điều tra theo state transition và propagation boundary, không theo một nhãn chung như “cluster issue”.
+
+---
+
+# SECTION 6 — AI INFRASTRUCTURE VÀ SYSTEM SYNTHESIS
+
+## 20. GPU memory hierarchy và interconnect
+
+### 20.1 GPU utilization không mô tả bottleneck
+
+GPU workload có thể bị giới hạn bởi compute, device memory bandwidth, host-to-device transfer, inter-GPU communication, kernel launch overhead hoặc input pipeline. Một gauge utilization cao/thấp không phân biệt các cơ chế này.
+
+```mermaid
+flowchart LR
+    A[Storage / dataset] --> B[CPU preprocessing]
+    B --> C[Pinned host memory]
+    C -->|PCIe / interconnect| D[GPU memory]
+    D --> E[Compute kernels]
+    E --> F[GPU collectives]
+    F --> G[Output / network]
+```
+
+Evidence pack theo stage:
+
+| Stage | Signal |
+|---|---|
+| input | fetch latency, decode/tokenize time, queue starvation |
+| host | CPU, memory bandwidth, pinned-memory pressure |
+| transfer | H2D/D2H throughput và wait |
+| device memory | allocated/reserved, fragmentation, OOM, bandwidth |
+| compute | kernel occupancy, active cycles, tensor/core utilization |
+| collective | all-reduce time, retry/error, straggler rank |
+| serving | queue, batch size, tokens/s, time-to-first-token |
+
+### 20.2 OOM không chỉ do model size
+
+Device memory thường chứa:
+
+- model weights;
+- optimizer state/gradient khi training;
+- activations;
+- KV cache khi inference;
+- temporary workspace;
+- communication buffer;
+- allocator reserved blocks;
+- CUDA graph hoặc runtime cache.
+
+Peak phụ thuộc sequence length, batch composition, concurrency và algorithm. Average allocated memory không bắt được transient peak. Group OOM theo request shape và allocator state.
+
+### 20.3 Fragmentation và allocator behavior
+
+Tổng free memory có thể đủ nhưng không có block phù hợp. Restart “chữa” tạm thời vì reset allocator, che fragmentation. Evidence cần allocated vs reserved, block histogram nếu runtime có, allocation failure size và sequence/batch timeline.
+
+Mitigation:
+
+- bucket request theo size;
+- giới hạn max sequence/context;
+- tune allocator có kiểm chứng;
+- preallocate/pool buffer;
+- giảm batch/concurrency;
+- dùng quantization/offload khi quality/SLO cho phép;
+- restart có kiểm soát chỉ như recovery, không coi là root-cause fix.
+
+### 20.4 Multi-GPU và straggler
+
+Synchronous collective hoàn thành theo rank chậm nhất. Một GPU chậm vì thermal, ECC, PCIe link, NUMA placement hoặc noisy neighbor có thể kéo cả job.
+
+Đo per-rank:
+
+- step time;
+- compute/communication overlap;
+- collective latency;
+- GPU clock/power/temperature;
+- corrected/uncorrected error;
+- PCIe/NVLink throughput và replay/error;
+- host NUMA/device topology.
+
+Cluster average làm mất straggler. AIOps phải giữ rank, node, device UUID và topology trong identity graph.
+
+## 21. LLM serving: batching, KV cache và queue policy
+
+### 21.1 Hai phase có resource profile khác nhau
+
+- **Prefill:** xử lý prompt, thường parallel và compute-heavy.
+- **Decode:** sinh token tuần tự, thường memory-bandwidth/KV-cache sensitive.
+
+Gộp hai phase thành một latency làm mất tín hiệu. SLO nên ít nhất tách:
+
+- queue time;
+- time to first token (TTFT);
+- inter-token latency (ITL/TPOT);
+- end-to-end latency;
+- output tokens/s;
+- completion/abort rate.
+
+### 21.2 Continuous batching
+
+Batching tăng GPU efficiency nhưng có thể làm request ngắn chờ request dài, hoặc batch lớn chiếm KV cache. Scheduler phải trade-off throughput, fairness và latency.
+
+Các dimension cần giữ:
+
+- prompt tokens;
+- requested/max output tokens;
+- actual output tokens;
+- model/adapter;
+- priority/tenant;
+- batch membership và size;
+- cache hit/prefix reuse;
+- admission/rejection reason.
+
+### 21.3 KV cache là capacity động
+
+KV cache tăng theo active sequence và context length. Capacity theo số request là sai khi request length chênh lớn. Admission nên dựa trên token/memory budget dự kiến, có headroom cho fragmentation và runtime workspace.
+
+```text
+admit khi:
+estimated_KV(request) + current_KV + safety_headroom <= usable_device_memory
+```
+
+Estimate phải được hiệu chỉnh bằng actual usage theo model/runtime. Nếu user có thể khai báo output tối đa rất lớn, cần policy/cap thay vì reserve mù toàn bộ hoặc overcommit không giới hạn.
+
+### 21.4 Failure patterns
+
+| Pattern | Dấu hiệu | Mitigation có kiểm soát |
+|---|---|---|
+| prefill flood | TTFT/queue tăng, decode đang chạy vẫn ổn hơn | tách queue/budget prefill |
+| long-context monopolization | KV pressure, request ngắn starvation | size-aware admission/scheduling |
+| batch collapse | batch size giảm, tokens/s giảm | kiểm tra traffic shape/scheduler/input |
+| cache thrash | prefix hit giảm, HBM churn | routing affinity có bounded skew |
+| model cold load | startup và storage/network burst | staged warm-up, capacity reserve |
+| rank/device straggler | batch/step chờ một device | isolate/replace device, topology evidence |
+
+### 21.5 LLM overload safety
+
+Khi inference overload, ưu tiên:
+
+1. reject sớm request vượt policy;
+2. giới hạn context/output và concurrency theo class;
+3. giữ queue age hữu hạn;
+4. degrade sang model nhỏ hơn chỉ khi product contract cho phép;
+5. không retry generation mù vì vừa tốn chi phí vừa có thể tạo output khác;
+6. lưu request ID/idempotency semantics cho operation có side effect;
+7. đo quality/safety impact của mọi degraded mode.
+
+---
+
+# SECTION 7 — EVIDENCE GRAPH VÀ INCIDENT PLAYBOOK
+
+## 22. Cross-layer evidence graph
+
+### 22.1 Từ dashboard sang graph giả thuyết
+
+Một dashboard xếp chart cạnh nhau không tự tạo quan hệ nhân quả. Evidence graph cần node identity và edge theo topology/time.
+
+```mermaid
+flowchart TD
+    R[Request / trace] --> P[Pod + version]
+    P --> N[Node]
+    P --> D[Dependency]
+    N --> C[cgroup / kernel / device]
+    D --> S[Shard / leader / replica]
+    P --> I[Workload identity / policy]
+    R --> Q[Queue / admission class]
+    P --> G[GPU / model / batch]
+```
+
+Mỗi evidence item tối thiểu cần:
+
+- event time và ingest time;
+- source/collector;
+- entity identity ổn định;
+- version/config/region/zone;
+- measurement unit và aggregation;
+- missing-data semantics;
+- confidence/quality nếu signal suy ra;
+- retention đủ bao phủ incident window.
+
+### 22.2 Correlation dimensions có giá trị cao
+
+Khi một aggregate đổi, slice theo thứ tự:
+
+1. version/change cohort;
+2. zone/node/device;
+3. route/operation;
+4. tenant/request shape;
+5. dependency/shard;
+6. identity/policy version;
+7. success/retry/rejected class.
+
+Không slice vô hạn mọi label. Bắt đầu từ mechanism và failure domain có khả năng phân biệt giả thuyết.
+
+### 22.3 Negative evidence
+
+Evidence “không thấy” chỉ có giá trị khi pipeline quan sát được chứng minh healthy. Không có error log có thể vì:
+
+- process chết trước flush;
+- sampling/drop;
+- collector/backpressure;
+- clock/window sai;
+- route không instrument;
+- permission/filter;
+- failure xảy ra trước application.
+
+Mỗi playbook nên có telemetry health check trước khi dùng absence làm bằng chứng.
+
+### 22.4 Hypothesis ledger
+
+| Trường | Nội dung |
+|---|---|
+| Hypothesis | cơ chế cụ thể có thể giải thích symptom |
+| Supports | evidence hiện tại ủng hộ |
+| Contradicts | evidence chống lại |
+| Unknown | dữ liệu còn thiếu |
+| Discriminating test | phép kiểm chứng tách nó khỏi giả thuyết cạnh tranh |
+| Risk | blast radius/cost của test |
+| Decision | keep, reject hoặc revise |
+
+Ledger ngăn incident team lặp lại test và giúp AIOps đưa khuyến nghị có thể audit.
+
+## 23. Incident playbooks
+
+### 23.1 Playbook: latency tăng nhưng CPU thấp
+
+1. Xác nhận SLO, route và failure cohort; tách queue/service/dependency time.
+2. Kiểm tra event-loop/executor/pool queue và lock wait.
+3. Kiểm tra PSI memory/I/O, page fault và storage background work.
+4. Kiểm tra connection/TLS/DNS phase và dependency tail.
+5. So version, node, NUMA, shard và tenant.
+6. Giảm concurrency/admit rate nếu queue đang tăng.
+7. Test một giả thuyết bằng canary/profile ngắn; không restart toàn fleet.
+
+### 23.2 Playbook: connection timeout theo đợt
+
+1. Tách DNS, SYN, TLS và request queue.
+2. Group theo source node/NAT, destination và route.
+3. Kiểm tra conntrack, ephemeral port, TIME_WAIT, LB state và backlog.
+4. So connection creation với reuse; tìm deploy đổi keep-alive/pool.
+5. Kiểm tra retransmit/MTU nếu phụ thuộc payload/path.
+6. Giới hạn outbound concurrency/retry trước khi tăng timeout.
+7. Mở rộng NAT/state capacity chỉ khi đã chứng minh exhaustion.
+
+### 23.3 Playbook: database commit p99 tăng
+
+1. Tách lock wait, WAL append/flush, replication ack và queue.
+2. Overlay checkpoint, backup, compaction và volume event.
+3. Kiểm tra device latency/queue, PSI I/O và cgroup throttle.
+4. Group theo shard/leader/zone; kiểm tra leader churn.
+5. Giảm ingest hoặc concurrency có ưu tiên.
+6. Không hạ durability/replication nếu chưa có risk acceptance rõ.
+7. Preserve WAL/term/replica position nếu nghi correctness incident.
+
+### 23.4 Playbook: Kubernetes rollout gây lỗi
+
+1. Freeze rollout; giữ version cohort và change metadata.
+2. So canary/stable theo route và request shape.
+3. Dựng timeline Pod Ready → EndpointSlice → LB healthy → first traffic.
+4. Kiểm tra readiness, draining, connection reuse và dependency pressure.
+5. Xác nhận schema/config backward compatibility trước rollback.
+6. Rollback/pause theo blast radius nhỏ nhất.
+7. Chỉ resume khi guardrail có đủ evidence window.
+
+### 23.5 Playbook: GPU OOM hoặc inference tail tăng
+
+1. Group theo model, device, prompt/output length và batch.
+2. Tách queue, prefill, decode và communication.
+3. Kiểm tra allocated/reserved/KV/workspace và fragmentation evidence.
+4. Kiểm tra device/rank straggler, H2D và input starvation.
+5. Hạ batch/concurrency/context theo priority; reject sớm.
+6. Restart từng worker chỉ khi cần recovery và đã giữ allocator/device evidence.
+7. Xác minh quality/SLO nếu chuyển model hoặc quantization degraded mode.
+
+## 24. Production readiness checklist
+
+### 24.1 Resource và runtime
+
+- [ ] Có queue/concurrency limit hữu hạn tại mọi executor/pool quan trọng.
+- [ ] Đo queue delay riêng service time.
+- [ ] Có CPU throttling, PSI, lock/runtime lag và OOM reason.
+- [ ] Benchmark dùng arrival model phù hợp và tránh coordinated omission.
+- [ ] Capacity test giữ request shape và tenant skew thực tế.
+
+### 24.2 Network
+
+- [ ] Tách DNS/TCP/TLS/request phase.
+- [ ] Theo dõi conntrack/NAT/port capacity và connection reuse.
+- [ ] MTU được kiểm chứng qua overlay/VPN/service mesh path.
+- [ ] Load distribution đo theo connection, request và cost.
+- [ ] Draining được test bằng traffic thật có deadline.
+
+### 24.3 Storage và data correctness
+
+- [ ] Durability/commit contract được ghi rõ.
+- [ ] Theo dõi WAL, checkpoint, compaction và physical amplification.
+- [ ] Backup có restore test và RPO/RTO evidence.
+- [ ] Retry write dùng idempotency key đúng business intent.
+- [ ] Leader/lease path có fencing cho side effect quan trọng.
+
+### 24.4 Distributed overload
+
+- [ ] Deadline được propagate và giảm dần qua call chain.
+- [ ] Retry có classification, jitter và budget.
+- [ ] Admission/load shedding giữ priority và tenant fairness.
+- [ ] Autoscaler không phải guardrail overload duy nhất.
+- [ ] Fan-out/hedging có budget và cancel path.
+
+### 24.5 Kubernetes và identity
+
+- [ ] API/admission/controller/scheduler propagation có phase metric.
+- [ ] Scheduling constraint được test với feasible capacity.
+- [ ] PDB, topology spread và replacement capacity khớp failure model.
+- [ ] Token/certificate rotation được test có overlap và jitter.
+- [ ] Break-glass time-bound, least-privilege và audit.
+
+### 24.6 AI infrastructure
+
+- [ ] GPU evidence giữ device/rank/topology identity.
+- [ ] Serving SLO tách queue, TTFT, inter-token và end-to-end.
+- [ ] Admission tính token/KV budget, không chỉ request count.
+- [ ] Degraded model/quality path có product acceptance.
+- [ ] Device fault, model load và cache warm-up được game day.
+
+## Bài tập thực hành
+
+1. Chọn một service và vẽ request path từ DNS tới storage, ghi queue/state table tại mỗi hop.
+2. Tạo hypothesis ledger cho tình huống p99 tăng nhưng CPU dưới 40%; đề xuất ba test có blast radius thấp.
+3. Tính fault tolerance của consensus group 3, 4, 5 member và giải thích placement quan trọng hơn member count thế nào.
+4. Thiết kế retry budget cho call chain ba tầng có deadline 800 ms.
+5. Dựng timeline rollout từ API write đến first successful real request.
+6. Với LLM endpoint, thiết kế admission theo token/KV budget và priority tenant.
+
+## Kết luận
+
+System thinking ở production không bắt đầu từ tên công cụ. Nó bắt đầu từ **work đi vào đâu, chờ ở queue nào, dùng capacity nào, chịu policy nào và tạo side effect với correctness contract gì**.
+
+Một điều tra tốt luôn:
+
+1. định vị failure boundary;
+2. giữ identity và timeline;
+3. nêu nhiều giả thuyết cạnh tranh;
+4. chọn evidence có khả năng phân biệt;
+5. giảm tải/blast radius trước;
+6. bảo vệ durability và security contract;
+7. kiểm chứng recovery bằng SLO và business invariant.
+
+## Đọc tiếp
+
+- [Observability](../01-observability/README.vi.md) — biến các cơ chế trong chương thành telemetry contract.
+- [Telemetry Data Plane](../06-data-plane/README.vi.md) — giữ identity, time và data quality xuyên pipeline.
+- [Topology & Change](../08-topology-change/README.vi.md) — xây dependency/change graph cho correlation.
+- [Root Cause Analysis](../11-root-cause-analysis/README.vi.md) — xếp hạng giả thuyết bằng evidence.
+- [Investigation Engine](../12-investigation-engine/README.vi.md) — vận hành hypothesis ledger có kiểm soát.
+- [Remediation Safety](../13-remediation-safety-engine/README.vi.md) — biến mitigation thành hành động có gate và rollback.
