@@ -6,6 +6,7 @@
 | [CURRICULUM.md](CURRICULUM.md) | Canonical chapter order (00–17) |
 | [vi/](vi/) | Vietnamese handbook |
 | [en/](en/) | English handbook |
+| [vi/system-fundamentals-next/](vi/system-fundamentals-next/) | Advanced Vietnamese system foundations (S2) |
 | [assets/diagrams/](assets/diagrams/) | Architecture PNG posters |
 
 ## Site
