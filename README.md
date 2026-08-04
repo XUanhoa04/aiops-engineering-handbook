@@ -5,7 +5,7 @@
 [![Status](https://img.shields.io/badge/status-active-brightgreen)](.)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Languages](https://img.shields.io/badge/languages-EN%20%7C%20VI-red)](.)
-[![Chapters](https://img.shields.io/badge/chapters-18%20shared%20%2B%203%20VI%20%2B%20System%20Fundamentals-blue)](docs/)
+[![Chapters](https://img.shields.io/badge/chapters-18%20shared%20%2B%203%20VI%20%2B%202%20System%20Foundations-blue)](docs/)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://xuanhoa04.github.io/aiops-engineering-handbook/)
 [![Audience](https://img.shields.io/badge/audience-SRE%20%7C%20DevOps%20%7C%20Platform%20%7C%20ML-orange)](.)
 [![GitHub](https://img.shields.io/badge/github-XUanhoa04%2Faiops--engineering--handbook-black)](https://github.com/XUanhoa04/aiops-engineering-handbook)
@@ -13,7 +13,7 @@
 | | |
 |---|---|
 | **Languages** | English (`docs/en/`) · Vietnamese (`docs/vi/`) |
-| **Chapters** | 18 shared (00–17) + 3 Vietnamese extensions (18–20) + System Fundamentals |
+| **Chapters** | 18 shared (00–17) + 3 Vietnamese extensions (18–20) + 2 System Foundations (S/S2) |
 | **Docs site** | [xuanhoa04.github.io/aiops-engineering-handbook](https://xuanhoa04.github.io/aiops-engineering-handbook/) |
 | **Level** | Staff / Principal SRE depth (concepts first) |
 | **Repo** | [github.com/XUanhoa04/aiops-engineering-handbook](https://github.com/XUanhoa04/aiops-engineering-handbook) |
@@ -67,7 +67,8 @@ Goal: understand **why an AIOps pipeline is designed this way** and **when it fa
 
 ```mermaid
 graph LR
-    SF[S System Fundamentals] --> A[00 Intro]
+    SF[S System Fundamentals] --> SF2[S2 System Fundamentals Next]
+    SF2 --> A[00 Intro]
     A --> B[01 Observability]
     B --> C[02 OTel]
     C --> D[03 Prometheus]
@@ -96,6 +97,7 @@ graph LR
     Q --> L
 
     style SF fill:#fef3c7,color:#1e293b
+    style SF2 fill:#fef3c7,color:#1e293b
     style A fill:#dbeafe,color:#1e293b
     style DP fill:#ede9fe,color:#1e293b
     style Q fill:#ede9fe,color:#1e293b
@@ -107,7 +109,7 @@ graph LR
 
 **Recommended path:**
 
-1. **System Fundamentals** (S) — Linux internals, Kubernetes mechanics, networking, storage, GPU/LLM infra
+1. **System Foundations** (S → S2) — core Linux/Kubernetes/network/storage, then advanced failure mechanics, overload control and GPU/LLM serving
 2. **Foundation** (00–01) — alert fatigue, OODA, SLO, observability before AI
 3. **Collect** (02–05) — OpenTelemetry, Prometheus, Loki, Tempo
 4. **Data plane** (06) — normalize → enrich → validate → storage/retention → feature store (**when you need each**)
@@ -130,6 +132,7 @@ The shared English/Vietnamese sequence is numbered continuously from 00–17. Th
 | # | English | Vietnamese | Topic |
 |---|---------|------------|--------|
 | S | [System Fundamentals](docs/en/system-fundamentals/README.md) | [System Fundamentals](docs/vi/system-fundamentals/README.vi.md) | Compute, networking, storage, distributed systems, AI/ML infra |
+| S2 | — | [System Fundamentals Next](docs/vi/system-fundamentals-next/README.vi.md) | Advanced runtime, network, durability, coordination, overload, Kubernetes and AI infra |
 | 00 | [Introduction](docs/en/00-introduction.md) | [Introduction](docs/vi/00-introduction.vi.md) | AIOps philosophy, OODA, ROI, maturity |
 | 01 | [Observability](docs/en/01-observability/README.md) | [Observability](docs/vi/01-observability/README.vi.md) | Three pillars, SLO, cardinality |
 
