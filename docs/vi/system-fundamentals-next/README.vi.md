@@ -250,3 +250,200 @@ flowchart TD
 ---
 
 **Checkpoint Section 1:** trước khi gọi một workload là “CPU issue”, phải trả lời được nó đang chờ scheduler, memory, lock, runtime queue hay thực sự tiêu instruction hữu ích.
+
+---
+
+# SECTION 2 — NETWORK PATH VÀ TRAFFIC MECHANICS
+
+## 5. Conntrack, NAT và ephemeral port exhaustion
+
+### 5.1 Một connection tạo state ở nhiều nơi
+
+Trong Kubernetes/cloud, một TCP connection có thể đi qua application socket, sidecar, node conntrack, SNAT, load balancer và firewall. Mỗi lớp có bảng state, timeout và capacity riêng. `connect timeout` không tự động có nghĩa network packet loss.
+
+```mermaid
+flowchart LR
+    A[Application socket] --> B[Pod network namespace]
+    B --> C[Node conntrack]
+    C --> D[SNAT / NAT gateway]
+    D --> E[Load balancer]
+    E --> F[Destination socket]
+```
+
+Failure thường gặp:
+
+- conntrack table đầy làm connection mới bị drop;
+- source IP/port tuple cạn do quá nhiều outbound connection;
+- NAT gateway đạt giới hạn connection theo destination;
+- TIME_WAIT tích tụ vì không reuse connection;
+- state timeout giữa firewall và application không đồng nhất;
+- load balancer giữ connection tới backend đã draining.
+
+### 5.2 Evidence pack
+
+```bash
+conntrack -S
+sysctl net.netfilter.nf_conntrack_count
+sysctl net.netfilter.nf_conntrack_max
+ss -s
+ss -tan state time-wait
+cat /proc/sys/net/ipv4/ip_local_port_range
+```
+
+Không chỉ alert theo `count/max`. Cần correlation với:
+
+- new connections/second và connection reuse ratio;
+- SYN retransmit, reset và connect latency;
+- source node, destination và route;
+- NAT/LB flow logs;
+- deploy tạo thay đổi keep-alive hoặc pool policy.
+
+### 5.3 Mitigation và trade-off
+
+| Hành động | Khi hữu ích | Rủi ro |
+|---|---|---|
+| reuse/keep-alive connection | churn cao, request nhỏ | connection stale, load imbalance lâu hơn |
+| tăng conntrack capacity | memory còn đủ và state hợp lệ | che leak; tăng memory kernel |
+| thêm source IP/NAT capacity | cạn tuple thật | tăng cost và operational surface |
+| giảm idle timeout | nhiều state chết | cắt connection hợp lệ |
+| giới hạn outbound concurrency | dependency bị flood | tăng queue/rejection ở caller |
+
+Không bật `tcp_tw_reuse` hoặc chỉnh timeout toàn fleet chỉ từ một dashboard. Trước hết xác định connection ownership và lớp state thực sự cạn.
+
+## 6. MTU, fragmentation và packet path
+
+### 6.1 Vì sao MTU mismatch tạo partial outage
+
+Header của overlay, VPN, IPsec hoặc service mesh làm MTU hữu dụng nhỏ hơn interface vật lý. Packet nhỏ vẫn đi được, health check vẫn xanh, nhưng response lớn hoặc TLS record nhất định bị drop. Đây là gray failure điển hình.
+
+Path MTU Discovery dựa vào ICMP để báo packet quá lớn. Nếu firewall chặn ICMP cần thiết, sender không giảm kích thước và connection có thể “treo” ở payload lớn.
+
+### 6.2 Cách phân biệt
+
+```bash
+ip link show
+tracepath <destination>
+ping -M do -s 1400 <destination>
+tcpdump -ni any 'icmp or icmp6 or tcp'
+```
+
+Hỏi bốn câu:
+
+1. failure có phụ thuộc payload size không?
+2. chỉ một node pool, tunnel hoặc zone bị ảnh hưởng không?
+3. retransmit xảy ra sau handshake hay trước handshake?
+4. capture ở hai đầu có thấy packet rời source nhưng không tới destination không?
+
+> [!WARNING]
+> Packet capture có thể chứa token, cookie, query hoặc dữ liệu khách hàng. Giới hạn interface, filter, thời lượng và quyền truy cập; ưu tiên header metadata khi đủ để kiểm chứng.
+
+### 6.3 Packet path cost
+
+Latency network không chỉ là wire time. Nó còn gồm:
+
+- queue ở qdisc/NIC;
+- softirq và CPU xử lý packet;
+- veth/bridge/overlay encapsulation;
+- policy engine và conntrack lookup;
+- sidecar proxy;
+- TLS encryption/decryption;
+- receive queue và application scheduling.
+
+Nếu packet rate tăng nhưng bandwidth không tăng nhiều, bottleneck có thể là packets-per-second hoặc per-packet CPU cost. Group evidence theo packet size giúp phân biệt.
+
+## 7. TLS, HTTP/2, HTTP/3 và head-of-line blocking
+
+### 7.1 Tách connect path thành phase
+
+Một metric “connect latency” chung làm mất causal information. Ít nhất nên tách:
+
+| Phase | Failure gợi ý |
+|---|---|
+| DNS lookup | resolver overload, cache miss, delegation/network |
+| TCP handshake | packet loss, backlog, firewall, route |
+| TLS handshake | CPU, certificate chain, OCSP, key service |
+| protocol negotiation | ALPN/config mismatch |
+| request queue | connection/stream limit, application admission |
+| response transfer | congestion, flow control, backend service time |
+
+### 7.2 TLS failure không chỉ là certificate hết hạn
+
+Các cơ chế cần quan sát:
+
+- certificate chưa hợp lệ hoặc hết hạn;
+- SNI không khớp route;
+- trust bundle rollout không đồng bộ;
+- clock skew làm validation sai;
+- handshake CPU tăng do mất session resumption;
+- key/signing service chậm;
+- mTLS identity chưa được cấp hoặc rotate lỗi;
+- client/server không còn cipher/protocol chung.
+
+Metric nên có handshake rate, failure theo reason, full/resumed handshake ratio, certificate expiry horizon và latency theo issuer/route.
+
+### 7.3 Multiplexing và head-of-line
+
+HTTP/2 multiplex nhiều stream trên một TCP connection. Nó giảm connection churn nhưng packet loss ở TCP có thể chặn delivery của nhiều stream cùng connection. HTTP/3 chuyển multiplexing lên QUIC để stream độc lập hơn, nhưng thêm UDP path, QUIC state và observability mới.
+
+Đừng kết luận “HTTP/3 luôn nhanh hơn”. Hãy so:
+
+- handshake/resumption theo network type;
+- loss và RTT;
+- stream concurrency;
+- CPU per request;
+- fallback rate từ QUIC;
+- middlebox/UDP reachability;
+- tail latency, không chỉ median.
+
+## 8. Load balancing, locality và connection reuse
+
+### 8.1 Request balance khác connection balance
+
+Nếu client giữ connection lâu, load balancer chỉ cân bằng lúc mở connection có thể tạo phân phối request lệch. Một backend mới scale-out không nhận traffic ngay; backend cũ tiếp tục nóng dù replica count đã tăng.
+
+Ba distribution cần đo riêng:
+
+1. connection active theo backend;
+2. request rate theo backend;
+3. cost per request theo backend/tenant/payload.
+
+Replica nhận cùng số request vẫn có thể không nhận cùng lượng work.
+
+### 8.2 Locality là trade-off, không phải chân lý
+
+Ưu tiên same-zone giảm latency và cross-zone cost, nhưng có thể overload zone cục bộ trong khi zone khác còn capacity. Spillover quá sớm lại tăng network cost và mở rộng failure domain.
+
+Policy tốt cần:
+
+- local capacity signal đáng tin;
+- ngưỡng spillover có hysteresis;
+- giới hạn cross-zone để giữ blast radius;
+- fail-open/fail-closed rõ ràng;
+- metric về locality hit, spillover và zone saturation.
+
+### 8.3 Health check gap
+
+Backend có thể trả health check `200` nhưng không phục vụ traffic thật vì:
+
+- health endpoint không chạm dependency quan trọng;
+- request thật cần connection pool đã cạn;
+- health check payload nhỏ hơn payload thật;
+- route/version cụ thể lỗi;
+- event loop vẫn trả endpoint ưu tiên nhưng business queue đứng;
+- backend đang draining nhưng connection cũ còn tới.
+
+Health check nên phản ánh khả năng **nhận work mới**, không biến thành deep dependency check gây cascade. Readiness, liveness và external synthetic probe phục vụ ba mục đích khác nhau.
+
+### 8.4 Network investigation matrix
+
+| Symptom | Evidence phân biệt đầu tiên | Không nên làm ngay |
+|---|---|---|
+| connect timeout | SYN/SYN-ACK, backlog, conntrack, NAT state | tăng mọi timeout |
+| TLS error burst | reason, SNI, issuer, clock, deploy | tắt verification |
+| chỉ payload lớn lỗi | MTU, retransmit, capture hai đầu | restart ngẫu nhiên |
+| backend load lệch | connection và request distribution | scale vô hạn |
+| cross-zone latency | locality/spillover và zone health | khóa cứng traffic vào zone lỗi |
+
+---
+
+**Checkpoint Section 2:** trước khi gọi một failure là “network chập chờn”, phải định vị phase, state table, direction, route, payload class và failure domain.
