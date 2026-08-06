@@ -332,4 +332,4 @@ MIT License — see [LICENSE](LICENSE).
 
 ## Release
 
-**Current: v1.1.0** — 18 chapters (including Topology & Change) · dual language · concept-first intelligence chapters · MkDocs GitHub Pages · architecture posters.
+**Current: v1.2.0** — System Architecture Fundamentals (S + S2) added · 18 shared chapters (00–17) · 3 Vietnamese production extensions (18–20) · dual language · MkDocs GitHub Pages · architecture posters.
