@@ -5,7 +5,7 @@
 | | |
 |--|--|
 | **Languages** | [Tiếng Việt](vi/00-introduction.vi.md) · [English](en/00-introduction.md) |
-| **Chapters** | System Foundations S/S2 · shared sequence 00–17 · Vietnamese production extension 18–20 |
+| **Chapters** | System Foundations S/S2 · shared sequence 00–17 · Vietnamese production/capstone extension 18–21 |
 | **Repo** | [github.com/XUanhoa04/aiops-engineering-handbook](https://github.com/XUanhoa04/aiops-engineering-handbook) |
 | **Curriculum** | [CURRICULUM.md](CURRICULUM.md) |
 
@@ -36,6 +36,7 @@ graph LR
     G --> I[18 Predictive Ops]
     I --> J[19 Incident Ops]
     J --> K[20 Governance]
+    K --> L[21 End-to-End Closed Loop]
     H --> C
 ```
 
@@ -48,6 +49,7 @@ graph LR
 7. **Intelligence + action** — Detect → correlate → RCA → investigate → remediate
 8. **Production + reuse** — Production engine, patterns, domain packs and benchmark replay
 9. **Proactive operations + governance** — Predict capacity risk, coordinate incidents and control AI authority
+10. **End-to-end capstone** — Follow telemetry through baseline, detection, incident, RCA, safe remediation, verification and audit
 
 ---
 
@@ -63,6 +65,7 @@ graph LR
 - [18 — Predictive Operations](vi/18-predictive-operations/README.vi.md)
 - [19 — Incident Operations](vi/19-incident-operations/README.vi.md)
 - [20 — Governance & Model Risk](vi/20-aiops-governance/README.vi.md)
+- [21 — AIOps End-to-End Closed Loop](vi/21-end-to-end-aiops/README.vi.md)
 
 ### English
 

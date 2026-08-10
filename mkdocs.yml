@@ -131,6 +131,7 @@ nav:
           - 18 Predictive Operations: vi/18-predictive-operations/README.vi.md
           - 19 Incident Operations: vi/19-incident-operations/README.vi.md
           - 20 Governance & Model Risk: vi/20-aiops-governance/README.vi.md
+          - 21 End-to-End Closed Loop: vi/21-end-to-end-aiops/README.vi.md
   - English:
       - System Fundamentals:
           - System Architecture Fundamentals: en/system-fundamentals/README.md

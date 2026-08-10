@@ -1,6 +1,6 @@
 # Curriculum — AIOps Engineering Handbook
 
-Single source of truth for chapter order. Chapters 00–17 are dual-language (`docs/vi/` · `docs/en/`); the Vietnamese track also includes the advanced System Fundamentals S2 and production Chapters 18–20.
+Single source of truth for chapter order. Chapters 00–17 are dual-language (`docs/vi/` · `docs/en/`); the Vietnamese track also includes the advanced System Fundamentals S2 and production/capstone Chapters 18–21.
 
 **Online site (GitHub Pages):** after first deploy →  
 `https://xuanhoa04.github.io/aiops-engineering-handbook/`
@@ -23,6 +23,7 @@ Collect (02–05)
     → Production & reuse (14–17): run · patterns · domains · replay
     → Predict & coordinate (18–19): proactive risk · incident control
     → Govern (20): model/tool/policy risk and runtime authority
+    → Integrate (21): telemetry-to-audit end-to-end closed loop
 ```
 
 ```mermaid
@@ -37,6 +38,7 @@ graph TD
     CS --> P[18 Predictive Operations]
     P --> O[19 Incident Operations]
     O --> G[20 Governance]
+    G --> E2E[21 End-to-End Closed Loop]
     TC --> DP
     TC --> I
     TC --> A
@@ -71,6 +73,7 @@ graph TD
 | 18 | `18-predictive-operations` | Predictive Operations | Capacity risk, uncertainty, time-to-exhaustion |
 | 19 | `19-incident-operations` | Incident Operations | Command, state, handoff, concurrent incidents |
 | 20 | `20-aiops-governance` | Governance & Model Risk | Capability risk, policy, audit, revocation |
+| 21 | `21-end-to-end-aiops` | AIOps End-to-End Closed Loop | Datapoint → baseline → incident → RCA → safe action → verification/audit |
 
 ## File naming
 
