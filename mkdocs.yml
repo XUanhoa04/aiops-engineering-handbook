@@ -56,6 +56,7 @@ theme:
 # (source .md files stay GFM-compatible for GitHub raw viewing)
 hooks:
   - hooks/gh_callouts.py
+  - hooks/protected_chapter.py
 
 plugins:
   - search:
@@ -96,6 +97,7 @@ extra_css:
 
 extra_javascript:
   - javascripts/mermaid-zoom.js
+  - javascripts/pin-gate.js
 
 # Explicit nav — keeps dual-language tabs clear
 nav:
@@ -132,6 +134,8 @@ nav:
           - 19 Incident Operations: vi/19-incident-operations/README.vi.md
           - 20 Governance & Model Risk: vi/20-aiops-governance/README.vi.md
           - 21 End-to-End Closed Loop: vi/21-end-to-end-aiops/README.vi.md
+      - Phỏng vấn & nghề nghiệp:
+          - 22 AIOps Interview Scenarios: vi/22-aiops-interview-scenarios/README.vi.md
   - English:
       - System Fundamentals:
           - System Architecture Fundamentals: en/system-fundamentals/README.md

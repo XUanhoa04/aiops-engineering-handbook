@@ -74,6 +74,7 @@ graph TD
 | 19 | `19-incident-operations` | Incident Operations | Command, state, handoff, concurrent incidents |
 | 20 | `20-aiops-governance` | Governance & Model Risk | Capability risk, policy, audit, revocation |
 | 21 | `21-end-to-end-aiops` | AIOps End-to-End Closed Loop | Datapoint → baseline → incident → RCA → safe action → verification/audit |
+| 22 | `22-aiops-interview-scenarios` (VI) | AIOps Interview Scenarios | 70 mindset-first situations for Intern/Junior interview practice |
 
 ## File naming
 

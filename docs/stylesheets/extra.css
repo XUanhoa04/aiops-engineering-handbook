@@ -661,6 +661,148 @@ html.mermaid-lightbox-open body {
   background: color-mix(in srgb, var(--md-default-bg-color) 88%, white);
 }
 
+/* PIN gate for the encrypted interview chapter. */
+.pin-gate {
+  display: grid;
+  min-height: min(68vh, 42rem);
+  place-items: center;
+  padding: 2rem 1rem 4rem;
+}
+
+.pin-gate__card {
+  width: min(100%, 32rem);
+  padding: clamp(1.5rem, 5vw, 2.6rem);
+  border: 1px solid var(--handbook-rule);
+  border-radius: 1rem;
+  background:
+    radial-gradient(
+      circle at top right,
+      color-mix(in srgb, var(--md-accent-fg-color) 13%, transparent),
+      transparent 42%
+    ),
+    var(--handbook-surface);
+  box-shadow: 0 1.2rem 3rem color-mix(in srgb, black 13%, transparent);
+  text-align: center;
+}
+
+.pin-gate__lock {
+  display: grid;
+  width: 3.6rem;
+  height: 3.6rem;
+  margin: 0 auto 1rem;
+  place-items: center;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--md-primary-fg-color) 13%, transparent);
+  font-size: 1.7rem;
+}
+
+.md-typeset .pin-gate__eyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--md-primary-fg-color);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.md-typeset .pin-gate h1 {
+  margin-bottom: 0.8rem;
+  padding-bottom: 0;
+  border-bottom: 0;
+  font-size: clamp(1.55rem, 5vw, 2.1rem);
+}
+
+.md-typeset .pin-gate__description {
+  margin: 0 auto 1.6rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.pin-gate__form {
+  text-align: left;
+}
+
+.pin-gate__form label {
+  display: block;
+  margin-bottom: 0.42rem;
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.pin-gate__controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.65rem;
+}
+
+.pin-gate__input {
+  width: 100%;
+  min-height: 2.8rem;
+  padding: 0.6rem 0.85rem;
+  border: 2px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.45rem;
+  outline: none;
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  font: inherit;
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.45em;
+  text-align: center;
+}
+
+.pin-gate__input:focus {
+  border-color: var(--md-primary-fg-color);
+  box-shadow: 0 0 0 0.18rem
+    color-mix(in srgb, var(--md-primary-fg-color) 18%, transparent);
+}
+
+.pin-gate__input[aria-invalid="true"] {
+  border-color: var(--md-typeset-color);
+}
+
+.pin-gate__button {
+  min-width: 7rem;
+  margin: 0 !important;
+  white-space: nowrap;
+}
+
+.pin-gate__button:disabled,
+.pin-gate__input:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.md-typeset .pin-gate__help,
+.md-typeset .pin-gate__error {
+  margin: 0.5rem 0 0;
+  font-size: 0.72rem;
+}
+
+.md-typeset .pin-gate__help {
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .pin-gate__error {
+  min-height: 1.2rem;
+  color: var(--md-typeset-color);
+  font-weight: 700;
+}
+
+@media (max-width: 520px) {
+  .pin-gate {
+    min-height: 62vh;
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .pin-gate__controls {
+    grid-template-columns: 1fr;
+  }
+
+  .pin-gate__button {
+    width: 100%;
+  }
+}
+
 @media print {
   .md-typeset {
     font-size: 10.5pt;
@@ -683,5 +825,9 @@ html.mermaid-lightbox-open body {
 
   .diagram-image-expand {
     display: none;
+  }
+
+  .pin-gate {
+    min-height: 0;
   }
 }
