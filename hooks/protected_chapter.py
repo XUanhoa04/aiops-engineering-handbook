@@ -59,7 +59,7 @@ def _gate_html(page_html: str, pin: str) -> str:
     <p class="pin-gate__eyebrow">PROTECTED CHAPTER</p>
     <h1 id="pin-gate-title">Bộ câu hỏi phỏng vấn AIOps</h1>
     <p class="pin-gate__description">
-      Chapter này được bảo vệ. Nhập mã PIN 4 chữ số để đọc 70 tình huống
+      Chapter này được bảo vệ. Nhập mã PIN 4 chữ số để đọc 100 tình huống
       Intern/Junior và các framework trả lời.
     </p>
     <form id="pin-gate-form" class="pin-gate__form" novalidate>
